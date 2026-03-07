@@ -2,10 +2,9 @@
   <aside class="nav-rail">
     <div class="brand-panel">
       <div class="brand-mark">OE</div>
-      <div>
+      <div class="brand-panel__copy">
         <p class="rail-kicker">{{ environmentLabel }}</p>
         <h1>{{ organizationName }}</h1>
-        <span>{{ currentClinic().region }}</span>
       </div>
     </div>
 
@@ -23,132 +22,62 @@
               <span class="nav-item__icon" [ngClass]="'nav-item__icon--' + (item.tone ?? 'neutral')">
                 {{ item.icon }}
               </span>
-              <div class="nav-item__body">
-                <div class="nav-item__headline">
-                  <strong>{{ item.label }}</strong>
-                  @if (item.counter) {
-                    <span class="nav-item__counter" [class]="'nav-item__counter nav-item__counter--' + (item.tone ?? 'neutral')">{{ item.counter }}</span>
-                  }
-                </div>
-                <small>{{ item.summary }}</small>
-                @if (item.children?.length) {
-                  <div class="nav-item__children">
-                    @for (child of item.children; track child) {
-                      <span>{{ child }}</span>
-                    }
-                  </div>
-                }
-              </div>
+              <strong class="nav-item__label">{{ item.label }}</strong>
+              @if (item.counter) {
+                <span class="nav-item__counter" [class]="'nav-item__counter nav-item__counter--' + (item.tone ?? 'neutral')">
+                  {{ item.counter }}
+                </span>
+              }
             </a>
           }
         </div>
       </section>
     }
-
-    <section class="rail-footer panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Clinic posture</p>
-          <h2>{{ currentClinic().name }}</h2>
-        </div>
-        <span class="status-chip status-chip--accent">{{ currentClinic().readiness }} readiness</span>
-      </div>
-      <div class="rail-metrics">
-        <div>
-          <span>Wait time</span>
-          <strong>{{ currentClinic().waitMinutes }} min</strong>
-        </div>
-        <div>
-          <span>Utilization</span>
-          <strong>{{ currentClinic().utilization }}%</strong>
-        </div>
-        <div>
-          <span>Open issues</span>
-          <strong>{{ currentClinic().openIssues }}</strong>
-        </div>
-        <div>
-          <span>Revenue delta</span>
-          <strong>{{ currentClinic().revenueDelta }}</strong>
-        </div>
-      </div>
-    </section>
   </aside>
 
   <section class="workspace-shell">
     <header class="command-bar">
-      <div class="command-bar__heading">
-        <div>
-          <p class="panel__eyebrow">Active workspace</p>
-          <h2>{{ currentTitle() }}</h2>
-          <span>{{ currentClinic().name }} • {{ currentProvider().name }}</span>
-        </div>
-        <div class="command-bar__filters">
-          <label class="command-filter command-filter--clinic">
-            <span>Clinic</span>
-            <app-enterprise-select
-              ariaLabel="Clinic selector"
-              [options]="clinicSelectOptions()"
-              [value]="currentClinic().id"
-              (valueChange)="setActiveClinic($event)"
-            />
-          </label>
-
-          <label class="command-filter command-filter--provider">
-            <span>Provider</span>
-            <app-enterprise-select
-              ariaLabel="Provider selector"
-              [options]="providerSelectOptions()"
-              [value]="currentProvider().id"
-              (valueChange)="setActiveProvider($event)"
-            />
-          </label>
-
-          <label class="command-filter command-filter--date">
-            <span>Date</span>
-            <input type="date" [value]="selectedDate()" (change)="setSelectedDate($any($event.target).value)" />
-          </label>
-        </div>
-      </div>
-
-      <div class="command-bar__tools">
+      <div class="command-bar__row">
         <label class="command-search">
-          <span>Command search</span>
           <input type="search" placeholder="Search patient, MRN, claim, study, order, command" />
           <kbd>Ctrl K</kbd>
         </label>
 
-        <div class="command-bar__primary-actions">
-          <button class="soft-button" type="button">Quick create</button>
-          <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
-        </div>
-      </div>
+        <label class="command-filter command-filter--clinic">
+          <span>Clinic</span>
+          <app-enterprise-select
+            ariaLabel="Clinic selector"
+            [options]="clinicSelectOptions()"
+            [value]="currentClinic().id"
+            (valueChange)="setActiveClinic($event)"
+          />
+        </label>
 
-      <div class="command-bar__meta">
-        <div class="indicator-stack indicator-stack--compact">
-          @for (indicator of systemIndicators(); track indicator.label) {
-            <div class="indicator-pill" [ngClass]="'indicator-pill--' + indicator.tone">
-              <span>{{ indicator.label }}</span>
-              <strong>{{ indicator.value }}</strong>
-            </div>
-          }
-        </div>
+        <label class="command-filter command-filter--provider">
+          <span>Provider</span>
+          <app-enterprise-select
+            ariaLabel="Provider selector"
+            [options]="providerSelectOptions()"
+            [value]="currentProvider().id"
+            (valueChange)="setActiveProvider($event)"
+          />
+        </label>
 
-        <div class="command-bar__session">
-          <button class="ghost-inline ghost-inline--quiet" type="button" (click)="toggleAiWorkspace()">
-            {{ aiWorkspaceOpen() ? 'Hide AI workspace' : 'Show AI workspace' }}
+        <label class="command-filter command-filter--date">
+          <span>Date</span>
+          <input type="date" [value]="selectedDate()" (change)="setSelectedDate($any($event.target).value)" />
+        </label>
+
+        <button class="soft-button" type="button">Quick create</button>
+        <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
+
+        @if (isAuthenticated()) {
+          <button class="avatar-button" type="button" (click)="signOut()" [attr.aria-label]="displayName()">
+            {{ accountInitials().toUpperCase() }}
           </button>
-          <div class="session-card">
-            <div class="session-card__text">
-              <strong>{{ displayName() }}</strong>
-              <span>{{ roleLabel() }}</span>
-            </div>
-            @if (isAuthenticated()) {
-              <button class="ghost-inline ghost-inline--quiet" type="button" (click)="signOut()">Sign out</button>
-            } @else {
-              <a class="ghost-inline ghost-inline--quiet" routerLink="/login">Sign in</a>
-            }
-          </div>
-        </div>
+        } @else {
+          <a class="avatar-button" routerLink="/login" aria-label="Sign in">IN</a>
+        }
       </div>
     </header>
 
@@ -157,62 +86,41 @@
     </main>
   </section>
 
-  <aside class="assistant-rail" [class.assistant-rail--collapsed]="!aiWorkspaceOpen()">
-    <section class="panel panel--assistant assistant-rail__hero">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">AI operations intelligence</p>
-          <h2>{{ dailyBriefing().headline }}</h2>
-        </div>
-        <span class="status-chip status-chip--accent">{{ dailyBriefing().updatedAt }}</span>
-      </div>
-      <div class="assistant-brief-grid">
-        @for (signal of aiBriefSignals().slice(0, 4); track signal.label) {
-          <article class="assistant-brief-card" [class]="'assistant-brief-card assistant-brief-card--' + signal.tone">
-            <span>{{ signal.label }}</span>
-            <strong>{{ signal.value }}</strong>
-          </article>
-        }
-      </div>
-      <div class="panel-list">
-        @for (action of aiBriefActions().slice(0, 3); track action) {
-          <article class="list-row list-row--accent">
-            <div>
-              <strong>{{ action }}</strong>
-            </div>
-          </article>
-        }
-      </div>
-    </section>
+  <aside class="assistant-rail">
+    <div class="assistant-rail__header">
+      <p class="panel__eyebrow">AI support</p>
+      <span class="assistant-rail__stamp">{{ dailyBriefing().updatedAt }}</span>
+    </div>
 
-    <section class="panel assistant-rail__queue">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Intervention queue</p>
-          <h2>Risk, escalation, and due-now work</h2>
-        </div>
-        <span class="status-chip status-chip--critical">{{ notifications().length + actionQueue().length }} live</span>
-      </div>
-      <div class="panel-list">
-        @for (alert of notifications().slice(0, 2); track alert.id) {
-          <article class="list-row" [ngClass]="'list-row--' + alert.tone">
-            <div>
-              <strong>{{ alert.title }}</strong>
-              <p>{{ alert.clinic }}</p>
-            </div>
-            <span>{{ alert.count }}</span>
-          </article>
+    <article class="assistant-card assistant-card--accent">
+      <p class="assistant-card__label">AI Summary</p>
+      <strong>{{ dailyBriefing().headline }}</strong>
+      <p>{{ dailyBriefing().summary }}</p>
+    </article>
+
+    @if (mainDragSignal(); as mainDrag) {
+      <article class="assistant-card" [ngClass]="'assistant-card--' + mainDrag.tone">
+        <p class="assistant-card__label">Main Drag</p>
+        <strong>{{ mainDrag.value }}</strong>
+        <p>{{ mainDrag.detail }}</p>
+      </article>
+    }
+
+    @if (revenueRiskSignal(); as revenueRisk) {
+      <article class="assistant-card" [ngClass]="'assistant-card--' + revenueRisk.tone">
+        <p class="assistant-card__label">Revenue Risk</p>
+        <strong>{{ revenueRisk.value }}</strong>
+        <p>{{ revenueRisk.detail }}</p>
+      </article>
+    }
+
+    <article class="assistant-card assistant-card--actions assistant-card--info">
+      <p class="assistant-card__label">Recommended Actions</p>
+      <ul class="assistant-card__list">
+        @for (action of actionPreview(); track action) {
+          <li>{{ action }}</li>
         }
-        @for (action of actionQueue().slice(0, 3); track action.id) {
-          <article class="task-row">
-            <div>
-              <strong>{{ action.title }}</strong>
-              <p>{{ action.workflow }} • {{ action.due }}</p>
-            </div>
-            <span class="task-row__count">{{ action.count }}</span>
-          </article>
-        }
-      </div>
-    </section>
+      </ul>
+    </article>
   </aside>
 </div>

@@ -1,10 +1,10 @@
 <section class="workspace-page dashboard-page">
   <header class="dashboard-header">
     <div>
-      <p class="page-kicker">Regional operations command</p>
-      <h1>Regional operations matrix</h1>
+      <p class="page-kicker">Regional Command Center</p>
+      <h1>Regional Operations Matrix</h1>
+      <p class="dashboard-subtitle">{{ dashboardSubtitle() }}</p>
     </div>
-    <app-status-chip [label]="currentClinic().name" tone="accent" />
   </header>
 
   <section class="escalation-strip">
@@ -20,20 +20,10 @@
   <article class="panel operations-centerpiece">
     <div class="panel__header">
       <div>
-        <p class="panel__eyebrow">Core operations centerpiece</p>
-        <h2>Regional throughput, readiness, and intervention control</h2>
+        <p class="panel__eyebrow">Regional operations matrix</p>
+        <h2>Throughput, readiness, claims risk, and staffing across clinics</h2>
       </div>
-      <app-status-chip label="Cross-clinic command" tone="accent" />
-    </div>
-
-    <div class="centerpiece-signal-row">
-      @for (signal of commandSignals(); track signal.id) {
-        <article class="centerpiece-signal" [class]="'centerpiece-signal centerpiece-signal--' + signal.tone">
-          <span>{{ signal.title }}</span>
-          <strong>{{ signal.value }}</strong>
-          <p>{{ signal.meta }}</p>
-        </article>
-      }
+      <app-status-chip label="Matrix primary" tone="accent" />
     </div>
 
     <table class="dense-table operations-matrix">
@@ -76,53 +66,62 @@
     </table>
   </article>
 
-  <section class="metric-grid dashboard-metrics">
-    @for (metric of primaryMetrics(); track metric.id) {
-      <app-metric-card [metric]="metric" />
-    }
-  </section>
-
-  <section>
-    <div class="panel__header dashboard-section-header">
-      <div>
-        <p class="panel__eyebrow">Supporting modules</p>
-        <h2>Intervention queues, patient movement, and provider load</h2>
+  <section class="support-grid">
+    <article class="panel support-panel support-panel--queue">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Supporting intervention module</p>
+          <h2>Prioritized intervention queue</h2>
+        </div>
+        <app-status-chip [label]="actionQueue().length + ' queued'" tone="warning" />
       </div>
-      <app-status-chip [label]="supportBoards().length + ' modules'" tone="info" />
-    </div>
-    <section class="board-grid support-grid">
-      @for (board of supportBoards(); track board.id) {
-        <article class="panel support-panel">
-          <div class="panel__header">
-            <div>
-              <p class="panel__eyebrow">{{ board.subtitle }}</p>
-              <h2>{{ board.title }}</h2>
+
+      <div class="panel-list">
+        @for (action of actionQueue().slice(0, 4); track action.id) {
+          <article class="action-card" [class]="'action-card action-card--' + action.tone">
+            <div class="action-card__meta">
+              <strong>{{ action.title }}</strong>
+              <p>{{ action.workflow }} • {{ action.owner }} • {{ action.clinic }}</p>
+              <span class="utility-note">{{ action.nextStep }}</span>
             </div>
-            <app-status-chip [label]="board.rows.length + ' live items'" [tone]="board.tone" />
-          </div>
+            <div>
+              <app-status-chip [label]="action.due" [tone]="action.tone" />
+              <div class="action-card__count">{{ action.count }}</div>
+            </div>
+          </article>
+        }
+      </div>
+    </article>
 
-          <div class="data-list">
-            @for (row of board.rows; track row.label) {
-              <article class="list-surface">
-                <div class="dense-header">
-                  <div>
-                    <strong>{{ row.label }}</strong>
-                    <p>{{ row.supporting }}</p>
-                  </div>
-                  <app-status-chip [label]="row.value" [tone]="row.tone" />
-                </div>
-                <div class="table-tags">
-                  @for (tag of row.tags; track tag) {
-                    <span class="status-chip status-chip--neutral">{{ tag }}</span>
-                  }
-                </div>
-              </article>
-            }
+    @for (board of supportBoards(); track board.id) {
+      <article class="panel support-panel">
+        <div class="panel__header">
+          <div>
+            <p class="panel__eyebrow">{{ board.subtitle }}</p>
+            <h2>{{ board.title }}</h2>
           </div>
+          <app-status-chip [label]="board.rows.length + ' live items'" [tone]="board.tone" />
+        </div>
 
-          <p class="utility-note">{{ board.footer }}</p>
-        </article>
-      }
-    </section>
+        <div class="data-list">
+          @for (row of board.rows; track row.label) {
+            <article class="list-surface">
+              <div class="dense-header">
+                <div>
+                  <strong>{{ row.label }}</strong>
+                  <p>{{ row.supporting }}</p>
+                </div>
+                <app-status-chip [label]="row.value" [tone]="row.tone" />
+              </div>
+              <div class="table-tags">
+                @for (tag of row.tags; track tag) {
+                  <span class="status-chip status-chip--neutral">{{ tag }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      </article>
+    }
   </section>
 </section>
