@@ -101,18 +101,6 @@ function metricDetails(metric: ExecutiveMetric, clinicId: string): ExecutiveMetr
         { label: 'Cutoff', value: '4h 12m', tone: 'warning' },
         { label: 'Recovery', value: clinicId === 'network' ? '$48.6K' : clinicId === 'tampa-asc' ? '$31.4K' : 'Same-day release', tone: 'accent' }
       ];
-    case 'balances':
-      return [
-        { label: '30-day A/R', value: '$61K', tone: 'info' },
-        { label: 'Recall yield', value: '+9.1%', tone: 'success' },
-        { label: 'Retail pickup', value: '$22K', tone: 'accent' }
-      ];
-    case 'optical':
-      return [
-        { label: 'Ready today', value: clinicId === 'tampa-asc' ? '5 pickups' : '6 pickups', tone: 'success' },
-        { label: 'Lab delay', value: clinicId === 'tampa-asc' ? '2 orders' : '4 orders', tone: 'warning' },
-        { label: 'Value', value: clinicId === 'tampa-asc' ? '$6.2K' : '$8.7K', tone: 'accent' }
-      ];
     case 'wait':
       return [
         { label: 'Target', value: WAIT_TARGET[clinicId] ?? WAIT_TARGET['network'], tone: 'info' },
@@ -124,12 +112,6 @@ function metricDetails(metric: ExecutiveMetric, clinicId: string): ExecutiveMetr
         { label: 'Load state', value: UTILIZATION_PRESSURE[clinicId] ?? UTILIZATION_PRESSURE['network'], tone: metric.tone },
         { label: 'Float capacity', value: clinicId === 'network' ? '1.2 FTE' : clinicId === 'clermont' ? '0.3 FTE' : 'Stable', tone: clinicId === 'clermont' ? 'warning' : 'info' },
         { label: 'Action', value: clinicId === 'network' ? 'Rebalance lanes' : 'Monitor load', tone: 'accent' }
-      ];
-    case 'noshow':
-      return [
-        { label: 'High risk', value: clinicId === 'network' ? '5 tomorrow' : '3 tomorrow', tone: 'warning' },
-        { label: 'Recovery', value: '2-3 visits', tone: 'success' },
-        { label: 'Driver', value: 'Transport barriers', tone: 'info' }
       ];
     case 'readiness':
       return [
@@ -144,7 +126,7 @@ function metricDetails(metric: ExecutiveMetric, clinicId: string): ExecutiveMetr
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [AiInsightCardComponent, MetricCardComponent, StatusChipComponent],
+  imports: [MetricCardComponent, StatusChipComponent],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss'
 })
@@ -152,12 +134,7 @@ export class DashboardPageComponent {
   protected readonly store = inject(EnterpriseStoreService);
   protected readonly currentClinic = this.store.currentClinic;
   protected readonly liveBoards = this.store.liveBoards;
-  protected readonly aiInsights = this.store.aiInsights;
-  protected readonly dailyBriefing = this.store.dailyBriefing;
-  protected readonly aiBriefSignals = this.store.aiBriefSignals;
-  protected readonly aiBriefActions = this.store.aiBriefActions;
   protected readonly actionQueue = this.store.actionQueue;
-  protected readonly clinicComparison = this.store.clinicComparison;
   protected readonly notifications = this.store.notifications;
   protected readonly commandSignals = this.store.commandSignals;
   protected readonly operationsMatrix = this.store.operationsMatrix;
@@ -168,5 +145,11 @@ export class DashboardPageComponent {
       details: metricDetails(metric, this.currentClinic().id)
     }))
   );
+  protected readonly primaryMetrics = computed(() =>
+    this.executiveMetrics().filter((metric) =>
+      ['flow', 'surgeries', 'claims', 'wait', 'utilization', 'readiness'].includes(metric.id)
+    )
+  );
+  protected readonly supportBoards = computed(() => this.liveBoards().slice(0, 3));
 }
 

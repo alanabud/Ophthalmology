@@ -1,215 +1,98 @@
 <section class="workspace-page dashboard-page">
-  <section class="dashboard-top">
-    <article class="panel dashboard-command">
-      <div class="panel__header">
-        <div>
-          <p class="page-kicker">Regional clinical command</p>
-          <h1>Live regional command for patient flow, ASC readiness, claim confidence, and executive action.</h1>
-        </div>
-        <app-status-chip [label]="currentClinic().name" tone="accent" />
-      </div>
-      <p class="page-subtitle">
-        The top fold is tuned for intervention: bottlenecks, overloaded lanes, cutoff pressure, and the next action that protects throughput.
-      </p>
-
-      <div class="command-signal-grid">
-        @for (signal of commandSignals(); track signal.id) {
-          <article class="command-signal" [class]="'command-signal command-signal--' + signal.tone">
-            <div class="command-signal__topline">
-              <span>{{ signal.title }}</span>
-              <strong>{{ signal.meta }}</strong>
-            </div>
-            <h3>{{ signal.value }}</h3>
-            <p>{{ signal.detail }}</p>
-          </article>
-        }
-      </div>
-    </article>
-
-    <div class="clinic-summary-grid">
-      @for (clinic of clinicComparison(); track clinic.id) {
-        <article class="clinic-summary" [class]="'clinic-summary clinic-summary--' + (clinic.statusTone ?? 'info')">
-          <div class="clinic-summary__header">
-            <div>
-              <strong>{{ clinic.shortLabel }}</strong>
-              <p>{{ clinic.name }}</p>
-            </div>
-            <app-status-chip [label]="clinic.statusLabel ?? 'Watch'" [tone]="clinic.statusTone ?? 'info'" />
-          </div>
-          <div class="clinic-summary__metrics">
-            <span>{{ clinic.waitMinutes }} min wait</span>
-            <span>{{ clinic.utilization }}% utilized</span>
-            <span>{{ clinic.revenueDelta }} revenue</span>
-          </div>
-          <p class="clinic-summary__source">{{ clinic.pressureSource }}</p>
-          <span class="clinic-summary__threshold">{{ clinic.nextThreshold }}</span>
-        </article>
-      }
+  <header class="dashboard-header">
+    <div>
+      <p class="page-kicker">Regional operations command</p>
+      <h1>Regional operations matrix</h1>
     </div>
-  </section>
+    <app-status-chip [label]="currentClinic().name" tone="accent" />
+  </header>
 
-  <section class="metric-grid">
-    @for (metric of executiveMetrics(); track metric.id) {
-      <app-metric-card [metric]="metric" />
+  <section class="escalation-strip">
+    @for (alert of notifications().slice(0, 4); track alert.id) {
+      <article class="escalation-pill" [class]="'escalation-pill escalation-pill--' + alert.tone">
+        <span>{{ alert.clinic }}</span>
+        <strong>{{ alert.title }}</strong>
+        <em>{{ alert.count }}</em>
+      </article>
     }
   </section>
 
-  <section class="dashboard-centerpiece dual-grid">
-    <article class="panel matrix-panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Signature live module</p>
-          <h2>Regional operations matrix</h2>
-        </div>
-        <app-status-chip label="Cross-clinic decision surface" tone="accent" />
+  <article class="panel operations-centerpiece">
+    <div class="panel__header">
+      <div>
+        <p class="panel__eyebrow">Core operations centerpiece</p>
+        <h2>Regional throughput, readiness, and intervention control</h2>
       </div>
-      <table class="dense-table operations-matrix">
-        <thead>
-          <tr>
-            <th>Clinic</th>
-            <th>Wait</th>
-            <th>Utilization</th>
-            <th>Imaging</th>
-            <th>ASC</th>
-            <th>Claims</th>
-            <th>Staff</th>
-            <th>Recommended action</th>
+      <app-status-chip label="Cross-clinic command" tone="accent" />
+    </div>
+
+    <div class="centerpiece-signal-row">
+      @for (signal of commandSignals(); track signal.id) {
+        <article class="centerpiece-signal" [class]="'centerpiece-signal centerpiece-signal--' + signal.tone">
+          <span>{{ signal.title }}</span>
+          <strong>{{ signal.value }}</strong>
+          <p>{{ signal.meta }}</p>
+        </article>
+      }
+    </div>
+
+    <table class="dense-table operations-matrix">
+      <thead>
+        <tr>
+          <th>Clinic</th>
+          <th>Wait</th>
+          <th>Utilization</th>
+          <th>Imaging</th>
+          <th>ASC</th>
+          <th>Claims</th>
+          <th>Staff</th>
+          <th>Recommended action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of operationsMatrix(); track row.clinicId) {
+          <tr [class.matrix-row--focused]="currentClinic().id === row.clinicId">
+            <td>
+              <div class="table-primary">
+                <strong>{{ row.clinic }}</strong>
+                <span>{{ row.note }}</span>
+              </div>
+            </td>
+            <td><span [class]="'status-chip status-chip--' + row.waitTone">{{ row.waitTime }}</span></td>
+            <td><span [class]="'status-chip status-chip--' + row.utilizationTone">{{ row.utilization }}</span></td>
+            <td><span [class]="'status-chip status-chip--' + row.imagingTone">{{ row.imagingBacklog }}</span></td>
+            <td><span [class]="'status-chip status-chip--' + row.ascTone">{{ row.ascReadiness }}</span></td>
+            <td><span [class]="'status-chip status-chip--' + row.claimsTone">{{ row.claimsRisk }}</span></td>
+            <td><span [class]="'status-chip status-chip--' + row.staffTone">{{ row.staffLoad }}</span></td>
+            <td>
+              <div class="table-primary">
+                <strong>{{ row.recommendedAction }}</strong>
+                <span>{{ currentClinic().id === row.clinicId ? 'Focused clinic' : 'Regional comparison' }}</span>
+              </div>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          @for (row of operationsMatrix(); track row.clinicId) {
-            <tr [class.matrix-row--focused]="currentClinic().id === row.clinicId">
-              <td>
-                <div class="table-primary">
-                  <strong>{{ row.clinic }}</strong>
-                  <span>{{ row.note }}</span>
-                </div>
-              </td>
-              <td><span [class]="'status-chip status-chip--' + row.waitTone">{{ row.waitTime }}</span></td>
-              <td><span [class]="'status-chip status-chip--' + row.utilizationTone">{{ row.utilization }}</span></td>
-              <td><span [class]="'status-chip status-chip--' + row.imagingTone">{{ row.imagingBacklog }}</span></td>
-              <td><span [class]="'status-chip status-chip--' + row.ascTone">{{ row.ascReadiness }}</span></td>
-              <td><span [class]="'status-chip status-chip--' + row.claimsTone">{{ row.claimsRisk }}</span></td>
-              <td><span [class]="'status-chip status-chip--' + row.staffTone">{{ row.staffLoad }}</span></td>
-              <td>
-                <div class="table-primary">
-                  <strong>{{ row.recommendedAction }}</strong>
-                  @if (currentClinic().id === row.clinicId) {
-                    <span>Focused clinic</span>
-                  } @else {
-                    <span>Regional comparison</span>
-                  }
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </article>
-
-    <article class="panel intervention-panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Intervention stack</p>
-          <h2>Escalations & intervention queue</h2>
-        </div>
-        <app-status-chip [label]="notifications().length + ' live'" tone="critical" />
-      </div>
-
-      <div class="intervention-countdown">
-        <strong>Clearinghouse cutoff</strong>
-        <span>4h 12m remaining to release 12 claims</span>
-      </div>
-
-      <div class="panel-list">
-        @for (action of actionQueue().slice(0, 4); track action.id) {
-          <article class="action-card action-card--urgent" [class]="'action-card action-card--urgent action-card--' + action.tone">
-            <div class="action-card__meta">
-              <strong>{{ action.title }}</strong>
-              <p>{{ action.workflow }} • {{ action.owner }} • {{ action.clinic }}</p>
-              <span class="utility-note">{{ action.nextStep }}</span>
-            </div>
-            <div>
-              <app-status-chip [label]="action.due" [tone]="action.tone" />
-              <div class="action-card__count">{{ action.count }}</div>
-            </div>
-          </article>
         }
-      </div>
-    </article>
-  </section>
+      </tbody>
+    </table>
+  </article>
 
-  <section class="dual-grid">
-    <article class="panel panel--assistant ai-intelligence-panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">AI operations intelligence</p>
-          <h2>{{ dailyBriefing().headline }}</h2>
-        </div>
-        <app-status-chip [label]="dailyBriefing().updatedAt" tone="accent" />
-      </div>
-      <p class="panel__body-copy">{{ dailyBriefing().summary }}</p>
-
-      <div class="brief-signal-grid">
-        @for (signal of aiBriefSignals(); track signal.label) {
-          <article class="brief-signal" [class]="'brief-signal brief-signal--' + signal.tone">
-            <span>{{ signal.label }}</span>
-            <strong>{{ signal.value }}</strong>
-            <p>{{ signal.detail }}</p>
-          </article>
-        }
-      </div>
-
-      <div class="ai-actions-strip">
-        <div class="dense-header">
-          <div>
-            <strong>Recommended actions</strong>
-            <p>AI-ranked interventions with the highest same-day operational yield.</p>
-          </div>
-        </div>
-        <div class="panel-list">
-          @for (action of aiBriefActions(); track action) {
-            <article class="list-surface">
-              <strong>{{ action }}</strong>
-            </article>
-          }
-        </div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Revenue and risk watch</p>
-          <h2>Immediate pressure points</h2>
-        </div>
-        <app-status-chip label="Due before cutoff" tone="warning" />
-      </div>
-      <div class="panel-list">
-        @for (alert of notifications(); track alert.id) {
-          <article class="list-row" [class.list-row--critical]="alert.tone === 'critical'" [class.list-row--warning]="alert.tone === 'warning'" [class.list-row--accent]="alert.tone === 'accent'">
-            <div>
-              <strong>{{ alert.title }}</strong>
-              <p>{{ alert.detail }}</p>
-            </div>
-            <span class="task-row__count">{{ alert.count }}</span>
-          </article>
-        }
-      </div>
-    </article>
+  <section class="metric-grid dashboard-metrics">
+    @for (metric of primaryMetrics(); track metric.id) {
+      <app-metric-card [metric]="metric" />
+    }
   </section>
 
   <section>
     <div class="panel__header dashboard-section-header">
       <div>
-        <p class="panel__eyebrow">Live operations grid</p>
-        <h2>Queues, readiness, provider state, billing, and optical flow</h2>
+        <p class="panel__eyebrow">Supporting modules</p>
+        <h2>Intervention queues, patient movement, and provider load</h2>
       </div>
-      <app-status-chip [label]="liveBoards().length + ' boards'" tone="info" />
+      <app-status-chip [label]="supportBoards().length + ' modules'" tone="info" />
     </div>
-    <section class="board-grid">
-      @for (board of liveBoards(); track board.id) {
-        <article class="panel">
+    <section class="board-grid support-grid">
+      @for (board of supportBoards(); track board.id) {
+        <article class="panel support-panel">
           <div class="panel__header">
             <div>
               <p class="panel__eyebrow">{{ board.subtitle }}</p>
@@ -241,47 +124,5 @@
         </article>
       }
     </section>
-  </section>
-
-  <section class="dual-grid">
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Embedded AI copilots</p>
-          <h2>Predictive recommendations</h2>
-        </div>
-        <app-status-chip [label]="aiInsights().length + ' active models'" tone="accent" />
-      </div>
-      <div class="dual-grid">
-        @for (insight of aiInsights(); track insight.id) {
-          <app-ai-insight-card [insight]="insight" />
-        }
-      </div>
-    </article>
-
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Action center</p>
-          <h2>Prioritized work queue</h2>
-        </div>
-        <app-status-chip [label]="actionQueue().length + ' items'" tone="warning" />
-      </div>
-      <div class="panel-list">
-        @for (action of actionQueue(); track action.id) {
-          <article class="action-card">
-            <div class="action-card__meta">
-              <strong>{{ action.title }}</strong>
-              <p>{{ action.workflow }} • {{ action.owner }} • {{ action.clinic }}</p>
-              <span class="utility-note">{{ action.nextStep }}</span>
-            </div>
-            <div>
-              <app-status-chip [label]="action.due" [tone]="action.tone" />
-              <div class="action-card__count">{{ action.count }}</div>
-            </div>
-          </article>
-        }
-      </div>
-    </article>
   </section>
 </section>

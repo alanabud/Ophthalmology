@@ -121,8 +121,10 @@
           <button class="soft-button" type="button">Quick create</button>
           <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
         </div>
+      </div>
 
-        <div class="indicator-stack">
+      <div class="command-bar__meta">
+        <div class="indicator-stack indicator-stack--compact">
           @for (indicator of systemIndicators(); track indicator.label) {
             <div class="indicator-pill" [ngClass]="'indicator-pill--' + indicator.tone">
               <span>{{ indicator.label }}</span>
@@ -156,26 +158,24 @@
   </section>
 
   <aside class="assistant-rail" [class.assistant-rail--collapsed]="!aiWorkspaceOpen()">
-    <section class="panel panel--assistant">
+    <section class="panel panel--assistant assistant-rail__hero">
       <div class="panel__header">
         <div>
-          <p class="panel__eyebrow">Executive AI briefing</p>
+          <p class="panel__eyebrow">AI operations intelligence</p>
           <h2>{{ dailyBriefing().headline }}</h2>
         </div>
         <span class="status-chip status-chip--accent">{{ dailyBriefing().updatedAt }}</span>
       </div>
-      <p class="panel__body-copy">{{ dailyBriefing().summary }}</p>
       <div class="assistant-brief-grid">
-        @for (signal of aiBriefSignals(); track signal.label) {
+        @for (signal of aiBriefSignals().slice(0, 4); track signal.label) {
           <article class="assistant-brief-card" [class]="'assistant-brief-card assistant-brief-card--' + signal.tone">
             <span>{{ signal.label }}</span>
             <strong>{{ signal.value }}</strong>
-            <p>{{ signal.detail }}</p>
           </article>
         }
       </div>
       <div class="panel-list">
-        @for (action of aiBriefActions(); track action) {
+        @for (action of aiBriefActions().slice(0, 3); track action) {
           <article class="list-row list-row--accent">
             <div>
               <strong>{{ action }}</strong>
@@ -185,62 +185,31 @@
       </div>
     </section>
 
-    <section class="panel">
+    <section class="panel assistant-rail__queue">
       <div class="panel__header">
         <div>
-          <p class="panel__eyebrow">Escalations</p>
-          <h2>Escalations & intervention queue</h2>
+          <p class="panel__eyebrow">Intervention queue</p>
+          <h2>Risk, escalation, and due-now work</h2>
         </div>
-        <span class="status-chip status-chip--critical">{{ notifications().length }} live</span>
+        <span class="status-chip status-chip--critical">{{ notifications().length + actionQueue().length }} live</span>
       </div>
       <div class="panel-list">
-        @for (alert of notifications(); track alert.id) {
+        @for (alert of notifications().slice(0, 2); track alert.id) {
           <article class="list-row" [ngClass]="'list-row--' + alert.tone">
             <div>
               <strong>{{ alert.title }}</strong>
-              <p>{{ alert.detail }}</p>
+              <p>{{ alert.clinic }}</p>
             </div>
             <span>{{ alert.count }}</span>
           </article>
         }
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Action center</p>
-          <h2>Prioritized work</h2>
-        </div>
-        <span class="status-chip status-chip--warning">{{ actionQueue().length }} queued</span>
-      </div>
-      <div class="panel-list">
-        @for (action of actionQueue().slice(0, 4); track action.id) {
+        @for (action of actionQueue().slice(0, 3); track action.id) {
           <article class="task-row">
             <div>
               <strong>{{ action.title }}</strong>
-              <p>{{ action.workflow }} • {{ action.clinic }} • {{ action.due }}</p>
+              <p>{{ action.workflow }} • {{ action.due }}</p>
             </div>
             <span class="task-row__count">{{ action.count }}</span>
-          </article>
-        }
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Quick actions</p>
-          <h2>High-leverage moves</h2>
-        </div>
-      </div>
-      <div class="panel-list">
-        @for (action of quickActions(); track action.label) {
-          <article class="list-row" [ngClass]="'list-row--' + action.tone">
-            <div>
-              <strong>{{ action.label }}</strong>
-              <p>{{ action.detail }}</p>
-            </div>
           </article>
         }
       </div>
