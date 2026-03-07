@@ -27,7 +27,7 @@
                 <div class="nav-item__headline">
                   <strong>{{ item.label }}</strong>
                   @if (item.counter) {
-                    <span class="nav-item__counter">{{ item.counter }}</span>
+                    <span class="nav-item__counter" [class]="'nav-item__counter nav-item__counter--' + (item.tone ?? 'neutral')">{{ item.counter }}</span>
                   }
                 </div>
                 <small>{{ item.summary }}</small>
@@ -117,6 +117,11 @@
           <kbd>Ctrl K</kbd>
         </label>
 
+        <div class="command-bar__primary-actions">
+          <button class="soft-button" type="button">Quick create</button>
+          <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
+        </div>
+
         <div class="indicator-stack">
           @for (indicator of systemIndicators(); track indicator.label) {
             <div class="indicator-pill" [ngClass]="'indicator-pill--' + indicator.tone">
@@ -126,21 +131,19 @@
           }
         </div>
 
-        <div class="command-bar__actions">
-          <button class="soft-button" type="button" (click)="toggleAiWorkspace()">
+        <div class="command-bar__session">
+          <button class="ghost-inline ghost-inline--quiet" type="button" (click)="toggleAiWorkspace()">
             {{ aiWorkspaceOpen() ? 'Hide AI workspace' : 'Show AI workspace' }}
           </button>
-          <button class="soft-button" type="button">Quick create</button>
-          <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
-          <div class="profile-card">
-            <div class="profile-card__text">
+          <div class="session-card">
+            <div class="session-card__text">
               <strong>{{ displayName() }}</strong>
               <span>{{ roleLabel() }}</span>
             </div>
             @if (isAuthenticated()) {
-              <button class="ghost-inline" type="button" (click)="signOut()">Sign out</button>
+              <button class="ghost-inline ghost-inline--quiet" type="button" (click)="signOut()">Sign out</button>
             } @else {
-              <a class="ghost-inline" routerLink="/login">Sign in</a>
+              <a class="ghost-inline ghost-inline--quiet" routerLink="/login">Sign in</a>
             }
           </div>
         </div>
@@ -156,24 +159,37 @@
     <section class="panel panel--assistant">
       <div class="panel__header">
         <div>
-          <p class="panel__eyebrow">AI daily briefing</p>
+          <p class="panel__eyebrow">Executive AI briefing</p>
           <h2>{{ dailyBriefing().headline }}</h2>
         </div>
         <span class="status-chip status-chip--accent">{{ dailyBriefing().updatedAt }}</span>
       </div>
       <p class="panel__body-copy">{{ dailyBriefing().summary }}</p>
-      <ul class="bullet-stack">
-        @for (bullet of dailyBriefing().bullets; track bullet) {
-          <li>{{ bullet }}</li>
+      <div class="assistant-brief-grid">
+        @for (signal of aiBriefSignals(); track signal.label) {
+          <article class="assistant-brief-card" [class]="'assistant-brief-card assistant-brief-card--' + signal.tone">
+            <span>{{ signal.label }}</span>
+            <strong>{{ signal.value }}</strong>
+            <p>{{ signal.detail }}</p>
+          </article>
         }
-      </ul>
+      </div>
+      <div class="panel-list">
+        @for (action of aiBriefActions(); track action) {
+          <article class="list-row list-row--accent">
+            <div>
+              <strong>{{ action }}</strong>
+            </div>
+          </article>
+        }
+      </div>
     </section>
 
     <section class="panel">
       <div class="panel__header">
         <div>
           <p class="panel__eyebrow">Escalations</p>
-          <h2>Alerts center</h2>
+          <h2>Escalations & intervention queue</h2>
         </div>
         <span class="status-chip status-chip--critical">{{ notifications().length }} live</span>
       </div>

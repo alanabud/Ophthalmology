@@ -8,17 +8,17 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Command Center',
         route: '/command-center',
         icon: 'CC',
-        summary: 'Regional flow, AI briefing, escalations',
-        counter: '12',
-        children: ['Regional view', 'Escalations', 'Readiness'],
+        summary: 'Regional bottlenecks, AI intervention, cutoff control',
+        counter: '12 live',
+        children: ['Throughput watch', 'Escalations', 'Readiness'],
         tone: 'accent'
       },
       {
         label: 'Patients',
         route: '/patients',
         icon: 'PT',
-        summary: 'Demographics, chart readiness, care gaps',
-        counter: '286',
+        summary: '286 active today, 9 recalls, 4 balance escalations',
+        counter: '286 today',
         children: ['Search', 'Recall worklist', 'Balances'],
         tone: 'info'
       },
@@ -26,8 +26,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Scheduling',
         route: '/scheduling',
         icon: 'SC',
-        summary: 'Provider lanes, waitlist, no-show risk',
-        counter: '34',
+        summary: '3 delays, waitlist match pressure, no-show risk',
+        counter: '3 delays',
         children: ['Clinic board', 'Waitlist', 'Optimization'],
         tone: 'accent'
       },
@@ -35,8 +35,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Encounters',
         route: '/encounters',
         icon: 'EM',
-        summary: 'Exam progression, chart completion, AI scribe',
-        counter: '19',
+        summary: '8 unsigned, 11 in progress, chart closure watch',
+        counter: '8 unsigned',
         children: ['In progress', 'Unsigned', 'Follow-up'],
         tone: 'warning'
       },
@@ -44,17 +44,17 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Imaging',
         route: '/imaging',
         icon: 'IM',
-        summary: 'Diagnostic queue, reviews, AI findings assist',
-        counter: '11',
+        summary: '2 unread criticals, OCT backlog, review queue',
+        counter: '2 critical',
         children: ['OCT queue', 'Results', 'Annotations'],
-        tone: 'info'
+        tone: 'critical'
       },
       {
         label: 'Surgery',
         route: '/surgery',
         icon: 'SX',
-        summary: 'ASC readiness, lens inventory, staffing',
-        counter: '5',
+        summary: '3 cases blocked by lens or clearance readiness',
+        counter: '3 blocked',
         children: ['Cases', 'Pre-op', 'Post-op'],
         tone: 'critical'
       },
@@ -62,8 +62,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Optical',
         route: '/optical',
         icon: 'OP',
-        summary: 'Lab orders, pickup pipeline, retail intelligence',
-        counter: '23',
+        summary: '23 open orders, 5 premium pickups, lab ETA watch',
+        counter: '5 pickups',
         children: ['Orders', 'Recommendations', 'Pickup'],
         tone: 'warning'
       }
@@ -76,8 +76,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Billing',
         route: '/billing',
         icon: 'BL',
-        summary: 'Claims, denials, payment velocity, AI coding',
-        counter: '52',
+        summary: '12 blocked claims, modifier review, denial salvage',
+        counter: '12 blocked',
         children: ['Draft claims', 'Denials', 'A/R aging'],
         tone: 'warning'
       },
@@ -85,8 +85,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Inventory',
         route: '/inventory',
         icon: 'IV',
-        summary: 'Implants, drops, frames, forecasted shortages',
-        counter: '7',
+        summary: '7 shortages, implant forecast, reorder pressure',
+        counter: '7 shortages',
         children: ['Shortages', 'Reorders', 'Forecast'],
         tone: 'critical'
       },
@@ -94,8 +94,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Analytics',
         route: '/analytics',
         icon: 'AN',
-        summary: 'Clinic comparisons, productivity, narrative insight',
-        counter: '9',
+        summary: 'Clinic variance, provider output, margin signals',
+        counter: '9 views',
         children: ['Regional KPIs', 'Providers', 'Profitability'],
         tone: 'accent'
       },
@@ -103,8 +103,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Compliance',
         route: '/compliance',
         icon: 'CP',
-        summary: 'Audit watchtower, access anomalies, MFA posture',
-        counter: '4',
+        summary: '4 high-trust alerts, sensitive access, MFA posture',
+        counter: '4 alerts',
         children: ['Audit feed', 'Sensitive access', 'PHI controls'],
         tone: 'critical'
       }
@@ -117,8 +117,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Integrations',
         route: '/integrations',
         icon: 'IN',
-        summary: 'EHR, devices, clearinghouse, jobs',
-        counter: '18',
+        summary: '2 degraded feeds, device sync, clearinghouse jobs',
+        counter: '2 degraded',
         children: ['Devices', 'API jobs', 'Failures'],
         tone: 'info'
       },
@@ -126,8 +126,8 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         label: 'Admin',
         route: '/admin',
         icon: 'AD',
-        summary: 'Tenants, roles, clinic settings, provisioning',
-        counter: '3',
+        summary: '3 policy changes, RBAC posture, clinic provisioning',
+        counter: '3 changes',
         children: ['RBAC', 'Clinics', 'Policies'],
         tone: 'neutral'
       }

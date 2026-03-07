@@ -1,7 +1,7 @@
 import { computed, Injectable, signal } from '@angular/core';
 
 import { TokenPairResponse } from '../models/auth.models';
-import { ACTION_QUEUE, AI_INSIGHTS, DAILY_BRIEFINGS, EXECUTIVE_METRICS, LIVE_BOARDS } from '../data/command-center.data';
+import { ACTION_QUEUE, AI_BRIEF_ACTIONS, AI_BRIEF_SIGNALS, AI_INSIGHTS, COMMAND_SIGNALS, DAILY_BRIEFINGS, EXECUTIVE_METRICS, LIVE_BOARDS, OPERATIONS_MATRIX } from '../data/command-center.data';
 import { CLINICS, PROVIDERS, SYSTEM_INDICATORS, ALERTS, QUICK_ACTIONS } from '../data/context.data';
 import { ENCOUNTERS } from '../data/encounters.data';
 import { IMAGING_STUDIES } from '../data/imaging.data';
@@ -71,6 +71,18 @@ export class EnterpriseStoreService {
   readonly liveBoards = computed(() => LIVE_BOARDS[this.activeClinicId()] ?? LIVE_BOARDS['network']);
   readonly dailyBriefing = computed(() => DAILY_BRIEFINGS[this.activeClinicId()] ?? DAILY_BRIEFINGS['network']);
   readonly aiInsights = computed(() => AI_INSIGHTS[this.activeClinicId()] ?? AI_INSIGHTS['network']);
+  readonly aiBriefSignals = computed(() => AI_BRIEF_SIGNALS[this.activeClinicId()] ?? AI_BRIEF_SIGNALS['network']);
+  readonly aiBriefActions = computed(() => AI_BRIEF_ACTIONS[this.activeClinicId()] ?? AI_BRIEF_ACTIONS['network']);
+  readonly commandSignals = computed(() => COMMAND_SIGNALS[this.activeClinicId()] ?? COMMAND_SIGNALS['network']);
+  readonly operationsMatrix = computed(() => {
+    const activeClinicId = this.activeClinicId();
+    return activeClinicId === 'network'
+      ? OPERATIONS_MATRIX
+      : [
+          ...OPERATIONS_MATRIX.filter((row) => row.clinicId === activeClinicId),
+          ...OPERATIONS_MATRIX.filter((row) => row.clinicId !== activeClinicId)
+        ];
+  });
   readonly actionQueue = computed(() => ACTION_QUEUE[this.activeClinicId()] ?? ACTION_QUEUE['network']);
   readonly patients = computed(() => PATIENTS.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
   readonly scheduleLanes = computed(() =>
@@ -145,4 +157,5 @@ export class EnterpriseStoreService {
     };
   }
 }
+
 

@@ -16,7 +16,11 @@ export const CLINICS: ClinicContext[] = [
     waitMinutes: 18,
     utilization: 92,
     openIssues: 12,
-    revenueDelta: '+4.8%'
+    revenueDelta: '+4.8%',
+    statusLabel: 'Regional view',
+    statusTone: 'accent',
+    pressureSource: 'Imaging backlog and ASC lens controls drive most variance',
+    nextThreshold: 'Claims cutoff in 4h 12m'
   },
   {
     id: 'winter-park',
@@ -27,7 +31,11 @@ export const CLINICS: ClinicContext[] = [
     waitMinutes: 14,
     utilization: 91,
     openIssues: 3,
-    revenueDelta: '+6.1%'
+    revenueDelta: '+6.1%',
+    statusLabel: 'Best flow today',
+    statusTone: 'success',
+    pressureSource: 'Tomorrow retina no-show cohort is the only material watch item',
+    nextThreshold: 'Transport-risk recall closes by 12:00'
   },
   {
     id: 'clermont',
@@ -38,7 +46,11 @@ export const CLINICS: ClinicContext[] = [
     waitMinutes: 26,
     utilization: 95,
     openIssues: 4,
-    revenueDelta: '+2.2%'
+    revenueDelta: '+2.2%',
+    statusLabel: 'Most delayed clinic',
+    statusTone: 'critical',
+    pressureSource: 'OCT and biometry backlog are suppressing consult starts',
+    nextThreshold: 'Wait exceeds 30 min if queue stays above 8 by 13:00'
   },
   {
     id: 'lake-nona',
@@ -49,7 +61,11 @@ export const CLINICS: ClinicContext[] = [
     waitMinutes: 19,
     utilization: 87,
     openIssues: 2,
-    revenueDelta: '+5.3%'
+    revenueDelta: '+5.3%',
+    statusLabel: 'Chart lag watch',
+    statusTone: 'warning',
+    pressureSource: 'Unsigned laser charts are the main compliance-sensitive drag',
+    nextThreshold: '2 records need sign-off before noon'
   },
   {
     id: 'tampa-asc',
@@ -60,7 +76,11 @@ export const CLINICS: ClinicContext[] = [
     waitMinutes: 22,
     utilization: 93,
     openIssues: 5,
-    revenueDelta: '+3.4%'
+    revenueDelta: '+3.4%',
+    statusLabel: 'ASC risk clinic',
+    statusTone: 'critical',
+    pressureSource: 'Lens confirmation and turnover replenishment are blocking clean execution',
+    nextThreshold: '3 cataract cases need closure before 11:30'
   }
 ];
 

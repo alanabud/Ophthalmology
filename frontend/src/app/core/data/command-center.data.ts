@@ -1,9 +1,12 @@
 import {
   ActionQueueItem,
   AiInsight,
+  CommandSignal,
   DailyBriefing,
+  DailyBriefingSignal,
   ExecutiveMetric,
   LiveBoardCard,
+  OperationsMatrixRow,
 } from '../models/enterprise.models';
 
 export const EXECUTIVE_METRICS: Record<string, ExecutiveMetric[]> = {
@@ -994,3 +997,402 @@ export const ACTION_QUEUE: Record<string, ActionQueueItem[]> = {
     }
   ]
 };
+
+
+export const AI_BRIEF_SIGNALS: Record<string, DailyBriefingSignal[]> = {
+  network: [
+    {
+      label: 'Regional status',
+      value: 'Stable with intervention pockets',
+      detail: 'Patient flow is healthy outside Clermont imaging and ASC readiness.',
+      tone: 'success'
+    },
+    {
+      label: 'Main drag',
+      value: 'Clermont imaging backlog',
+      detail: 'OCT and biometry are suppressing 3 same-day consult completions.',
+      tone: 'critical'
+    },
+    {
+      label: 'Revenue risk',
+      value: 'Moderate',
+      detail: 'Modifier review and ASC implant coding are the main exposure.',
+      tone: 'warning'
+    },
+    {
+      label: 'Claims opportunity',
+      value: '12 salvageable by 4 PM',
+      detail: 'Clearinghouse release stays viable if coder review closes today.',
+      tone: 'accent'
+    },
+    {
+      label: 'Immediate action',
+      value: 'Reassign OCT capacity',
+      detail: 'A 90-minute float shift is the highest-leverage move right now.',
+      tone: 'warning'
+    },
+    {
+      label: 'Confidence',
+      value: '87%',
+      detail: 'Model agreement remains strong across flow, claims, and staffing signals.',
+      tone: 'info'
+    }
+  ],
+  'winter-park': [
+    {
+      label: 'Regional status',
+      value: 'Retina flow healthy',
+      detail: 'Lane timing and physician availability remain controlled.',
+      tone: 'success'
+    },
+    {
+      label: 'Main drag',
+      value: 'Tomorrow no-show risk',
+      detail: 'Five patients need non-standard outreach and transport support.',
+      tone: 'warning'
+    },
+    {
+      label: 'Revenue risk',
+      value: 'Low',
+      detail: 'Only two injection claims require auth span review.',
+      tone: 'success'
+    },
+    {
+      label: 'Immediate action',
+      value: 'Launch ride-share outreach',
+      detail: 'Doing this by noon recovers 2 to 3 visits.',
+      tone: 'accent'
+    },
+    {
+      label: 'Claims opportunity',
+      value: '2 claims can clear today',
+      detail: 'Auth span confirmation is the remaining gate.',
+      tone: 'info'
+    },
+    {
+      label: 'Confidence',
+      value: '89%',
+      detail: 'Model confidence is strongest on reminder response patterns.',
+      tone: 'info'
+    }
+  ],
+  clermont: [
+    {
+      label: 'Regional status',
+      value: 'Under target',
+      detail: 'Throughput is the weakest in the region today.',
+      tone: 'critical'
+    },
+    {
+      label: 'Main drag',
+      value: 'OCT and biometry backlog',
+      detail: '11 patients are still waiting to clear diagnostic prep.',
+      tone: 'critical'
+    },
+    {
+      label: 'Revenue risk',
+      value: 'Moderate',
+      detail: 'Delayed workups reduce same-day surgery conversion confidence.',
+      tone: 'warning'
+    },
+    {
+      label: 'Immediate action',
+      value: 'Shift one float tech',
+      detail: 'A 90-minute reallocation recovers 3 same-day consults.',
+      tone: 'warning'
+    },
+    {
+      label: 'Claims opportunity',
+      value: 'Protect pre-op conversion',
+      detail: 'Preserving diagnostic throughput protects downstream revenue.',
+      tone: 'accent'
+    },
+    {
+      label: 'Confidence',
+      value: '91%',
+      detail: 'The model is highly certain the bottleneck is not physician time.',
+      tone: 'info'
+    }
+  ],
+  'lake-nona': [
+    {
+      label: 'Regional status',
+      value: 'Stable',
+      detail: 'Flow and staffing remain inside plan.',
+      tone: 'success'
+    },
+    {
+      label: 'Main drag',
+      value: 'Unsigned laser charts',
+      detail: 'Documentation closure is the only blocker.',
+      tone: 'warning'
+    },
+    {
+      label: 'Revenue risk',
+      value: 'Low',
+      detail: 'Billing exposure is limited to one authorization issue.',
+      tone: 'success'
+    },
+    {
+      label: 'Immediate action',
+      value: 'Close physician sign-off',
+      detail: 'Finish both charts before lunch to remove compliance friction.',
+      tone: 'warning'
+    },
+    {
+      label: 'Claims opportunity',
+      value: 'Routine lane',
+      detail: 'No material salvage queue is building today.',
+      tone: 'info'
+    },
+    {
+      label: 'Confidence',
+      value: '83%',
+      detail: 'The forecast is stable and variance is low.',
+      tone: 'info'
+    }
+  ],
+  'tampa-asc': [
+    {
+      label: 'Regional status',
+      value: 'Contained but fragile',
+      detail: 'Execution holds if implant controls close on time.',
+      tone: 'warning'
+    },
+    {
+      label: 'Main drag',
+      value: 'Lens confirmation gaps',
+      detail: 'Three cataract cases remain partially blocked.',
+      tone: 'critical'
+    },
+    {
+      label: 'Revenue risk',
+      value: 'Elevated',
+      detail: 'ASC implant and anesthesia coding remain the top denial exposure.',
+      tone: 'critical'
+    },
+    {
+      label: 'Immediate action',
+      value: 'Close implant validation',
+      detail: 'Resolve the checklist before 11:30 to protect the block.',
+      tone: 'warning'
+    },
+    {
+      label: 'Claims opportunity',
+      value: '6 claims salvageable today',
+      detail: 'Coding scrub can still clear before the payer batch window.',
+      tone: 'accent'
+    },
+    {
+      label: 'Confidence',
+      value: '94%',
+      detail: 'The model is highly certain implant controls are the gating factor.',
+      tone: 'info'
+    }
+  ]
+};
+
+export const AI_BRIEF_ACTIONS: Record<string, string[]> = {
+  network: [
+    'Move one float technician to Clermont OCT and biometry until 13:30.',
+    'Close Tampa ASC lens validation and case-cart sign-off before the 11:30 threshold.',
+    'Push coder review on 12 blocked claims before the 4 PM clearinghouse cutoff.'
+  ],
+  'winter-park': [
+    'Trigger technician callbacks for the five transport-risk retina patients.',
+    'Release coding review on the two pending injection claims before the afternoon batch.'
+  ],
+  clermont: [
+    'Deploy one float technician to OCT and biometry before noon.',
+    'Defer low-priority scans and preserve consult-prep capacity for cataract workups.'
+  ],
+  'lake-nona': ['Prompt final chart sign-off on the two laser encounters before lunch.'],
+  'tampa-asc': [
+    'Resolve all three lens or clearance validations before the 11:30 threshold.',
+    'Release ASC implant and anesthesia coding scrub before the 4 PM filing window.'
+  ]
+};
+
+export const COMMAND_SIGNALS: Record<string, CommandSignal[]> = {
+  network: [
+    {
+      id: 'signal-1',
+      title: 'Today\'s bottlenecks',
+      value: 'Clermont imaging queue +11',
+      detail: 'OCT and biometry are suppressing 3 same-day consult completions.',
+      meta: 'Intervene before 13:00',
+      tone: 'critical'
+    },
+    {
+      id: 'signal-2',
+      title: 'Provider overload',
+      value: 'Marcus Vale 97% utilized',
+      detail: 'One scribe relief block recovers chart latency and lane turnover.',
+      meta: '18 min behind',
+      tone: 'warning'
+    },
+    {
+      id: 'signal-3',
+      title: 'ASC readiness issue',
+      value: '3 cataract cases at risk',
+      detail: 'Lens confirmation and case cart closure remain the gating steps.',
+      meta: 'Close before 11:30',
+      tone: 'critical'
+    },
+    {
+      id: 'signal-4',
+      title: 'Clearinghouse cutoff',
+      value: '4h 12m to release 12 claims',
+      detail: 'Modifier review and one authorization mismatch are the only blockers.',
+      meta: 'Potential salvage $48.6K',
+      tone: 'warning'
+    }
+  ],
+  'winter-park': [
+    {
+      id: 'signal-wp-1',
+      title: 'Tomorrow no-show risk',
+      value: '5 retina patients elevated',
+      detail: 'Transport outreach before noon can recover 2 to 3 visits.',
+      meta: 'Ride-share support available',
+      tone: 'warning'
+    },
+    {
+      id: 'signal-wp-2',
+      title: 'Provider balance',
+      value: '2 add-on slots remain',
+      detail: 'Injection lanes stay protected if imaging calibration ends on time.',
+      meta: 'Use after 12:15',
+      tone: 'accent'
+    }
+  ],
+  clermont: [
+    {
+      id: 'signal-cl-1',
+      title: 'Primary bottleneck',
+      value: 'OCT queue above safe threshold',
+      detail: 'Diagnostic prep is suppressing cataract consult starts.',
+      meta: '11 patients pending',
+      tone: 'critical'
+    },
+    {
+      id: 'signal-cl-2',
+      title: 'Recovery move',
+      value: 'Reassign 1 float tech',
+      detail: 'A 90-minute shift restores 3 same-day consult completions.',
+      meta: 'Deploy before noon',
+      tone: 'warning'
+    }
+  ],
+  'lake-nona': [
+    {
+      id: 'signal-ln-1',
+      title: 'Compliance bottleneck',
+      value: '2 unsigned laser charts',
+      detail: 'Clinical capture is done; physician sign-off is the only blocker.',
+      meta: 'Close before lunch',
+      tone: 'warning'
+    },
+    {
+      id: 'signal-ln-2',
+      title: 'Flow posture',
+      value: 'Lane timing inside target',
+      detail: 'No staffing or imaging bottlenecks are emerging.',
+      meta: 'Monitor chart closure',
+      tone: 'success'
+    }
+  ],
+  'tampa-asc': [
+    {
+      id: 'signal-ta-1',
+      title: 'ASC readiness issue',
+      value: '3 cases not fully cleared',
+      detail: 'Lens or clearance validation is blocking clean execution.',
+      meta: '11:30 is the last safe close',
+      tone: 'critical'
+    },
+    {
+      id: 'signal-ta-2',
+      title: 'Revenue salvage window',
+      value: '6 ASC claims need scrub',
+      detail: 'Implant and anesthesia coding can still clear before cutoff.',
+      meta: 'Potential salvage $31.4K',
+      tone: 'warning'
+    }
+  ]
+};
+
+export const OPERATIONS_MATRIX: OperationsMatrixRow[] = [
+  {
+    clinicId: 'winter-park',
+    clinic: 'Winter Park Retina',
+    waitTime: '14 min',
+    waitTone: 'success',
+    utilization: '91%',
+    utilizationTone: 'accent',
+    imagingBacklog: 'Controlled',
+    imagingTone: 'success',
+    ascReadiness: 'N/A',
+    ascTone: 'info',
+    claimsRisk: 'Low',
+    claimsTone: 'success',
+    staffLoad: 'Balanced',
+    staffTone: 'success',
+    recommendedAction: 'Resolve tomorrow no-show cohort before noon',
+    note: 'Best flow in region; retain float coverage until 12:15.'
+  },
+  {
+    clinicId: 'clermont',
+    clinic: 'Clermont Cataract Center',
+    waitTime: '26 min',
+    waitTone: 'critical',
+    utilization: '95%',
+    utilizationTone: 'warning',
+    imagingBacklog: '+11 queued',
+    imagingTone: 'critical',
+    ascReadiness: 'Prep dependent',
+    ascTone: 'warning',
+    claimsRisk: 'Moderate',
+    claimsTone: 'warning',
+    staffLoad: 'Overloaded',
+    staffTone: 'critical',
+    recommendedAction: 'Shift one float tech to OCT and biometry for 90 minutes',
+    note: 'Most delayed clinic; same-day consult capacity is at risk.'
+  },
+  {
+    clinicId: 'lake-nona',
+    clinic: 'Lake Nona Glaucoma Institute',
+    waitTime: '19 min',
+    waitTone: 'info',
+    utilization: '87%',
+    utilizationTone: 'success',
+    imagingBacklog: 'Nominal',
+    imagingTone: 'success',
+    ascReadiness: 'N/A',
+    ascTone: 'info',
+    claimsRisk: 'Low',
+    claimsTone: 'success',
+    staffLoad: 'Balanced',
+    staffTone: 'success',
+    recommendedAction: 'Close 2 unsigned laser charts before lunch',
+    note: 'Compliance, not throughput, is the active drag here.'
+  },
+  {
+    clinicId: 'tampa-asc',
+    clinic: 'Tampa ASC + Optical',
+    waitTime: '22 min',
+    waitTone: 'warning',
+    utilization: '93%',
+    utilizationTone: 'warning',
+    imagingBacklog: 'Optical QA only',
+    imagingTone: 'info',
+    ascReadiness: '3 cases at risk',
+    ascTone: 'critical',
+    claimsRisk: 'Elevated',
+    claimsTone: 'critical',
+    staffLoad: 'Tight',
+    staffTone: 'warning',
+    recommendedAction: 'Close lens validation and case cart checklist before 11:30',
+    note: 'Highest surgery and revenue risk clinic in the network today.'
+  }
+];

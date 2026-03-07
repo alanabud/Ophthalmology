@@ -1,4 +1,5 @@
 export type SurfaceTone = 'accent' | 'success' | 'warning' | 'critical' | 'neutral' | 'info';
+export type MetricKind = 'status' | 'trend' | 'queue' | 'target' | 'risk';
 
 export interface NavigationSection {
   label: string;
@@ -26,6 +27,10 @@ export interface ClinicContext {
   utilization: number;
   openIssues: number;
   revenueDelta: string;
+  statusLabel?: string;
+  statusTone?: SurfaceTone;
+  pressureSource?: string;
+  nextThreshold?: string;
 }
 
 export interface ProviderContext {
@@ -62,6 +67,12 @@ export interface QuickAction {
   tone: SurfaceTone;
 }
 
+export interface ExecutiveMetricDetail {
+  label: string;
+  value: string;
+  tone?: SurfaceTone;
+}
+
 export interface ExecutiveMetric {
   id: string;
   label: string;
@@ -70,6 +81,8 @@ export interface ExecutiveMetric {
   detail: string;
   tone: SurfaceTone;
   spark: number[];
+  kind?: MetricKind;
+  details?: ExecutiveMetricDetail[];
 }
 
 export interface LiveBoardRow {
@@ -89,6 +102,13 @@ export interface LiveBoardCard {
   footer: string;
 }
 
+export interface DailyBriefingSignal {
+  label: string;
+  value: string;
+  detail: string;
+  tone: SurfaceTone;
+}
+
 export interface DailyBriefing {
   id: string;
   headline: string;
@@ -96,6 +116,8 @@ export interface DailyBriefing {
   bullets: string[];
   tone: SurfaceTone;
   updatedAt: string;
+  signals?: DailyBriefingSignal[];
+  recommendedActions?: string[];
 }
 
 export interface AiInsight {
@@ -119,6 +141,34 @@ export interface ActionQueueItem {
   nextStep: string;
   tone: SurfaceTone;
   count: string;
+}
+
+export interface OperationsMatrixRow {
+  clinicId: string;
+  clinic: string;
+  waitTime: string;
+  waitTone: SurfaceTone;
+  utilization: string;
+  utilizationTone: SurfaceTone;
+  imagingBacklog: string;
+  imagingTone: SurfaceTone;
+  ascReadiness: string;
+  ascTone: SurfaceTone;
+  claimsRisk: string;
+  claimsTone: SurfaceTone;
+  staffLoad: string;
+  staffTone: SurfaceTone;
+  recommendedAction: string;
+  note: string;
+}
+
+export interface CommandSignal {
+  id: string;
+  title: string;
+  value: string;
+  detail: string;
+  meta: string;
+  tone: SurfaceTone;
 }
 
 export interface PatientRecord {
@@ -311,3 +361,4 @@ export interface ProviderProductivity {
   collections: string;
   tone: SurfaceTone;
 }
+

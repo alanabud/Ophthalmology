@@ -1,1 +1,271 @@
-:host { display: block; }
+:host {
+  display: block;
+}
+
+.dashboard-page {
+  gap: 1.35rem;
+}
+
+.dashboard-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  gap: 1rem;
+}
+
+.dashboard-command,
+.matrix-panel,
+.intervention-panel,
+.ai-intelligence-panel {
+  padding: 1.1rem;
+}
+
+.dashboard-command h1 {
+  max-width: 18ch;
+  margin: 0;
+  font-size: 2.15rem;
+  line-height: 1.02;
+}
+
+.command-signal-grid,
+.clinic-summary-grid,
+.brief-signal-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.command-signal-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.command-signal,
+.clinic-summary,
+.brief-signal {
+  padding: 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-subtle);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.command-signal__topline,
+.clinic-summary__header,
+.clinic-summary__metrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.command-signal__topline span,
+.command-signal__topline strong,
+.brief-signal span,
+.clinic-summary__threshold {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.command-signal__topline span,
+.brief-signal span,
+.clinic-summary__threshold {
+  color: var(--text-subtle);
+}
+
+.command-signal__topline strong {
+  color: var(--text-secondary);
+}
+
+.command-signal h3,
+.brief-signal strong {
+  margin: 0.45rem 0 0.35rem;
+  font-size: 1.08rem;
+}
+
+.command-signal p,
+.brief-signal p,
+.clinic-summary p,
+.clinic-summary__source {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.command-signal--critical,
+.brief-signal--critical,
+.action-card--critical {
+  border-color: rgba(232, 96, 119, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(232, 96, 119, 0.06);
+}
+
+.command-signal--warning,
+.brief-signal--warning,
+.action-card--warning {
+  border-color: rgba(217, 176, 111, 0.28);
+}
+
+.command-signal--accent,
+.brief-signal--accent,
+.action-card--accent {
+  border-color: rgba(53, 192, 185, 0.24);
+}
+
+.clinic-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.clinic-summary__header strong {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.clinic-summary__metrics {
+  margin: 0.8rem 0 0.65rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.clinic-summary__metrics span {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.clinic-summary__source {
+  min-height: 3.6rem;
+}
+
+.clinic-summary__threshold {
+  display: inline-flex;
+  margin-top: 0.75rem;
+}
+
+.clinic-summary--success {
+  border-color: rgba(118, 215, 167, 0.24);
+}
+
+.clinic-summary--critical {
+  border-color: rgba(232, 96, 119, 0.28);
+  box-shadow: 0 0 0 1px rgba(232, 96, 119, 0.05) inset;
+}
+
+.clinic-summary--warning {
+  border-color: rgba(217, 176, 111, 0.26);
+}
+
+.dashboard-centerpiece {
+  align-items: start;
+}
+
+.matrix-panel {
+  min-width: 0;
+}
+
+.operations-matrix td .status-chip {
+  min-width: 84px;
+  justify-content: center;
+}
+
+.matrix-row--focused td {
+  background: rgba(53, 192, 185, 0.04);
+}
+
+.intervention-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.intervention-countdown {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.85rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid rgba(217, 176, 111, 0.28);
+  background: linear-gradient(135deg, rgba(48, 31, 7, 0.32), rgba(18, 15, 10, 0.22));
+}
+
+.intervention-countdown strong {
+  color: var(--text-primary);
+}
+
+.intervention-countdown span {
+  color: #fdeacc;
+  font-weight: 700;
+}
+
+.action-card--urgent {
+  position: relative;
+}
+
+.action-card--urgent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--accent-gold);
+}
+
+.action-card--critical::before {
+  background: var(--accent-critical);
+}
+
+.ai-intelligence-panel .panel__body-copy {
+  max-width: 80ch;
+}
+
+.brief-signal-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.brief-signal strong {
+  display: block;
+}
+
+.ai-actions-strip {
+  margin-top: 1rem;
+}
+
+.dashboard-section-header {
+  margin-bottom: 0.8rem;
+}
+
+@media (max-width: 1500px) {
+  .dashboard-top,
+  .dashboard-centerpiece,
+  .brief-signal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clinic-summary-grid,
+  .command-signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-command h1 {
+    font-size: 1.7rem;
+  }
+
+  .command-signal-grid,
+  .clinic-summary-grid,
+  .brief-signal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .intervention-countdown,
+  .clinic-summary__header,
+  .clinic-summary__metrics,
+  .command-signal__topline {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

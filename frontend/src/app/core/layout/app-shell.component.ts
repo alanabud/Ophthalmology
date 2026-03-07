@@ -45,6 +45,8 @@ export class AppShellComponent {
   protected readonly notifications = this.store.notifications;
   protected readonly quickActions = this.store.quickActions;
   protected readonly dailyBriefing = this.store.dailyBriefing;
+  protected readonly aiBriefSignals = this.store.aiBriefSignals;
+  protected readonly aiBriefActions = this.store.aiBriefActions;
   protected readonly actionQueue = this.store.actionQueue;
   protected readonly aiWorkspaceOpen = this.store.aiWorkspaceOpen;
   protected readonly selectedDate = this.store.selectedDate;
@@ -118,3 +120,4 @@ export class AppShellComponent {
     this.authState.clearSession();
   }
 }
+

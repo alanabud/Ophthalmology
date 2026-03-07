@@ -661,3 +661,92 @@ h4 {
     grid-template-columns: 1fr;
   }
 }
+
+.metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+}
+
+.metric-card__kind {
+  padding: 0.18rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.metric-card__label {
+  margin-top: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.metric-card__details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.metric-card__detail {
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metric-card__detail span {
+  display: block;
+  color: var(--text-subtle);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.metric-card__detail strong {
+  display: block;
+  margin-top: 0.22rem;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.metric-card--queue {
+  border-color: rgba(135, 183, 255, 0.16);
+}
+
+.metric-card--risk {
+  border-color: rgba(232, 96, 119, 0.2);
+}
+
+.metric-card--target {
+  border-color: rgba(217, 176, 111, 0.18);
+}
+
+.metric-card--trend {
+  border-color: rgba(53, 192, 185, 0.18);
+}
+
+.metric-card__detail--critical {
+  border-color: rgba(232, 96, 119, 0.24);
+}
+
+.metric-card__detail--warning {
+  border-color: rgba(217, 176, 111, 0.24);
+}
+
+.metric-card__detail--success,
+.metric-card__detail--accent {
+  border-color: rgba(53, 192, 185, 0.24);
+}
