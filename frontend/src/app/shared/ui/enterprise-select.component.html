@@ -1,0 +1,45 @@
+<div class="enterprise-select" [class.enterprise-select--open]="open()">
+  <button
+    class="enterprise-select__trigger"
+    type="button"
+    [attr.aria-expanded]="open()"
+    [attr.aria-haspopup]="'listbox'"
+    [attr.aria-label]="ariaLabel()"
+    (click)="toggle()"
+    (keydown.arrowdown)="openMenu()"
+  >
+    <div class="enterprise-select__copy">
+      <strong>{{ selectedOption()?.label ?? placeholder() }}</strong>
+      @if (selectedOption()?.meta) {
+        <span>{{ selectedOption()?.meta }}</span>
+      }
+    </div>
+    <span class="enterprise-select__chevron" aria-hidden="true"></span>
+  </button>
+
+  @if (open()) {
+    <div class="enterprise-select__menu" role="listbox" [attr.aria-label]="ariaLabel()">
+      @for (option of options(); track option.value) {
+        <button
+          class="enterprise-select__option"
+          type="button"
+          role="option"
+          [attr.aria-selected]="option.value === value()"
+          [class.enterprise-select__option--active]="option.value === value()"
+          [ngClass]="option.tone ? 'enterprise-select__option--' + option.tone : ''"
+          (click)="selectOption(option.value)"
+        >
+          <div class="enterprise-select__option-copy">
+            <strong>{{ option.label }}</strong>
+            @if (option.meta) {
+              <span>{{ option.meta }}</span>
+            }
+          </div>
+          @if (option.value === value()) {
+            <span class="enterprise-select__selected-pill">Active</span>
+          }
+        </button>
+      }
+    </div>
+  }
+</div>

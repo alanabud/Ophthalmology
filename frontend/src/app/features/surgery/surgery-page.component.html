@@ -1,0 +1,53 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">ASC control center</p>
+      <h1>Case readiness, implant assurance, staffing, and postop pipeline in one surgical command view.</h1>
+      <p class="page-subtitle">This page is tuned for surgical coordinators, ASC nurses, and executives watching margin and case velocity.</p>
+    </div>
+  </header>
+
+  <section class="info-grid">
+    <article class="info-tile"><strong>{{ cases().length }}</strong><p>Cases in current scope</p></article>
+    <article class="info-tile"><strong>3</strong><p>Readiness gaps blocking start time</p></article>
+    <article class="info-tile"><strong>2</strong><p>Implant stock warnings</p></article>
+    <article class="info-tile"><strong>97%</strong><p>Staff coverage confirmed</p></article>
+  </section>
+
+  <section class="dual-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Case board</p><h2>Upcoming surgery cases</h2></div>
+      </div>
+      <div class="panel-list">
+        @for (caseItem of cases(); track caseItem.patient + caseItem.date) {
+          <article class="list-surface">
+            <div class="dense-header">
+              <div>
+                <strong>{{ caseItem.patient }} • {{ caseItem.procedure }}</strong>
+                <p>{{ caseItem.surgeon }} • {{ caseItem.date }}</p>
+              </div>
+              <app-status-chip [label]="caseItem.readiness" [tone]="caseItem.tone" />
+            </div>
+            <div class="key-value-stack">
+              <div class="key-value-row"><span>Implant</span><strong>{{ caseItem.implant }}</strong></div>
+              <div class="key-value-row"><span>Clearance</span><strong>{{ caseItem.clearance }}</strong></div>
+              <div class="key-value-row"><span>Risk</span><strong>{{ caseItem.risk }}</strong></div>
+            </div>
+          </article>
+        }
+      </div>
+    </article>
+
+    <article class="panel panel--assistant">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">AI bottleneck prediction</p><h2>Case flow recommendations</h2></div>
+      </div>
+      <div class="panel-list">
+        <article class="list-surface"><strong>Close lens confirmation before 11:30</strong><p>Doing this preserves the afternoon cataract block without room compression.</p></article>
+        <article class="list-surface"><strong>Pair turnover and inventory handoff</strong><p>Case cart replenishment should happen in the same motion as implant verification.</p></article>
+        <article class="list-surface"><strong>Route postop calls through optical slack window</strong><p>This prevents coordinator overload and keeps patient follow-up SLA intact.</p></article>
+      </div>
+    </article>
+  </section>
+</section>

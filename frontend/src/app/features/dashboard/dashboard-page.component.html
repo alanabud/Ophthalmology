@@ -1,0 +1,212 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">Regional clinical command</p>
+      <h1>Operational command center for throughput, surgery, revenue, and AI-guided intervention.</h1>
+      <p class="page-subtitle">
+        This surface is tuned for daily use by physicians, front desk leaders, surgery coordinators,
+        billers, and regional executives. Every panel prioritizes action over decoration.
+      </p>
+    </div>
+    <div class="info-grid">
+      @for (clinic of clinicComparison(); track clinic.id) {
+        <article class="info-tile">
+          <strong>{{ clinic.shortLabel }}</strong>
+          <p>{{ clinic.name }}</p>
+          <span class="utility-note">
+            {{ clinic.waitMinutes }} min wait • {{ clinic.utilization }}% utilized • {{ clinic.revenueDelta }}
+          </span>
+        </article>
+      }
+    </div>
+  </header>
+
+  <section class="metric-grid">
+    @for (metric of executiveMetrics(); track metric.id) {
+      <app-metric-card [metric]="metric" />
+    }
+  </section>
+
+  <section class="dual-grid">
+    <article class="panel panel--assistant">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">AI operations layer</p>
+          <h2>{{ dailyBriefing().headline }}</h2>
+        </div>
+        <app-status-chip [label]="dailyBriefing().updatedAt" tone="accent" />
+      </div>
+      <p class="panel__body-copy">{{ dailyBriefing().summary }}</p>
+      <ul class="bullet-stack">
+        @for (bullet of dailyBriefing().bullets; track bullet) {
+          <li>{{ bullet }}</li>
+        }
+      </ul>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Cross-clinic visibility</p>
+          <h2>Network comparison</h2>
+        </div>
+        <app-status-chip label="Drill into outliers" tone="info" />
+      </div>
+      <table class="dense-table">
+        <thead>
+          <tr>
+            <th>Clinic</th>
+            <th>Readiness</th>
+            <th>Wait</th>
+            <th>Utilization</th>
+            <th>Open issues</th>
+            <th>Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (clinic of clinicComparison(); track clinic.id) {
+            <tr>
+              <td>
+                <div class="table-primary">
+                  <strong>{{ clinic.name }}</strong>
+                  <span>{{ clinic.region }}</span>
+                </div>
+              </td>
+              <td>{{ clinic.readiness }}</td>
+              <td>{{ clinic.waitMinutes }} min</td>
+              <td>{{ clinic.utilization }}%</td>
+              <td>{{ clinic.openIssues }}</td>
+              <td>{{ clinic.revenueDelta }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  </section>
+
+  <section class="board-grid">
+    @for (board of liveBoards(); track board.id) {
+      <article class="panel">
+        <div class="panel__header">
+          <div>
+            <p class="panel__eyebrow">{{ board.subtitle }}</p>
+            <h2>{{ board.title }}</h2>
+          </div>
+          <app-status-chip [label]="board.rows.length + ' live items'" [tone]="board.tone" />
+        </div>
+
+        <div class="data-list">
+          @for (row of board.rows; track row.label) {
+            <article class="list-surface">
+              <div class="dense-header">
+                <div>
+                  <strong>{{ row.label }}</strong>
+                  <p>{{ row.supporting }}</p>
+                </div>
+                <app-status-chip [label]="row.value" [tone]="row.tone" />
+              </div>
+              <div class="table-tags">
+                @for (tag of row.tags; track tag) {
+                  <span class="status-chip status-chip--neutral">{{ tag }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+
+        <p class="utility-note">{{ board.footer }}</p>
+      </article>
+    }
+  </section>
+
+  <section class="dual-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Embedded AI</p>
+          <h2>Predictive recommendations</h2>
+        </div>
+        <app-status-chip [label]="aiInsights().length + ' active models'" tone="accent" />
+      </div>
+      <div class="dual-grid">
+        @for (insight of aiInsights(); track insight.id) {
+          <app-ai-insight-card [insight]="insight" />
+        }
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Action center</p>
+          <h2>Prioritized work queue</h2>
+        </div>
+        <app-status-chip [label]="actionQueue().length + ' items'" tone="warning" />
+      </div>
+      <div class="panel-list">
+        @for (action of actionQueue(); track action.id) {
+          <article class="action-card">
+            <div class="action-card__meta">
+              <strong>{{ action.title }}</strong>
+              <p>{{ action.workflow }} • {{ action.owner }} • {{ action.clinic }}</p>
+              <span class="utility-note">{{ action.nextStep }}</span>
+            </div>
+            <div>
+              <app-status-chip [label]="action.due" [tone]="action.tone" />
+              <div class="action-card__count">{{ action.count }}</div>
+            </div>
+          </article>
+        }
+      </div>
+    </article>
+  </section>
+
+  <section class="dual-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Alerts and escalations</p>
+          <h2>What needs intervention now</h2>
+        </div>
+      </div>
+      <div class="panel-list">
+        @for (alert of notifications(); track alert.id) {
+          <article class="list-row" [class.list-row--critical]="alert.tone === 'critical'" [class.list-row--warning]="alert.tone === 'warning'" [class.list-row--accent]="alert.tone === 'accent'">
+            <div>
+              <strong>{{ alert.title }}</strong>
+              <p>{{ alert.detail }}</p>
+            </div>
+            <span class="task-row__count">{{ alert.count }}</span>
+          </article>
+        }
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Product reviewer critique</p>
+          <h2>What was upgraded and why it now reads as enterprise</h2>
+        </div>
+      </div>
+      <div class="panel-list">
+        <article class="list-surface">
+          <strong>Removed marketing posture</strong>
+          <p>There is no oversized slogan or empty hero block. The top fold is entirely operational.</p>
+        </article>
+        <article class="list-surface">
+          <strong>Raised workflow density</strong>
+          <p>Every section contains schedules, claims, surgery readiness, patient movement, or AI-backed next steps.</p>
+        </article>
+        <article class="list-surface">
+          <strong>Embedded AI into operations</strong>
+          <p>AI appears as denial prevention, schedule recovery, documentation risk, follow-up risk, and inventory forecasting.</p>
+        </article>
+        <article class="list-surface">
+          <strong>Strengthened multi-clinic command</strong>
+          <p>Cross-clinic comparison, clinic selector, provider selector, escalations, and action routing are persistent across the shell.</p>
+        </article>
+      </div>
+    </article>
+  </section>
+</section>

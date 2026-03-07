@@ -1,0 +1,233 @@
+<div class="enterprise-shell">
+  <aside class="nav-rail">
+    <div class="brand-panel">
+      <div class="brand-mark">OE</div>
+      <div>
+        <p class="rail-kicker">{{ environmentLabel }}</p>
+        <h1>{{ organizationName }}</h1>
+        <span>{{ currentClinic().region }}</span>
+      </div>
+    </div>
+
+    @for (section of navigationSections(); track section.label) {
+      <section class="nav-section">
+        <p class="nav-section__label">{{ section.label }}</p>
+        <div class="nav-list">
+          @for (item of section.items; track item.route) {
+            <a
+              class="nav-item"
+              [routerLink]="item.route"
+              routerLinkActive="nav-item--active"
+              [routerLinkActiveOptions]="{ exact: true }"
+            >
+              <span class="nav-item__icon" [ngClass]="'nav-item__icon--' + (item.tone ?? 'neutral')">
+                {{ item.icon }}
+              </span>
+              <div class="nav-item__body">
+                <div class="nav-item__headline">
+                  <strong>{{ item.label }}</strong>
+                  @if (item.counter) {
+                    <span class="nav-item__counter">{{ item.counter }}</span>
+                  }
+                </div>
+                <small>{{ item.summary }}</small>
+                @if (item.children?.length) {
+                  <div class="nav-item__children">
+                    @for (child of item.children; track child) {
+                      <span>{{ child }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            </a>
+          }
+        </div>
+      </section>
+    }
+
+    <section class="rail-footer panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Clinic posture</p>
+          <h2>{{ currentClinic().name }}</h2>
+        </div>
+        <span class="status-chip status-chip--accent">{{ currentClinic().readiness }} readiness</span>
+      </div>
+      <div class="rail-metrics">
+        <div>
+          <span>Wait time</span>
+          <strong>{{ currentClinic().waitMinutes }} min</strong>
+        </div>
+        <div>
+          <span>Utilization</span>
+          <strong>{{ currentClinic().utilization }}%</strong>
+        </div>
+        <div>
+          <span>Open issues</span>
+          <strong>{{ currentClinic().openIssues }}</strong>
+        </div>
+        <div>
+          <span>Revenue delta</span>
+          <strong>{{ currentClinic().revenueDelta }}</strong>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <section class="workspace-shell">
+    <header class="command-bar">
+      <div class="command-bar__heading">
+        <div>
+          <p class="panel__eyebrow">Active workspace</p>
+          <h2>{{ currentTitle() }}</h2>
+          <span>{{ currentClinic().name }} • {{ currentProvider().name }}</span>
+        </div>
+        <div class="command-bar__filters">
+          <label class="command-filter command-filter--clinic">
+            <span>Clinic</span>
+            <app-enterprise-select
+              ariaLabel="Clinic selector"
+              [options]="clinicSelectOptions()"
+              [value]="currentClinic().id"
+              (valueChange)="setActiveClinic($event)"
+            />
+          </label>
+
+          <label class="command-filter command-filter--provider">
+            <span>Provider</span>
+            <app-enterprise-select
+              ariaLabel="Provider selector"
+              [options]="providerSelectOptions()"
+              [value]="currentProvider().id"
+              (valueChange)="setActiveProvider($event)"
+            />
+          </label>
+
+          <label class="command-filter command-filter--date">
+            <span>Date</span>
+            <input type="date" [value]="selectedDate()" (change)="setSelectedDate($any($event.target).value)" />
+          </label>
+        </div>
+      </div>
+
+      <div class="command-bar__tools">
+        <label class="command-search">
+          <span>Command search</span>
+          <input type="search" placeholder="Search patient, MRN, claim, study, order, command" />
+          <kbd>Ctrl K</kbd>
+        </label>
+
+        <div class="indicator-stack">
+          @for (indicator of systemIndicators(); track indicator.label) {
+            <div class="indicator-pill" [ngClass]="'indicator-pill--' + indicator.tone">
+              <span>{{ indicator.label }}</span>
+              <strong>{{ indicator.value }}</strong>
+            </div>
+          }
+        </div>
+
+        <div class="command-bar__actions">
+          <button class="soft-button" type="button" (click)="toggleAiWorkspace()">
+            {{ aiWorkspaceOpen() ? 'Hide AI workspace' : 'Show AI workspace' }}
+          </button>
+          <button class="soft-button" type="button">Quick create</button>
+          <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
+          <div class="profile-card">
+            <div class="profile-card__text">
+              <strong>{{ displayName() }}</strong>
+              <span>{{ roleLabel() }}</span>
+            </div>
+            @if (isAuthenticated()) {
+              <button class="ghost-inline" type="button" (click)="signOut()">Sign out</button>
+            } @else {
+              <a class="ghost-inline" routerLink="/login">Sign in</a>
+            }
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="workspace-canvas">
+      <router-outlet />
+    </main>
+  </section>
+
+  <aside class="assistant-rail" [class.assistant-rail--collapsed]="!aiWorkspaceOpen()">
+    <section class="panel panel--assistant">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">AI daily briefing</p>
+          <h2>{{ dailyBriefing().headline }}</h2>
+        </div>
+        <span class="status-chip status-chip--accent">{{ dailyBriefing().updatedAt }}</span>
+      </div>
+      <p class="panel__body-copy">{{ dailyBriefing().summary }}</p>
+      <ul class="bullet-stack">
+        @for (bullet of dailyBriefing().bullets; track bullet) {
+          <li>{{ bullet }}</li>
+        }
+      </ul>
+    </section>
+
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Escalations</p>
+          <h2>Alerts center</h2>
+        </div>
+        <span class="status-chip status-chip--critical">{{ notifications().length }} live</span>
+      </div>
+      <div class="panel-list">
+        @for (alert of notifications(); track alert.id) {
+          <article class="list-row" [ngClass]="'list-row--' + alert.tone">
+            <div>
+              <strong>{{ alert.title }}</strong>
+              <p>{{ alert.detail }}</p>
+            </div>
+            <span>{{ alert.count }}</span>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Action center</p>
+          <h2>Prioritized work</h2>
+        </div>
+        <span class="status-chip status-chip--warning">{{ actionQueue().length }} queued</span>
+      </div>
+      <div class="panel-list">
+        @for (action of actionQueue().slice(0, 4); track action.id) {
+          <article class="task-row">
+            <div>
+              <strong>{{ action.title }}</strong>
+              <p>{{ action.workflow }} • {{ action.clinic }} • {{ action.due }}</p>
+            </div>
+            <span class="task-row__count">{{ action.count }}</span>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Quick actions</p>
+          <h2>High-leverage moves</h2>
+        </div>
+      </div>
+      <div class="panel-list">
+        @for (action of quickActions(); track action.label) {
+          <article class="list-row" [ngClass]="'list-row--' + action.tone">
+            <div>
+              <strong>{{ action.label }}</strong>
+              <p>{{ action.detail }}</p>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+  </aside>
+</div>

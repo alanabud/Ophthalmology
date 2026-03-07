@@ -1,0 +1,47 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">Platform administration</p>
+      <h1>Tenants, clinics, role provisioning, and configuration posture without throwing users out of the workspace.</h1>
+      <p class="page-subtitle">Admin is intentionally accessible in preview mode so the product can be evaluated end to end before auth seeding is complete.</p>
+    </div>
+  </header>
+
+  <section class="dual-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Role matrix</p><h2>Provisioned access patterns</h2></div>
+      </div>
+      <table class="dense-table">
+        <thead><tr><th>Role</th><th>Scope</th><th>Clinics</th><th>MFA</th></tr></thead>
+        <tbody>
+          @for (role of roleMatrix(); track role.role) {
+            <tr>
+              <td>{{ role.role }}</td>
+              <td>{{ role.scope }}</td>
+              <td>{{ role.clinics }}</td>
+              <td><app-status-chip [label]="role.mfa" [tone]="role.tone" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Clinic provisioning</p><h2>Configured operating locations</h2></div>
+      </div>
+      <div class="panel-list">
+        @for (clinic of clinics(); track clinic.id) {
+          <article class="list-surface">
+            <div class="dense-header">
+              <strong>{{ clinic.name }}</strong>
+              <app-status-chip [label]="clinic.readiness + ' readiness'" tone="accent" />
+            </div>
+            <p>{{ clinic.region }} • {{ clinic.utilization }}% utilized • {{ clinic.openIssues }} issues</p>
+          </article>
+        }
+      </div>
+    </article>
+  </section>
+</section>

@@ -1,0 +1,29 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">Integrations and devices</p>
+      <h1>Interfaces, device feeds, messaging, and clearinghouse flow with operational health visibility.</h1>
+      <p class="page-subtitle">Designed so degraded integrations show operational impact, not just technical status.</p>
+    </div>
+  </header>
+
+  <article class="panel">
+    <div class="panel__header">
+      <div><p class="panel__eyebrow">Interface monitor</p><h2>Connection health</h2></div>
+      <app-status-chip [label]="integrations().length + ' integrations'" tone="info" />
+    </div>
+    <table class="dense-table">
+      <thead><tr><th>Name</th><th>Status</th><th>Last sync</th><th>Operational note</th></tr></thead>
+      <tbody>
+        @for (item of integrations(); track item.name) {
+          <tr>
+            <td>{{ item.name }}</td>
+            <td><app-status-chip [label]="item.status" [tone]="item.tone" /></td>
+            <td>{{ item.lastSync }}</td>
+            <td>{{ item.detail }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </article>
+</section>
