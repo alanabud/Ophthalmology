@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "ophthalmology-frontend",
-      "runtimeExecutable": "/c/Program Files/nodejs/npm",
-      "runtimeArgs": ["run", "start"],
-      "port": 4200,
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["node_modules/@angular/cli/bin/ng.js", "serve", "--host", "127.0.0.1", "--port", "4210"],
+      "port": 4210,
       "cwd": "frontend"
     }
   ]
