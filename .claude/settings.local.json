@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm --version)",
+      "Bash(ls node_modules/.bin/ng*)",
+      "Bash(npm install --prefer-offline)",
+      "Bash(timeout 60 npx ng build --configuration development)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:4210/)"
+    ]
+  }
+}

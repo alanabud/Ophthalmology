@@ -25,6 +25,8 @@
 
 .login-form span {
   color: var(--text-subtle);
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .login-form input {
@@ -32,8 +34,8 @@
   padding: 0 0.85rem;
   color: var(--text-primary);
   border: 1px solid var(--line-subtle);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  background: var(--surface-control);
 }
 
 .login-actions {

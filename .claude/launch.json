@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ophthalmology-frontend",
+      "runtimeExecutable": "/c/Program Files/nodejs/npm",
+      "runtimeArgs": ["run", "start"],
+      "port": 4200,
+      "cwd": "frontend"
+    }
+  ]
+}
