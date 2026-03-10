@@ -9,8 +9,8 @@
     </div>
     <div class="search-row">
       <input type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" placeholder="Search patient, MRN, risk, insurance" />
-      <button type="button">New patient</button>
-      <button type="button">Pre-visit briefing</button>
+      <button type="button" (click)="newPatientOpen.set(true)">New patient</button>
+      <button type="button" (click)="newPatientOpen.set(true)">Pre-visit briefing</button>
     </div>
   </header>
 
@@ -123,3 +123,7 @@
   </section>
 </section>
 
+<app-new-patient-modal
+  [open]="newPatientOpen()"
+  (closed)="newPatientOpen.set(false)"
+/>

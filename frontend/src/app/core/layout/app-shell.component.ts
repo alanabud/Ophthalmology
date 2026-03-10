@@ -1,15 +1,17 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { DailyBriefingSignal } from '../../core/models/enterprise.models';
 import { EnterpriseSelectComponent, EnterpriseSelectOption } from '../../shared/ui/enterprise-select.component';
+import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
+import { QuickCreateModalComponent } from '../../shared/ui/quick-create-modal.component';
 import { AuthStateService } from '../services/auth-state.service';
 import { EnterpriseStoreService } from '../services/enterprise-store.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [EnterpriseSelectComponent, NgClass, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [EnterpriseSelectComponent, NewPatientModalComponent, NgClass, QuickCreateModalComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss'
 })
@@ -79,6 +81,19 @@ export class AppShellComponent {
 
   protected setSelectedDate(dateValue: string): void {
     this.store.setSelectedDate(dateValue);
+  }
+
+  protected readonly quickCreateOpen = signal(false);
+  protected readonly newPatientOpen = signal(false);
+
+  protected openQuickCreate(): void {
+    this.quickCreateOpen.set(true);
+  }
+
+  protected onQuickCreateAction(action: 'new-patient'): void {
+    if (action === 'new-patient') {
+      this.newPatientOpen.set(true);
+    }
   }
 
   protected signOut(): void {

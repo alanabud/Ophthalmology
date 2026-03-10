@@ -68,7 +68,7 @@
           <input type="date" [value]="selectedDate()" (change)="setSelectedDate($any($event.target).value)" />
         </label>
 
-        <button class="soft-button" type="button">Quick create</button>
+        <button class="soft-button" type="button" (click)="openQuickCreate()">Quick create</button>
         <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
 
         @if (isAuthenticated()) {
@@ -85,6 +85,17 @@
       <router-outlet />
     </main>
   </section>
+
+  <app-quick-create-modal
+    [open]="quickCreateOpen()"
+    (closed)="quickCreateOpen.set(false)"
+    (actionSelected)="onQuickCreateAction($event)"
+  />
+
+  <app-new-patient-modal
+    [open]="newPatientOpen()"
+    (closed)="newPatientOpen.set(false)"
+  />
 
   <aside class="assistant-rail">
     <div class="assistant-rail__header">

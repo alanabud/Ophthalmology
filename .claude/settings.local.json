@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -1 /c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi/frontend/src/app/features/*/)",
+      "Bash(node_modules/.bin/ng build:*)",
+      "Bash(npm install:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:4306/)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology\" log --oneline -10)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology\" log --all --oneline)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" log --oneline -3)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" diff --name-only HEAD origin/main)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" diff --name-only a07c564 ad584c4)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology\" diff --name-only a07c564 ad584c4)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology\" show ad584c4:frontend/src/styles.scss)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology\" show ad584c4:frontend/src/app/core/layout/app-shell.component.scss)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" merge ad584c4 --no-edit)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" add -A)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" commit -m \"Add modal infrastructure and wire up create buttons\")"
+    ]
+  }
+}

@@ -15,7 +15,7 @@ import { CLAIMS } from '../data/billing.data';
 import { COMPLIANCE_EVENTS } from '../data/compliance.data';
 import { ANALYTICS_POINTS, PROVIDER_PRODUCTIVITY, ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
-import { ProviderContext } from '../models/enterprise.models';
+import { PatientRecord, ProviderContext } from '../models/enterprise.models';
 
 function clinicMatches(clinicId: string, activeClinicId: string): boolean {
   return activeClinicId === 'network' || clinicId === activeClinicId;
@@ -84,7 +84,8 @@ export class EnterpriseStoreService {
         ];
   });
   readonly actionQueue = computed(() => ACTION_QUEUE[this.activeClinicId()] ?? ACTION_QUEUE['network']);
-  readonly patients = computed(() => PATIENTS.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
+  private readonly patientsBase = signal<PatientRecord[]>([...PATIENTS]);
+  readonly patients = computed(() => this.patientsBase().filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
   readonly scheduleLanes = computed(() =>
     SCHEDULE_LANES.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())).filter(
       (record) => this.activeProviderId() === 'all' || record.provider === this.currentProvider().name
@@ -120,6 +121,10 @@ export class EnterpriseStoreService {
     if (dateValue) {
       this.selectedDate.set(dateValue);
     }
+  }
+
+  createPatient(patient: PatientRecord): void {
+    this.patientsBase.update((current) => [...current, patient]);
   }
 
   toggleAiWorkspace(): void {

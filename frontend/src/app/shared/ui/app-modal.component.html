@@ -1,0 +1,13 @@
+@if (open()) {
+  <div class="modal-backdrop" (click)="onBackdropClick($event)">
+    <div class="modal-panel" role="dialog" [attr.aria-label]="title()">
+      <div class="modal-panel__header">
+        <h2>{{ title() }}</h2>
+        <button class="modal-close" type="button" (click)="dismiss()" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-panel__body">
+        <ng-content />
+      </div>
+    </div>
+  </div>
+}

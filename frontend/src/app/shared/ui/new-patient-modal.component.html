@@ -1,0 +1,74 @@
+<app-modal [open]="open()" title="New Patient Registration" (closed)="cancel()">
+  @if (submitted()) {
+    <div class="modal-success">
+      <div class="modal-success__icon">✓</div>
+      <strong>Patient registered</strong>
+      <p>{{ firstName }} {{ lastName }} has been added to the patient roster.</p>
+    </div>
+  } @else {
+    <form class="modal-form" (ngSubmit)="submit()" #patientForm="ngForm">
+      <div class="form-row">
+        <label class="form-field">
+          <span>First name <em>*</em></span>
+          <input
+            type="text"
+            [(ngModel)]="firstName"
+            name="firstName"
+            placeholder="Jane"
+            autocomplete="given-name"
+            required
+          />
+        </label>
+        <label class="form-field">
+          <span>Last name <em>*</em></span>
+          <input
+            type="text"
+            [(ngModel)]="lastName"
+            name="lastName"
+            placeholder="Smith"
+            autocomplete="family-name"
+            required
+          />
+        </label>
+      </div>
+
+      <label class="form-field">
+        <span>Date of birth <em>*</em></span>
+        <input type="date" [(ngModel)]="dob" name="dob" required />
+      </label>
+
+      <label class="form-field">
+        <span>Insurance</span>
+        <input
+          type="text"
+          [(ngModel)]="insurance"
+          name="insurance"
+          placeholder="e.g. Medicare, BCBS PPO, Self-pay"
+        />
+      </label>
+
+      <label class="form-field">
+        <span>Clinic</span>
+        <select [(ngModel)]="clinicId" name="clinicId">
+          <option value="">Auto-assign from active scope</option>
+          @for (clinic of clinics(); track clinic.id) {
+            @if (clinic.id !== 'network') {
+              <option [value]="clinic.id">{{ clinic.name }}</option>
+            }
+          }
+        </select>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn modal-btn--ghost" (click)="cancel()">Cancel</button>
+        <button
+          type="submit"
+          class="modal-btn modal-btn--primary"
+          [disabled]="isSubmitting() || !canSubmit"
+        >
+          {{ isSubmitting() ? 'Registering...' : 'Register patient' }}
+        </button>
+      </div>
+    </form>
+  }
+</app-modal>
