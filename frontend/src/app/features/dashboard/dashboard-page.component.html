@@ -1,29 +1,29 @@
 <section class="workspace-page dashboard-page">
-  <header class="dashboard-header">
-    <div>
-      <p class="page-kicker">Regional Command Center</p>
-      <h1>Regional Operations Matrix</h1>
-      <p class="dashboard-subtitle">{{ dashboardSubtitle() }}</p>
+
+  <!-- ── Single compact header ──────────────────────── -->
+  <header class="ops-header">
+    <div class="ops-header__left">
+      <h1 class="ops-header__title">Operations Matrix</h1>
+      <p class="ops-header__sub">{{ dashboardSubtitle() }}</p>
+    </div>
+
+    <!-- Thin escalation rail — integrated, not floating cards -->
+    <div class="escalation-rail">
+      @for (alert of notifications().slice(0, 4); track alert.id) {
+        <div class="escalation-item" [class]="'escalation-item escalation-item--' + alert.tone">
+          <span class="escalation-item__clinic">{{ alert.clinic }}</span>
+          <strong class="escalation-item__text">{{ alert.title }}</strong>
+          <em class="escalation-item__count">{{ alert.count }}</em>
+        </div>
+      }
     </div>
   </header>
 
-  <section class="escalation-strip">
-    @for (alert of notifications().slice(0, 4); track alert.id) {
-      <article class="escalation-pill" [class]="'escalation-pill escalation-pill--' + alert.tone">
-        <span>{{ alert.clinic }}</span>
-        <strong>{{ alert.title }}</strong>
-        <em>{{ alert.count }}</em>
-      </article>
-    }
-  </section>
-
-  <article class="panel operations-centerpiece">
-    <div class="panel__header">
-      <div>
-        <p class="panel__eyebrow">Regional operations matrix</p>
-        <h2>Throughput, readiness, claims risk, and staffing across clinics</h2>
-      </div>
-      <app-status-chip label="Matrix primary" tone="accent" />
+  <!-- ── Matrix — dominant working surface ──────────── -->
+  <section class="matrix-surface">
+    <div class="matrix-meta">
+      <span>Throughput · readiness · claims risk · staffing across clinics</span>
+      <app-status-chip label="Primary surface" tone="accent" />
     </div>
 
     <table class="dense-table operations-matrix">
@@ -36,7 +36,7 @@
           <th>ASC</th>
           <th>Claims</th>
           <th>Staff</th>
-          <th>Recommended action</th>
+          <th class="th-action">Recommended action</th>
         </tr>
       </thead>
       <tbody>
@@ -54,74 +54,73 @@
             <td><span [class]="'status-chip status-chip--' + row.ascTone">{{ row.ascReadiness }}</span></td>
             <td><span [class]="'status-chip status-chip--' + row.claimsTone">{{ row.claimsRisk }}</span></td>
             <td><span [class]="'status-chip status-chip--' + row.staffTone">{{ row.staffLoad }}</span></td>
-            <td>
+            <td class="td-action">
               <div class="table-primary">
-                <strong>{{ row.recommendedAction }}</strong>
-                <span>{{ currentClinic().id === row.clinicId ? 'Focused clinic' : 'Regional comparison' }}</span>
+                <strong class="action-text">{{ row.recommendedAction }}</strong>
+                <span>{{ currentClinic().id === row.clinicId ? 'Focused clinic' : 'Regional' }}</span>
               </div>
             </td>
           </tr>
         }
       </tbody>
     </table>
-  </article>
+  </section>
 
-  <section class="support-grid">
-    <article class="panel support-panel support-panel--queue">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Supporting intervention module</p>
-          <h2>Prioritized intervention queue</h2>
+  <!-- ── Active work queues — one coordinated region ── -->
+  <section class="queue-zone">
+    <p class="queue-zone__label">Active work queues</p>
+    <div class="queue-grid">
+
+      <article class="queue-panel queue-panel--priority">
+        <div class="queue-panel__header">
+          <strong>Intervention queue</strong>
+          <app-status-chip [label]="actionQueue().length + ' queued'" tone="warning" />
         </div>
-        <app-status-chip [label]="actionQueue().length + ' queued'" tone="warning" />
-      </div>
-
-      <div class="panel-list">
-        @for (action of actionQueue().slice(0, 4); track action.id) {
-          <article class="action-card" [class]="'action-card action-card--' + action.tone">
-            <div class="action-card__meta">
-              <strong>{{ action.title }}</strong>
-              <p>{{ action.workflow }} • {{ action.owner }} • {{ action.clinic }}</p>
-              <span class="utility-note">{{ action.nextStep }}</span>
-            </div>
-            <div>
-              <app-status-chip [label]="action.due" [tone]="action.tone" />
-              <div class="action-card__count">{{ action.count }}</div>
-            </div>
-          </article>
-        }
-      </div>
-    </article>
-
-    @for (board of supportBoards(); track board.id) {
-      <article class="panel support-panel">
-        <div class="panel__header">
-          <div>
-            <p class="panel__eyebrow">{{ board.subtitle }}</p>
-            <h2>{{ board.title }}</h2>
-          </div>
-          <app-status-chip [label]="board.rows.length + ' live items'" [tone]="board.tone" />
-        </div>
-
-        <div class="data-list">
-          @for (row of board.rows; track row.label) {
-            <article class="list-surface">
-              <div class="dense-header">
-                <div>
-                  <strong>{{ row.label }}</strong>
-                  <p>{{ row.supporting }}</p>
-                </div>
-                <app-status-chip [label]="row.value" [tone]="row.tone" />
+        <div class="panel-list">
+          @for (action of actionQueue().slice(0, 4); track action.id) {
+            <article class="action-card" [class]="'action-card action-card--' + action.tone">
+              <div class="action-card__meta">
+                <strong>{{ action.title }}</strong>
+                <p>{{ action.workflow }} · {{ action.owner }} · {{ action.clinic }}</p>
+                <span class="utility-note">{{ action.nextStep }}</span>
               </div>
-              <div class="table-tags">
-                @for (tag of row.tags; track tag) {
-                  <span class="status-chip status-chip--neutral">{{ tag }}</span>
-                }
+              <div>
+                <app-status-chip [label]="action.due" [tone]="action.tone" />
+                <div class="action-card__count">{{ action.count }}</div>
               </div>
             </article>
           }
         </div>
       </article>
-    }
+
+      @for (board of supportBoards(); track board.id) {
+        <article class="queue-panel">
+          <div class="queue-panel__header">
+            <strong>{{ board.title }}</strong>
+            <app-status-chip [label]="board.rows.length + ' live'" [tone]="board.tone" />
+          </div>
+          <div class="data-list">
+            @for (row of board.rows; track row.label) {
+              <article class="list-surface">
+                <div class="dense-header">
+                  <div>
+                    <strong>{{ row.label }}</strong>
+                    <p>{{ row.supporting }}</p>
+                  </div>
+                  <app-status-chip [label]="row.value" [tone]="row.tone" />
+                </div>
+                <div class="table-tags">
+                  @for (tag of row.tags; track tag) {
+                    <span class="status-chip status-chip--neutral">{{ tag }}</span>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+        </article>
+      }
+
+    </div>
   </section>
+
 </section>

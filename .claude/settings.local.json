@@ -16,7 +16,9 @@
       "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology\" show ad584c4:frontend/src/app/core/layout/app-shell.component.scss)",
       "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" merge ad584c4 --no-edit)",
       "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" add -A)",
-      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" commit -m \"Add modal infrastructure and wire up create buttons\")"
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" commit -m \"Add modal infrastructure and wire up create buttons\")",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" merge --continue --no-edit)",
+      "Bash(git -C \"/c/Users/ADMIN/OneDrive/Desktop/Projects/Ophthalmology/.claude/worktrees/naughty-sinoussi\" merge --continue)"
     ]
   }
 }
