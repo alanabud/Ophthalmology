@@ -19,6 +19,7 @@ export class EnterpriseSelectComponent {
   readonly value = input.required<string>();
   readonly ariaLabel = input.required<string>();
   readonly placeholder = input('Select option');
+  readonly compact = input(false);
   readonly valueChange = output<string>();
 
   protected readonly open = signal(false);

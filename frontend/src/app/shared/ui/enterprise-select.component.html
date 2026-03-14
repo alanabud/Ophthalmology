@@ -1,4 +1,4 @@
-<div class="enterprise-select" [class.enterprise-select--open]="open()">
+<div class="enterprise-select" [class.enterprise-select--open]="open()" [class.enterprise-select--compact]="compact()">
   <button
     class="enterprise-select__trigger"
     type="button"
@@ -10,7 +10,7 @@
   >
     <div class="enterprise-select__copy">
       <strong>{{ selectedOption()?.label ?? placeholder() }}</strong>
-      @if (selectedOption()?.meta) {
+      @if (!compact() && selectedOption()?.meta) {
         <span>{{ selectedOption()?.meta }}</span>
       }
     </div>

@@ -8,119 +8,57 @@
       </div>
     </div>
 
-    @for (section of navigationSections(); track section.label) {
-      <section class="nav-section">
-        <p class="nav-section__label">{{ section.label }}</p>
-        <div class="nav-list">
-          @for (item of section.items; track item.route) {
-            <a
-              class="nav-item"
-              [routerLink]="item.route"
-              routerLinkActive="nav-item--active"
-              [routerLinkActiveOptions]="{ exact: true }"
-            >
-              <span class="nav-item__icon" [ngClass]="'nav-item__icon--' + (item.tone ?? 'neutral')">
-                {{ item.icon }}
-              </span>
-              <strong class="nav-item__label">{{ item.label }}</strong>
-              @if (item.counter) {
-                <span class="nav-item__counter" [class]="'nav-item__counter nav-item__counter--' + (item.tone ?? 'neutral')">
-                  {{ item.counter }}
+    <div class="nav-sections">
+      @for (section of navigationSections(); track section.label) {
+        <section class="nav-section">
+          <p class="nav-section__label">{{ section.label }}</p>
+          <div class="nav-list">
+            @for (item of section.items; track item.route) {
+              <a
+                class="nav-item"
+                [routerLink]="item.route"
+                routerLinkActive="nav-item--active"
+                [routerLinkActiveOptions]="{ exact: true }"
+              >
+                <span class="nav-item__icon" [ngClass]="'nav-item__icon--' + (item.tone ?? 'neutral')">
+                  {{ item.icon }}
                 </span>
-              }
-            </a>
-          }
-        </div>
-      </section>
-    }
+                <strong class="nav-item__label">{{ item.label }}</strong>
+                @if (item.counter) {
+                  <span class="nav-item__counter" [class]="'nav-item__counter nav-item__counter--' + (item.tone ?? 'neutral')">
+                    {{ item.counter }}
+                  </span>
+                }
+              </a>
+            }
+          </div>
+        </section>
+      }
+    </div>
+
+    <div class="nav-footer">
+      <div class="nav-footer__brief">
+        <span>Daily brief</span>
+        <strong>{{ dailyBriefing().updatedAt }}</strong>
+      </div>
+
+      @if (isAuthenticated()) {
+        <button class="nav-footer__account" type="button" (click)="signOut()" [attr.aria-label]="displayName()">
+          <span>{{ accountInitials().toUpperCase() }}</span>
+          <small>Sign out</small>
+        </button>
+      } @else {
+        <a class="nav-footer__account" routerLink="/login" aria-label="Sign in">
+          <span>IN</span>
+          <small>Sign in</small>
+        </a>
+      }
+    </div>
   </aside>
 
   <section class="workspace-shell">
-    <header class="command-bar">
-      <div class="command-bar__row">
-        <label class="command-search">
-          <input type="search" placeholder="Search patient, MRN, claim, study, order, command" />
-          <kbd>Ctrl K</kbd>
-        </label>
-
-        <label class="command-filter command-filter--clinic">
-          <span>Clinic</span>
-          <app-enterprise-select
-            ariaLabel="Clinic selector"
-            [options]="clinicSelectOptions()"
-            [value]="currentClinic().id"
-            (valueChange)="setActiveClinic($event)"
-          />
-        </label>
-
-        <label class="command-filter command-filter--provider">
-          <span>Provider</span>
-          <app-enterprise-select
-            ariaLabel="Provider selector"
-            [options]="providerSelectOptions()"
-            [value]="currentProvider().id"
-            (valueChange)="setActiveProvider($event)"
-          />
-        </label>
-
-        <label class="command-filter command-filter--date">
-          <span>Date</span>
-          <input type="date" [value]="selectedDate()" (change)="setSelectedDate($any($event.target).value)" />
-        </label>
-
-        <button class="soft-button" type="button">Quick create</button>
-        <button class="alert-button" type="button">{{ openAlertCount() }} alerts</button>
-
-        @if (isAuthenticated()) {
-          <button class="avatar-button" type="button" (click)="signOut()" [attr.aria-label]="displayName()">
-            {{ accountInitials().toUpperCase() }}
-          </button>
-        } @else {
-          <a class="avatar-button" routerLink="/login" aria-label="Sign in">IN</a>
-        }
-      </div>
-    </header>
-
     <main class="workspace-canvas">
       <router-outlet />
     </main>
   </section>
-
-  <aside class="assistant-rail">
-    <div class="assistant-rail__header">
-      <p class="panel__eyebrow">AI support</p>
-      <span class="assistant-rail__stamp">{{ dailyBriefing().updatedAt }}</span>
-    </div>
-
-    <article class="assistant-card assistant-card--accent">
-      <p class="assistant-card__label">AI Summary</p>
-      <strong>{{ dailyBriefing().headline }}</strong>
-      <p>{{ dailyBriefing().summary }}</p>
-    </article>
-
-    @if (mainDragSignal(); as mainDrag) {
-      <article class="assistant-card" [ngClass]="'assistant-card--' + mainDrag.tone">
-        <p class="assistant-card__label">Main Drag</p>
-        <strong>{{ mainDrag.value }}</strong>
-        <p>{{ mainDrag.detail }}</p>
-      </article>
-    }
-
-    @if (revenueRiskSignal(); as revenueRisk) {
-      <article class="assistant-card" [ngClass]="'assistant-card--' + revenueRisk.tone">
-        <p class="assistant-card__label">Revenue Risk</p>
-        <strong>{{ revenueRisk.value }}</strong>
-        <p>{{ revenueRisk.detail }}</p>
-      </article>
-    }
-
-    <article class="assistant-card assistant-card--actions assistant-card--info">
-      <p class="assistant-card__label">Recommended Actions</p>
-      <ul class="assistant-card__list">
-        @for (action of actionPreview(); track action) {
-          <li>{{ action }}</li>
-        }
-      </ul>
-    </article>
-  </aside>
 </div>
