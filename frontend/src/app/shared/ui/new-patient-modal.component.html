@@ -1,74 +1,808 @@
-<app-modal [open]="open()" title="New Patient Registration" (closed)="cancel()">
-  @if (submitted()) {
-    <div class="modal-success">
-      <div class="modal-success__icon">✓</div>
-      <strong>Patient registered</strong>
-      <p>{{ firstName }} {{ lastName }} has been added to the patient roster.</p>
-    </div>
-  } @else {
-    <form class="modal-form" (ngSubmit)="submit()" #patientForm="ngForm">
-      <div class="form-row">
-        <label class="form-field">
-          <span>First name <em>*</em></span>
-          <input
-            type="text"
-            [(ngModel)]="firstName"
-            name="firstName"
-            placeholder="Jane"
-            autocomplete="given-name"
-            required
-          />
-        </label>
-        <label class="form-field">
-          <span>Last name <em>*</em></span>
-          <input
-            type="text"
-            [(ngModel)]="lastName"
-            name="lastName"
-            placeholder="Smith"
-            autocomplete="family-name"
-            required
-          />
-        </label>
+@if (open()) {
+  <div class="npm-backdrop" (click)="$event.target === $event.currentTarget && cancel()">
+    <div class="npm-panel" role="dialog" aria-label="New patient record">
+
+      <!-- ── Modal header ──────────────────────────────── -->
+      <div class="npm-header">
+        <div class="npm-header__left">
+          <span class="npm-breadcrumb">Patient Registration &amp; Maintenance</span>
+          <span class="npm-tab-indicator">Tab {{ currentTab() }} of 12</span>
+        </div>
+        <button class="npm-close" type="button" (click)="cancel()" aria-label="Close">✕</button>
       </div>
 
-      <label class="form-field">
-        <span>Date of birth <em>*</em></span>
-        <input type="date" [(ngModel)]="dob" name="dob" required />
-      </label>
+      <!-- ── Title row ─────────────────────────────────── -->
+      <div class="npm-title-row">
+        <h1 class="npm-title">New patient record</h1>
+      </div>
 
-      <label class="form-field">
-        <span>Insurance</span>
-        <input
-          type="text"
-          [(ngModel)]="insurance"
-          name="insurance"
-          placeholder="e.g. Medicare, BCBS PPO, Self-pay"
-        />
-      </label>
+      <!-- ── Body ─────────────────────────────────────── -->
+      <div class="npm-body">
 
-      <label class="form-field">
-        <span>Clinic</span>
-        <select [(ngModel)]="clinicId" name="clinicId">
-          <option value="">Auto-assign from active scope</option>
-          @for (clinic of clinics(); track clinic.id) {
-            @if (clinic.id !== 'network') {
-              <option [value]="clinic.id">{{ clinic.name }}</option>
+        <!-- Sidebar nav -->
+        <nav class="npm-sidebar">
+          @for (tab of tabs; track tab.num) {
+            <button
+              type="button"
+              class="npm-tab-btn"
+              [class.npm-tab-btn--active]="currentTab() === tab.num"
+              (click)="goTo(tab.num)"
+            >
+              <span class="npm-tab-num">{{ tab.num < 10 ? '0' + tab.num : tab.num }}</span>
+              <span class="npm-tab-name">{{ tab.label }}</span>
+            </button>
+          }
+        </nav>
+
+        <!-- Content area -->
+        <div class="npm-content">
+
+          @if (submitted()) {
+            <div class="npm-success">
+              <div class="npm-success__icon">✓</div>
+              <strong>Patient registered</strong>
+              <p>{{ firstName }} {{ lastName }} has been added to the patient roster.</p>
+            </div>
+          } @else {
+
+            @switch (currentTab()) {
+
+              <!-- ── Tab 1: Identity ─────────────────── -->
+              @case (1) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Patient Identifiers</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Last name</span>
+                        <input type="text" [(ngModel)]="lastName" name="lastName" placeholder="Last name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>First name</span>
+                        <input type="text" [(ngModel)]="firstName" name="firstName" placeholder="First name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Middle name</span>
+                        <input type="text" [(ngModel)]="middleName" name="middleName" placeholder="Middle name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Suffix</span>
+                        <input type="text" [(ngModel)]="suffix" name="suffix" placeholder="—" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Preferred name</span>
+                        <input type="text" [(ngModel)]="preferredName" name="preferredName" placeholder="Goes by..." />
+                      </label>
+                      <label class="npm-field">
+                        <span>Legal name (if different)</span>
+                        <input type="text" [(ngModel)]="legalName" name="legalName" placeholder="Legal full name" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Core Demographics</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Date of birth <em>*</em></span>
+                        <input type="date" [(ngModel)]="dob" name="dob" required />
+                      </label>
+                      <label class="npm-field">
+                        <span>Sex at birth</span>
+                        <select [(ngModel)]="sexAtBirth" name="sexAtBirth">
+                          <option value="">Select</option>
+                          <option>Male</option><option>Female</option>
+                          <option>Intersex</option><option>Unknown</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Gender identity</span>
+                        <select [(ngModel)]="genderIdentity" name="genderIdentity">
+                          <option value="">Select</option>
+                          <option>Man</option><option>Woman</option>
+                          <option>Non-binary</option><option>Transgender man</option>
+                          <option>Transgender woman</option><option>Prefer not to say</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Pronouns</span>
+                        <select [(ngModel)]="pronouns" name="pronouns">
+                          <option value="">Select</option>
+                          <option>He / Him</option><option>She / Her</option>
+                          <option>They / Them</option><option>Prefer not to say</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>SSN (last 4)</span>
+                        <input type="password" [(ngModel)]="ssnLast4" name="ssnLast4"
+                          placeholder="····" maxlength="4" inputmode="numeric" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Marital status</span>
+                        <select [(ngModel)]="maritalStatus" name="maritalStatus">
+                          <option value="">Select</option>
+                          <option>Single</option><option>Married</option>
+                          <option>Divorced</option><option>Widowed</option>
+                          <option>Domestic partner</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Employment &amp; Language</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Employment status</span>
+                        <select [(ngModel)]="employmentStatus" name="employmentStatus">
+                          <option value="">Select</option>
+                          <option>Employed</option><option>Self-employed</option>
+                          <option>Retired</option><option>Student</option>
+                          <option>Unemployed</option><option>Disabled</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Occupation</span>
+                        <input type="text" [(ngModel)]="occupation" name="occupation" placeholder="Occupation" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Employer</span>
+                        <input type="text" [(ngModel)]="employer" name="employer" placeholder="Employer name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Primary language</span>
+                        <select [(ngModel)]="primaryLanguage" name="primaryLanguage">
+                          <option>English</option><option>Spanish</option>
+                          <option>French</option><option>Portuguese</option>
+                          <option>Haitian Creole</option><option>Other</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Interpreter needed</span>
+                        <select [(ngModel)]="interpreterNeeded" name="interpreterNeeded">
+                          <option>No</option><option>Yes</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Race, Ethnicity &amp; Nationality</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Race</span>
+                        <select [(ngModel)]="race" name="race">
+                          <option value="">Select</option>
+                          <option>White</option>
+                          <option>Black or African American</option>
+                          <option>Asian</option>
+                          <option>American Indian or Alaska Native</option>
+                          <option>Native Hawaiian / Pacific Islander</option>
+                          <option>Two or more races</option>
+                          <option>Prefer not to say</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Ethnicity</span>
+                        <select [(ngModel)]="ethnicity" name="ethnicity">
+                          <option value="">Select</option>
+                          <option>Hispanic or Latino</option>
+                          <option>Not Hispanic or Latino</option>
+                          <option>Prefer not to say</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Nationality</span>
+                        <input type="text" [(ngModel)]="nationality" name="nationality" placeholder="Nationality" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 2: Demographics ─────────────── -->
+              @case (2) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Physical Measurements</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Height</span>
+                        <input type="text" [(ngModel)]="height" name="height" placeholder='e.g. 5&apos;8"' />
+                      </label>
+                      <label class="npm-field">
+                        <span>Weight</span>
+                        <input type="text" [(ngModel)]="weight" name="weight" placeholder="e.g. 165 lbs" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Blood type</span>
+                        <select [(ngModel)]="bloodType" name="bloodType">
+                          <option value="">Unknown</option>
+                          <option>A+</option><option>A−</option>
+                          <option>B+</option><option>B−</option>
+                          <option>AB+</option><option>AB−</option>
+                          <option>O+</option><option>O−</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Social History</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Smoking status</span>
+                        <select [(ngModel)]="smokingStatus" name="smokingStatus">
+                          <option value="">Select</option>
+                          <option>Never</option><option>Former</option>
+                          <option>Current — light</option><option>Current — heavy</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Alcohol use</span>
+                        <select [(ngModel)]="alcoholUse" name="alcoholUse">
+                          <option value="">Select</option>
+                          <option>None</option><option>Social / occasional</option>
+                          <option>Moderate</option><option>Heavy</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Substance use</span>
+                        <select [(ngModel)]="drugUse" name="drugUse">
+                          <option value="">Select</option>
+                          <option>None</option><option>Marijuana</option>
+                          <option>Other — see notes</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 3: Contact & Address ──────────── -->
+              @case (3) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Residential Address</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field npm-field--span2">
+                        <span>Address line 1</span>
+                        <input type="text" [(ngModel)]="addressLine1" name="addr1" placeholder="Street address" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Apt / Suite</span>
+                        <input type="text" [(ngModel)]="addressLine2" name="addr2" placeholder="Apt, suite..." />
+                      </label>
+                      <label class="npm-field">
+                        <span>City</span>
+                        <input type="text" [(ngModel)]="city" name="city" placeholder="City" />
+                      </label>
+                      <label class="npm-field">
+                        <span>State</span>
+                        <select [(ngModel)]="state" name="state">
+                          <option value="">Select</option>
+                          <option>FL</option><option>GA</option><option>AL</option>
+                          <option>SC</option><option>NC</option><option>Other</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>ZIP code</span>
+                        <input type="text" [(ngModel)]="zip" name="zip" placeholder="ZIP" maxlength="10" />
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Phone &amp; Email</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Mobile phone</span>
+                        <input type="tel" [(ngModel)]="phoneMobile" name="mobile" placeholder="(555) 000-0000" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Home phone</span>
+                        <input type="tel" [(ngModel)]="phoneHome" name="homePhone" placeholder="(555) 000-0000" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Work phone</span>
+                        <input type="tel" [(ngModel)]="phoneWork" name="workPhone" placeholder="(555) 000-0000" />
+                      </label>
+                      <label class="npm-field npm-field--span2">
+                        <span>Email address</span>
+                        <input type="email" [(ngModel)]="email" name="email" placeholder="email@example.com" />
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Emergency Contact</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Contact name</span>
+                        <input type="text" [(ngModel)]="emergencyName" name="eName" placeholder="Full name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Relationship</span>
+                        <input type="text" [(ngModel)]="emergencyRel" name="eRel" placeholder="Spouse, parent..." />
+                      </label>
+                      <label class="npm-field">
+                        <span>Phone</span>
+                        <input type="tel" [(ngModel)]="emergencyPhone" name="ePhone" placeholder="(555) 000-0000" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 4: Insurance & Guarantor ───── -->
+              @case (4) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Primary Insurance</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field npm-field--span2">
+                        <span>Insurance name</span>
+                        <input type="text" [(ngModel)]="insuranceName" name="ins1" placeholder="e.g. Medicare, BCBS PPO" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Member ID</span>
+                        <input type="text" [(ngModel)]="memberId" name="memberId" placeholder="Member ID" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Group number</span>
+                        <input type="text" [(ngModel)]="groupNumber" name="groupNum" placeholder="Group #" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Subscriber name</span>
+                        <input type="text" [(ngModel)]="subscriber" name="subscriber" placeholder="Subscriber full name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Subscriber relation</span>
+                        <select [(ngModel)]="subscriberRel" name="subscriberRel">
+                          <option>Self</option><option>Spouse</option>
+                          <option>Child</option><option>Other</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Secondary Insurance</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field npm-field--span3">
+                        <span>Secondary insurance name (optional)</span>
+                        <input type="text" [(ngModel)]="insurance2" name="ins2" placeholder="Secondary insurance" />
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Guarantor</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Guarantor name</span>
+                        <input type="text" [(ngModel)]="guarantorName" name="gName" placeholder="Full name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Relationship</span>
+                        <input type="text" [(ngModel)]="guarantorRel" name="gRel" placeholder="Self, spouse..." />
+                      </label>
+                      <label class="npm-field">
+                        <span>Date of birth</span>
+                        <input type="date" [(ngModel)]="guarantorDob" name="gDob" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Phone</span>
+                        <input type="tel" [(ngModel)]="guarantorPhone" name="gPhone" placeholder="(555) 000-0000" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 5: Clinical / Referrals ─────── -->
+              @case (5) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Referring Provider &amp; PCP</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Referring provider</span>
+                        <input type="text" [(ngModel)]="referringProvider" name="refProv" placeholder="Provider name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Primary care physician</span>
+                        <input type="text" [(ngModel)]="pcpName" name="pcp" placeholder="PCP name" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Specialty</span>
+                        <select [(ngModel)]="specialty" name="specialty">
+                          <option value="">Select</option>
+                          <option>Ophthalmology — Retina</option>
+                          <option>Ophthalmology — Cataract</option>
+                          <option>Ophthalmology — Glaucoma</option>
+                          <option>Ophthalmology — General</option>
+                          <option>Optometry</option><option>Other</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Referral number</span>
+                        <input type="text" [(ngModel)]="referralNumber" name="refNum" placeholder="Referral #" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Referral expiry</span>
+                        <input type="date" [(ngModel)]="referralExpiry" name="refExp" />
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Clinical Assignment</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Clinic</span>
+                        <select [(ngModel)]="clinicId" name="clinicId">
+                          <option value="">Auto-assign from scope</option>
+                          @for (clinic of clinics(); track clinic.id) {
+                            @if (clinic.id !== 'network') {
+                              <option [value]="clinic.id">{{ clinic.name }}</option>
+                            }
+                          }
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Preferred provider</span>
+                        <input type="text" [(ngModel)]="preferredProvider" name="prefProv" placeholder="Provider name" />
+                      </label>
+                      <label class="npm-field npm-field--span3">
+                        <span>Chief complaint</span>
+                        <textarea [(ngModel)]="chiefComplaint" name="complaint" rows="3"
+                          placeholder="Reason for visit..."></textarea>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 6: Scheduling ───────────────── -->
+              @case (6) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Appointment Request</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Visit type</span>
+                        <select [(ngModel)]="visitType" name="visitType">
+                          <option value="">Select</option>
+                          <option>New patient — comprehensive</option>
+                          <option>New patient — consult</option>
+                          <option>Follow-up</option>
+                          <option>Post-operative</option>
+                          <option>Urgent / same-day</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Priority</span>
+                        <select [(ngModel)]="schedulingPriority" name="priority">
+                          <option value="">Routine</option>
+                          <option>Urgent — within 48h</option>
+                          <option>Same-day</option>
+                          <option>Emergent</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Recall period</span>
+                        <select [(ngModel)]="recallPeriod" name="recall">
+                          <option value="">None</option>
+                          <option>1 month</option><option>3 months</option>
+                          <option>6 months</option><option>1 year</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Preferred date</span>
+                        <input type="date" [(ngModel)]="appointmentDate" name="apptDate" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Preferred time</span>
+                        <input type="time" [(ngModel)]="appointmentTime" name="apptTime" />
+                      </label>
+                      <label class="npm-field npm-field--span3">
+                        <span>Scheduling notes</span>
+                        <textarea [(ngModel)]="schedulingNotes" name="schedNotes" rows="3"
+                          placeholder="Transportation needs, availability constraints..."></textarea>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 7: Financial ───────────────── -->
+              @case (7) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Financial Setup</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Payment plan</span>
+                        <select [(ngModel)]="paymentPlan" name="payPlan">
+                          <option>None</option>
+                          <option>CareCredit</option>
+                          <option>In-house — 3 months</option>
+                          <option>In-house — 6 months</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Self-pay discount (%)</span>
+                        <input type="number" [(ngModel)]="selfPayDiscount" name="spDiscount"
+                          placeholder="0" min="0" max="100" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Collection flag</span>
+                        <select [(ngModel)]="collectionFlag" name="collFlag">
+                          <option>None</option>
+                          <option>Pre-collect required</option>
+                          <option>On payment plan</option>
+                          <option>Collections — do not schedule</option>
+                        </select>
+                      </label>
+                      <label class="npm-field npm-field--span3">
+                        <span>Financial notes</span>
+                        <textarea [(ngModel)]="financialNotes" name="finNotes" rows="3"
+                          placeholder="Internal financial notes..."></textarea>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 8: Compliance & Consents ────── -->
+              @case (8) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Required Consents</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>HIPAA acknowledgment signed</span>
+                        <input type="date" [(ngModel)]="hipaaDate" name="hipaa" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Assignment of benefits signed</span>
+                        <input type="date" [(ngModel)]="aobDate" name="aob" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Notice of privacy practices</span>
+                        <input type="date" [(ngModel)]="privacyDate" name="privacy" />
+                      </label>
+                      <label class="npm-field">
+                        <span>Consent for treatment</span>
+                        <input type="date" [(ngModel)]="consentDate" name="consent" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 9: Documents ───────────────── -->
+              @case (9) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Document Uploads</h2>
+                    <div class="npm-doc-list">
+                      <label class="npm-doc-item">
+                        <input type="checkbox" [(ngModel)]="idUploaded" name="idDoc" />
+                        <div>
+                          <strong>Government-issued photo ID</strong>
+                          <p>Driver's license, passport, state ID</p>
+                        </div>
+                      </label>
+                      <label class="npm-doc-item">
+                        <input type="checkbox" [(ngModel)]="insCardUploaded" name="insDoc" />
+                        <div>
+                          <strong>Insurance card (front &amp; back)</strong>
+                          <p>Primary and secondary if applicable</p>
+                        </div>
+                      </label>
+                      <label class="npm-doc-item">
+                        <input type="checkbox" [(ngModel)]="referralDocUploaded" name="refDoc" />
+                        <div>
+                          <strong>Referral / authorization document</strong>
+                          <p>Required for HMO / managed care plans</p>
+                        </div>
+                      </label>
+                    </div>
+                    <label class="npm-field" style="margin-top: 1.1rem">
+                      <span>Document notes</span>
+                      <textarea [(ngModel)]="docNotes" name="docNotes" rows="3"
+                        placeholder="Notes about pending or substitute documents..."></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 10: Preferences ────────────── -->
+              @case (10) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Communication Preferences</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field">
+                        <span>Preferred contact method</span>
+                        <select [(ngModel)]="preferredContact" name="prefContact">
+                          <option>Mobile phone</option><option>Home phone</option>
+                          <option>Email</option><option>Patient portal</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Appointment reminder method</span>
+                        <select [(ngModel)]="reminderMethod" name="reminder">
+                          <option>SMS</option><option>Email</option>
+                          <option>Phone call</option><option>Portal notification</option>
+                          <option>No reminders</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Patient portal access</span>
+                        <select [(ngModel)]="portalAccess" name="portal">
+                          <option>Yes — invite on save</option>
+                          <option>No — decline</option>
+                          <option>Invite later</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Language preference</span>
+                        <select [(ngModel)]="langPref" name="langPref">
+                          <option>English</option><option>Spanish</option>
+                          <option>French</option><option>Haitian Creole</option>
+                          <option>Portuguese</option><option>Other</option>
+                        </select>
+                      </label>
+                      <label class="npm-field npm-field--span2">
+                        <span>Accessibility needs</span>
+                        <input type="text" [(ngModel)]="accessibilityNeeds" name="access"
+                          placeholder="Wheelchair access, large print, hearing loop..." />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 11: Risk & Flags ───────────── -->
+              @case (11) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Clinical Risk Flags</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field npm-field--span2">
+                        <span>Known allergies (drugs, materials, latex)</span>
+                        <input type="text" [(ngModel)]="allergyFlags" name="allergies"
+                          placeholder="e.g. Penicillin, latex gloves..." />
+                      </label>
+                      <label class="npm-field">
+                        <span>Fall risk</span>
+                        <select [(ngModel)]="fallRisk" name="fallRisk">
+                          <option>Not assessed</option>
+                          <option>Low</option><option>Moderate</option><option>High</option>
+                        </select>
+                      </label>
+                      <label class="npm-field">
+                        <span>Infectious disease flag</span>
+                        <select [(ngModel)]="infectiousDisease" name="infectious">
+                          <option>None known</option>
+                          <option>MRSA</option><option>C. diff</option>
+                          <option>COVID-19 precaution</option>
+                          <option>Other — see notes</option>
+                        </select>
+                      </label>
+                      <label class="npm-field npm-field--span2">
+                        <span>Care coordination notes</span>
+                        <input type="text" [(ngModel)]="careCoordination" name="careCoord"
+                          placeholder="Social work, case management, home health..." />
+                      </label>
+                      <label class="npm-field npm-field--span3">
+                        <span>Behavioral health note</span>
+                        <textarea [(ngModel)]="behavioralNote" name="behavioral" rows="3"
+                          placeholder="Relevant behavioral, psychiatric, or social history..."></textarea>
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Administrative Flags</h2>
+                    <div class="npm-flag-row">
+                      <label class="npm-flag-toggle">
+                        <input type="checkbox" [(ngModel)]="vipFlag" name="vip" />
+                        <div>
+                          <strong>VIP / Executive patient</strong>
+                          <p>Adds elevated care coordination flag</p>
+                        </div>
+                      </label>
+                      <label class="npm-flag-toggle">
+                        <input type="checkbox" [(ngModel)]="researchConsent" name="research" />
+                        <div>
+                          <strong>Research consent granted</strong>
+                          <p>Patient eligible for de-identified data use</p>
+                        </div>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ── Tab 12: Audit & Admin ──────────── -->
+              @case (12) {
+                <div class="npm-form">
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Registration Metadata</h2>
+                    <div class="npm-grid-3">
+                      <label class="npm-field npm-field--span2">
+                        <span>Source of registration</span>
+                        <select [(ngModel)]="registrationSource" name="regSource">
+                          <option>Front desk — walk-in</option>
+                          <option>Phone — inbound</option>
+                          <option>Online scheduling portal</option>
+                          <option>Referral — fax</option>
+                          <option>Referral — electronic</option>
+                          <option>Hospital transfer</option>
+                        </select>
+                      </label>
+                      <label class="npm-field npm-field--span3">
+                        <span>Internal notes</span>
+                        <textarea [(ngModel)]="internalNotes" name="intNotes" rows="4"
+                          placeholder="Staff-only notes visible in admin view..."></textarea>
+                      </label>
+                    </div>
+                  </section>
+                  <section class="npm-section">
+                    <h2 class="npm-section__title">Record Summary</h2>
+                    <div class="npm-summary">
+                      <div class="npm-summary-row">
+                        <span>Patient name</span>
+                        <strong>{{ firstName || '—' }} {{ lastName }}</strong>
+                      </div>
+                      <div class="npm-summary-row">
+                        <span>Date of birth</span>
+                        <strong>{{ dob || '—' }}</strong>
+                      </div>
+                      <div class="npm-summary-row">
+                        <span>Primary insurance</span>
+                        <strong>{{ insuranceName || 'Not provided' }}</strong>
+                      </div>
+                      <div class="npm-summary-row">
+                        <span>Clinic</span>
+                        <strong>{{ clinicId || 'Auto-assign' }}</strong>
+                      </div>
+                      <div class="npm-summary-row">
+                        <span>Preferred contact</span>
+                        <strong>{{ preferredContact }}</strong>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              }
+
             }
           }
-        </select>
-      </label>
 
-      <div class="modal-actions">
-        <button type="button" class="modal-btn modal-btn--ghost" (click)="cancel()">Cancel</button>
-        <button
-          type="submit"
-          class="modal-btn modal-btn--primary"
-          [disabled]="isSubmitting() || !canSubmit"
-        >
-          {{ isSubmitting() ? 'Registering...' : 'Register patient' }}
-        </button>
+        </div>
       </div>
-    </form>
-  }
-</app-modal>
+
+      <!-- ── Footer nav ─────────────────────────────────── -->
+      <div class="npm-footer">
+        <button class="npm-nav-btn" type="button" [disabled]="currentTab() === 1" (click)="prev()">
+          ← Previous
+        </button>
+        <span class="npm-footer__indicator">{{ currentTab() }} / 12 · {{ currentTabLabel }}</span>
+        @if (currentTab() < 12) {
+          <button class="npm-nav-btn npm-nav-btn--next" type="button" (click)="next()">
+            Next →
+          </button>
+        } @else {
+          <button
+            class="npm-nav-btn npm-nav-btn--submit"
+            type="button"
+            [disabled]="!canSubmit || isSubmitting()"
+            (click)="submit()"
+          >
+            {{ isSubmitting() ? 'Registering...' : 'Register patient' }}
+          </button>
+        }
+        <button class="npm-nav-btn npm-nav-btn--cancel" type="button" (click)="cancel()">Cancel</button>
+      </div>
+
+    </div>
+  </div>
+}

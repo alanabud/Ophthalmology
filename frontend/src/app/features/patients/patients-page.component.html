@@ -1,126 +1,222 @@
-<section class="workspace-page">
-  <header class="page-header">
-    <div>
-      <p class="page-kicker">Patient intelligence workspace</p>
-      <h1>Searchable patient operations with balances, chart quality, care gaps, and AI pre-visit context.</h1>
-      <p class="page-subtitle">
-        This page is optimized for front desk, technicians, providers, and recall teams to work the same patient list without losing context.
-      </p>
+<section class="workspace-page patients-page">
+
+  <!-- ── Top header ────────────────────────────────────── -->
+  <header class="pt-header">
+    <div class="pt-header__left">
+      <p class="pt-breadcrumb">Patient Operations</p>
+      <h1 class="pt-title">Patient Intelligence Workspace</h1>
     </div>
-    <div class="search-row">
-      <input type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" placeholder="Search patient, MRN, risk, insurance" />
-      <button type="button" (click)="newPatientOpen.set(true)">New patient</button>
-      <button type="button" (click)="newPatientOpen.set(true)">Pre-visit briefing</button>
+    <div class="pt-header__actions">
+      <div class="pt-search-wrap">
+        <svg class="pt-search-icon" viewBox="0 0 20 20" fill="none">
+          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input
+          class="pt-search"
+          type="search"
+          [ngModel]="query()"
+          (ngModelChange)="query.set($event)"
+          placeholder="Search patient, MRN, status..."
+        />
+      </div>
+      <button class="pt-btn pt-btn--primary" type="button" (click)="newPatientOpen.set(true)">
+        + New patient
+      </button>
+      <button class="pt-btn pt-btn--ghost" type="button">Pre-visit briefing</button>
     </div>
   </header>
 
-  <section class="info-grid">
-    <article class="info-tile">
+  <!-- ── Stats rail ─────────────────────────────────────── -->
+  <div class="pt-stats-rail">
+    <div class="pt-stat">
       <strong>{{ patients().length }}</strong>
-      <p>Patients in active clinic scope</p>
-    </article>
-    <article class="info-tile">
-      <strong>7</strong>
-      <p>Recall gaps needing outreach</p>
-    </article>
-    <article class="info-tile">
-      <strong>14</strong>
-      <p>Balances over $250 with upcoming visits</p>
-    </article>
-    <article class="info-tile">
-      <strong>5</strong>
-      <p>High-risk arrivals needing same-day coordination</p>
-    </article>
-  </section>
+      <span>Active in scope</span>
+    </div>
+    <div class="pt-stat-divider"></div>
+    <div class="pt-stat">
+      <strong>{{ recallGaps }}</strong>
+      <span>Recall gaps</span>
+    </div>
+    <div class="pt-stat-divider"></div>
+    <div class="pt-stat">
+      <strong>{{ balanceOver }}</strong>
+      <span>Balance &gt; $250</span>
+    </div>
+    <div class="pt-stat-divider"></div>
+    <div class="pt-stat">
+      <strong>{{ highRisk }}</strong>
+      <span>High-risk today</span>
+    </div>
+    <div class="pt-stat-divider"></div>
+    <div class="pt-stat">
+      <strong>{{ unsignedCharts }}</strong>
+      <span>Unsigned charts</span>
+    </div>
+    <div class="pt-stat-divider"></div>
+    <div class="pt-stat">
+      <strong>{{ pendingAuths }}</strong>
+      <span>Pending auths</span>
+    </div>
+  </div>
 
-  <section class="dual-grid">
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Patient roster</p>
-          <h2>Operational patient table</h2>
-        </div>
-        <app-status-chip [label]="patients().length + ' visible'" tone="info" />
-      </div>
-      <table class="dense-table">
+  <!-- ── Filter bar ─────────────────────────────────────── -->
+  <div class="pt-filter-bar">
+    <span class="pt-patient-count">{{ patients().length }} patients</span>
+    <select class="pt-filter-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+      <option value="">All statuses</option>
+      <option value="Arrived">Arrived</option>
+      <option value="In exam">In exam</option>
+      <option value="Imaging queue">Imaging queue</option>
+      <option value="Pre-op hold">Pre-op hold</option>
+      <option value="Surgery ready">Surgery ready</option>
+      <option value="Follow-up overdue">Follow-up overdue</option>
+    </select>
+    <select class="pt-filter-select">
+      <option value="">All providers</option>
+    </select>
+    <select class="pt-filter-select" [ngModel]="clinicFilter()" (ngModelChange)="clinicFilter.set($event)">
+      <option value="">All clinics</option>
+      @for (clinic of clinics(); track clinic.id) {
+        @if (clinic.id !== 'network') {
+          <option [value]="clinic.id">{{ clinic.name }}</option>
+        }
+      }
+    </select>
+  </div>
+
+  <!-- ── Main content ───────────────────────────────────── -->
+  <div class="pt-body">
+
+    <!-- Roster table -->
+    <div class="pt-roster">
+      <table class="pt-table">
         <thead>
           <tr>
-            <th>Patient</th>
-            <th>Status</th>
-            <th>Next visit</th>
-            <th>Insurance</th>
-            <th>Balance</th>
-            <th>Chart</th>
-            <th>Care gap</th>
-            <th>AI signal</th>
+            <th>PATIENT</th>
+            <th>STATUS</th>
+            <th>NEXT VISIT</th>
+            <th>PROVIDER</th>
+            <th>INSURANCE</th>
+            <th>BALANCE</th>
+            <th>CHART %</th>
+            <th>IMAGING</th>
           </tr>
         </thead>
         <tbody>
           @for (patient of patients(); track patient.id) {
-            <tr>
+            <tr
+              class="pt-row"
+              [class.pt-row--selected]="selectedPatientId() === patient.id"
+              (click)="selectPatient(patient)"
+            >
               <td>
-                <div class="table-primary">
-                  <strong>{{ patient.fullName }}</strong>
-                  <span>{{ patient.mrn }} • DOB {{ patient.dob }}</span>
+                <div class="pt-patient-cell">
+                  <div class="pt-avatar" [class]="'pt-avatar--' + patient.statusTone">
+                    {{ patient.fullName.charAt(0) }}
+                  </div>
+                  <div class="pt-patient-info">
+                    <strong>{{ patient.fullName }}</strong>
+                    <span>{{ patient.mrn }} · DOB {{ patient.dob }}</span>
+                  </div>
                 </div>
               </td>
               <td><app-status-chip [label]="patient.status" [tone]="patient.statusTone" /></td>
-              <td>{{ patient.nextVisit }}</td>
-              <td>{{ patient.insurance }}</td>
-              <td>{{ patient.balance }}</td>
-              <td>{{ patient.chartCompleteness }}</td>
-              <td>{{ patient.careGap }}</td>
-              <td>{{ patient.aiFlag }}</td>
+              <td class="pt-cell-muted">{{ patient.nextVisit }}</td>
+              <td class="pt-cell-muted">—</td>
+              <td class="pt-cell-muted">{{ patient.insurance }}</td>
+              <td [class.pt-balance--red]="patient.balance !== '$0.00'">{{ patient.balance }}</td>
+              <td>
+                <div class="pt-chart-bar-wrap">
+                  <div class="pt-chart-bar">
+                    <div
+                      class="pt-chart-fill"
+                      [style.width]="patient.chartCompleteness"
+                      [class.pt-chart-fill--high]="(+patient.chartCompleteness.replace('%','')) >= 90"
+                      [class.pt-chart-fill--mid]="(+patient.chartCompleteness.replace('%','')) >= 70 && (+patient.chartCompleteness.replace('%','')) < 90"
+                      [class.pt-chart-fill--low]="(+patient.chartCompleteness.replace('%','')) < 70"
+                    ></div>
+                  </div>
+                </div>
+              </td>
+              <td class="pt-cell-muted pt-imaging">{{ patient.imageStatus }}</td>
             </tr>
           }
         </tbody>
       </table>
-    </article>
-
-    <div class="sticky-summary">
-      <article class="panel">
-        <div class="panel__header">
-          <div>
-            <p class="panel__eyebrow">Sticky patient summary</p>
-            <h2>{{ selectedPatient().fullName }}</h2>
-          </div>
-          @if (selectedPatient()) {
-            <app-status-chip [label]="selectedPatient()!.status" [tone]="selectedPatient()!.statusTone" />
-          }
-        </div>
-        @if (selectedPatient()) {
-          <div class="key-value-stack">
-            <div class="key-value-row"><span>MRN</span><strong>{{ selectedPatient()!.mrn }}</strong></div>
-            <div class="key-value-row"><span>Insurance</span><strong>{{ selectedPatient()!.insurance }}</strong></div>
-            <div class="key-value-row"><span>Balance due</span><strong>{{ selectedPatient()!.balance }}</strong></div>
-            <div class="key-value-row"><span>Chart completeness</span><strong>{{ selectedPatient()!.chartCompleteness }}</strong></div>
-            <div class="key-value-row"><span>Imaging status</span><strong>{{ selectedPatient()!.imageStatus }}</strong></div>
-            <div class="key-value-row"><span>Care gap</span><strong>{{ selectedPatient()!.careGap }}</strong></div>
-          </div>
-        }
-      </article>
-
-      <article class="panel">
-        <div class="panel__header">
-          <div>
-            <p class="panel__eyebrow">AI patient intelligence</p>
-            <h2>Briefings and care risk</h2>
-          </div>
-        </div>
-        <div class="panel-list">
-          @for (briefing of patientBriefings(); track briefing.title) {
-            <article class="list-surface">
-              <div class="dense-header">
-                <strong>{{ briefing.title }}</strong>
-                <app-status-chip label="AI" [tone]="briefing.tone" />
-              </div>
-              <p>{{ briefing.summary }}</p>
-            </article>
-          }
-        </div>
-      </article>
     </div>
-  </section>
+
+    <!-- Patient detail panel -->
+    <div class="pt-detail">
+      @if (selectedPatient()) {
+        <div class="pt-detail__content">
+          <div class="pt-detail__patient-head">
+            <div class="pt-detail__big-avatar">{{ selectedPatient()!.fullName.charAt(0) }}</div>
+            <div class="pt-detail__head-info">
+              <h2>{{ selectedPatient()!.fullName }}</h2>
+              <p class="pt-detail__mrn">{{ selectedPatient()!.mrn }} · DOB {{ selectedPatient()!.dob }}</p>
+            </div>
+            <app-status-chip [label]="selectedPatient()!.status" [tone]="selectedPatient()!.statusTone" />
+          </div>
+
+          <div class="pt-detail__section">
+            <p class="pt-detail__section-label">Financial overview &amp; balance</p>
+            <div class="pt-kv-list">
+              <div class="pt-kv-row">
+                <span>Balance due</span>
+                <strong [class.pt-balance--red]="selectedPatient()!.balance !== '$0.00'">{{ selectedPatient()!.balance }}</strong>
+              </div>
+              <div class="pt-kv-row">
+                <span>Insurance</span>
+                <strong>{{ selectedPatient()!.insurance }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-detail__section">
+            <p class="pt-detail__section-label">Clinical readiness &amp; chart quality</p>
+            <div class="pt-kv-list">
+              <div class="pt-kv-row">
+                <span>Chart completeness</span>
+                <strong>{{ selectedPatient()!.chartCompleteness }}</strong>
+              </div>
+              <div class="pt-kv-row">
+                <span>Imaging status</span>
+                <strong>{{ selectedPatient()!.imageStatus }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-detail__section">
+            <p class="pt-detail__section-label">Care gaps &amp; next actions</p>
+            <div class="pt-detail__flag-box pt-detail__flag-box--warn">{{ selectedPatient()!.careGap }}</div>
+          </div>
+
+          <div class="pt-detail__section">
+            <p class="pt-detail__section-label">AI pre-visit briefing</p>
+            <div class="pt-detail__flag-box pt-detail__flag-box--ai">{{ selectedPatient()!.aiFlag }}</div>
+          </div>
+        </div>
+      } @else {
+        <div class="pt-detail__empty">
+          <svg class="pt-detail__empty-icon" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="18" r="8" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M8 42c0-8.837 7.163-16 16-16s16 7.163 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <strong>Select a patient</strong>
+          <p>Click any row in the roster to open<br>their full workspace</p>
+          <ul class="pt-detail__feature-list">
+            <li>Financial overview &amp; balance</li>
+            <li>Clinical readiness &amp; chart quality</li>
+            <li>Care gaps &amp; next actions</li>
+            <li>AI pre-visit briefing</li>
+          </ul>
+        </div>
+      }
+    </div>
+
+  </div>
+
 </section>
 
 <app-new-patient-modal

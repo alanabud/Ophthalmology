@@ -77,6 +77,10 @@ export class DashboardPageComponent {
   protected readonly openAlertCount = computed(() =>
     this.notifications().reduce((count, alert) => count + alert.count, 0)
   );
+  protected readonly dashboardSubtitle = computed(() => {
+    const clinic = this.currentClinic();
+    return clinic.id === 'network' ? 'All clinics · Network view' : clinic.name;
+  });
   protected readonly clinicSelectOptions = computed<EnterpriseSelectOption[]>(() =>
     this.clinicOptions().map((clinic) => ({
       value: clinic.id,

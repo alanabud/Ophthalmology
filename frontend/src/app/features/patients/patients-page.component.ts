@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { PatientRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
@@ -15,24 +16,47 @@ export class PatientsPageComponent {
   private readonly store = inject(EnterpriseStoreService);
 
   protected readonly query = signal('');
+  protected readonly statusFilter = signal('');
+  protected readonly clinicFilter = signal('');
   protected readonly newPatientOpen = signal(false);
-  protected readonly patients = computed(() => {
-    const search = this.query().trim().toLowerCase();
-    const records = this.store.patients();
-    if (!search) {
-      return records;
-    }
-    return records.filter(
-      (record) =>
-        record.fullName.toLowerCase().includes(search) ||
-        record.mrn.toLowerCase().includes(search) ||
-        record.aiFlag.toLowerCase().includes(search)
-    );
-  });
-  protected readonly selectedPatient = computed(() => this.patients()[0] ?? this.store.patients()[0]);
+  protected readonly selectedPatientId = signal<string | null>(null);
+
+  protected readonly allPatients = this.store.patients;
+  protected readonly clinics = this.store.clinicOptions;
   protected readonly patientBriefings = this.store.patientBriefings;
 
-  protected setQuery(value: string): void {
-    this.query.set(value);
+  protected readonly patients = computed(() => {
+    const search = this.query().trim().toLowerCase();
+    let records = this.store.patients();
+
+    if (search) {
+      records = records.filter(
+        (r) =>
+          r.fullName.toLowerCase().includes(search) ||
+          r.mrn.toLowerCase().includes(search) ||
+          r.insurance.toLowerCase().includes(search) ||
+          r.status.toLowerCase().includes(search)
+      );
+    }
+    if (this.clinicFilter()) {
+      records = records.filter((r) => r.clinicId === this.clinicFilter());
+    }
+    return records;
+  });
+
+  protected readonly selectedPatient = computed<PatientRecord | null>(() => {
+    const id = this.selectedPatientId();
+    if (!id) return null;
+    return this.patients().find((p) => p.id === id) ?? null;
+  });
+
+  protected readonly recallGaps = 7;
+  protected readonly balanceOver = 14;
+  protected readonly highRisk = 5;
+  protected readonly unsignedCharts = 3;
+  protected readonly pendingAuths = 6;
+
+  protected selectPatient(patient: PatientRecord): void {
+    this.selectedPatientId.set(patient.id);
   }
 }
