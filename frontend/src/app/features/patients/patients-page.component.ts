@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { PatientRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
@@ -14,6 +15,7 @@ import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 })
 export class PatientsPageComponent {
   private readonly store = inject(EnterpriseStoreService);
+  private readonly router = inject(Router);
 
   protected readonly query = signal('');
   protected readonly statusFilter = signal('');
@@ -58,5 +60,18 @@ export class PatientsPageComponent {
 
   protected selectPatient(patient: PatientRecord): void {
     this.selectedPatientId.set(patient.id);
+  }
+
+  protected viewPatient(patient: PatientRecord): void {
+    this.selectedPatientId.set(patient.id);
+  }
+
+  protected editPatient(patient: PatientRecord): void {
+    this.selectedPatientId.set(patient.id);
+    this.newPatientOpen.set(true);
+  }
+
+  protected schedulePatient(_patient: PatientRecord): void {
+    this.router.navigate(['/scheduling']);
   }
 }

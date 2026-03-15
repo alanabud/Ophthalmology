@@ -143,9 +143,9 @@
               <td class="pt-cell-muted pt-imaging">{{ patient.imageStatus }}</td>
               <td class="td-actions" (click)="$event.stopPropagation()">
                 <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                  <button class="row-action-btn" type="button">Edit</button>
-                  <button class="row-action-btn" type="button">Schedule</button>
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewPatient(patient)">View</button>
+                  <button class="row-action-btn" type="button" (click)="editPatient(patient)">Edit</button>
+                  <button class="row-action-btn" type="button" (click)="schedulePatient(patient)">Schedule</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
