@@ -20,6 +20,7 @@
             <th>Lens</th>
             <th>Status</th>
             <th>Pickup</th>
+            <th class="th-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -30,6 +31,14 @@
               <td>{{ order.lens }}</td>
               <td><app-status-chip [label]="order.status" [tone]="order.tone" /></td>
               <td>{{ order.pickup }}</td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Edit</button>
+                  <button class="row-action-btn" type="button">Track</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

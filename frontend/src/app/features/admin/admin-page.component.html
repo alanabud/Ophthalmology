@@ -13,7 +13,7 @@
         <div><p class="panel__eyebrow">Role matrix</p><h2>Provisioned access patterns</h2></div>
       </div>
       <table class="dense-table">
-        <thead><tr><th>Role</th><th>Scope</th><th>Clinics</th><th>MFA</th></tr></thead>
+        <thead><tr><th>Role</th><th>Scope</th><th>Clinics</th><th>MFA</th><th class="th-actions"></th></tr></thead>
         <tbody>
           @for (role of roleMatrix(); track role.role) {
             <tr>
@@ -21,6 +21,13 @@
               <td>{{ role.scope }}</td>
               <td>{{ role.clinics }}</td>
               <td><app-status-chip [label]="role.mfa" [tone]="role.tone" /></td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Edit</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

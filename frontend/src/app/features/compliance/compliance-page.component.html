@@ -31,7 +31,7 @@
         <div><p class="panel__eyebrow">Permission governance</p><h2>Role and access posture</h2></div>
       </div>
       <table class="dense-table">
-        <thead><tr><th>Role</th><th>Scope</th><th>Clinics</th><th>MFA</th><th>Last change</th></tr></thead>
+        <thead><tr><th>Role</th><th>Scope</th><th>Clinics</th><th>MFA</th><th>Last change</th><th class="th-actions"></th></tr></thead>
         <tbody>
           @for (role of roleMatrix(); track role.role) {
             <tr>
@@ -40,6 +40,13 @@
               <td>{{ role.clinics }}</td>
               <td><app-status-chip [label]="role.mfa" [tone]="role.tone" /></td>
               <td>{{ role.lastChange }}</td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Edit</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

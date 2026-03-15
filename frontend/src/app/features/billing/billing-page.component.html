@@ -28,6 +28,7 @@
             <th>Amount</th>
             <th>Status</th>
             <th>Risk</th>
+            <th class="th-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -39,6 +40,14 @@
               <td>{{ claim.amount }}</td>
               <td><app-status-chip [label]="claim.status" [tone]="claim.tone" /></td>
               <td>{{ claim.denialRisk }}</td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Edit</button>
+                  <button class="row-action-btn" type="button">Submit</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

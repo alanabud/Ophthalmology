@@ -21,6 +21,7 @@
           <th>Runway</th>
           <th>Forecast</th>
           <th>Next order</th>
+          <th class="th-actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -32,6 +33,14 @@
             <td><app-status-chip [label]="item.daysRemaining" [tone]="item.tone" /></td>
             <td>{{ item.forecast }}</td>
             <td>{{ item.nextOrder }}</td>
+            <td class="td-actions">
+              <div class="row-actions">
+                <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                <button class="row-action-btn" type="button">Edit</button>
+                <button class="row-action-btn" type="button">Order</button>
+                <button class="row-action-more" type="button" title="More actions">···</button>
+              </div>
+            </td>
           </tr>
         }
       </tbody>

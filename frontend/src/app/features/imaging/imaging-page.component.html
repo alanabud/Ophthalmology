@@ -24,6 +24,7 @@
             <th>Status</th>
             <th>Ordered by</th>
             <th>AI finding</th>
+            <th class="th-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -34,6 +35,13 @@
               <td><app-status-chip [label]="study.status" [tone]="study.tone" /></td>
               <td>{{ study.orderedBy }}</td>
               <td>{{ study.aiSignal }}</td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Review</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

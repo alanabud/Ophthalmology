@@ -79,6 +79,7 @@
             <th>Request</th>
             <th>Preferred window</th>
             <th>Fit score</th>
+            <th class="th-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +89,13 @@
               <td>{{ entry.request }}</td>
               <td>{{ entry.preferredWindow }}</td>
               <td><app-status-chip [label]="entry.fitScore" [tone]="entry.tone" /></td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Book</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>

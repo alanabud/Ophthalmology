@@ -551,6 +551,92 @@ h4 {
   border-bottom: 0;
 }
 
+/* ─── Row actions (shared across all tables) ──────────── */
+
+.th-actions {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.td-actions {
+  white-space: nowrap;
+  padding-right: 0.75rem !important;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.dense-table tr:hover .row-actions,
+.pt-table tr:hover .row-actions {
+  opacity: 1;
+}
+
+.row-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-subtle);
+  background: var(--surface-control);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  line-height: 1.6;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: var(--surface-control-hover);
+    border-color: var(--line-strong);
+    color: var(--text-primary);
+  }
+
+  &--primary {
+    background: var(--accent-primary-soft);
+    border-color: var(--accent-primary-border);
+    color: var(--accent-primary);
+
+    &:hover { background: rgba(79, 70, 229, 0.16); }
+  }
+
+  &--danger {
+    background: var(--accent-critical-soft);
+    border-color: rgba(220, 38, 38, 0.22);
+    color: var(--accent-critical);
+
+    &:hover { background: rgba(220, 38, 38, 0.12); }
+  }
+}
+
+.row-action-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: var(--surface-control-hover);
+    border-color: var(--line-strong);
+    color: var(--text-primary);
+  }
+}
+
 .table-primary {
   display: grid;
   gap: 0.16rem;

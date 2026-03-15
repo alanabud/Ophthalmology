@@ -23,7 +23,7 @@
         <div><p class="panel__eyebrow">Clinic comparison</p><h2>Operational benchmark table</h2></div>
       </div>
       <table class="dense-table">
-        <thead><tr><th>Clinic</th><th>Readiness</th><th>Wait</th><th>Utilization</th><th>Revenue</th></tr></thead>
+        <thead><tr><th>Clinic</th><th>Readiness</th><th>Wait</th><th>Utilization</th><th>Revenue</th><th class="th-actions"></th></tr></thead>
         <tbody>
           @for (clinic of clinicComparison(); track clinic.id) {
             <tr>
@@ -32,6 +32,13 @@
               <td>{{ clinic.waitMinutes }} min</td>
               <td>{{ clinic.utilization }}%</td>
               <td>{{ clinic.revenueDelta }}</td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Details</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>
@@ -43,7 +50,7 @@
         <div><p class="panel__eyebrow">Provider productivity</p><h2>Clinical and financial yield</h2></div>
       </div>
       <table class="dense-table">
-        <thead><tr><th>Provider</th><th>Focus</th><th>Encounters</th><th>Utilization</th><th>Collections</th></tr></thead>
+        <thead><tr><th>Provider</th><th>Focus</th><th>Encounters</th><th>Utilization</th><th>Collections</th><th class="th-actions"></th></tr></thead>
         <tbody>
           @for (provider of providerProductivity(); track provider.provider) {
             <tr>
@@ -52,6 +59,13 @@
               <td>{{ provider.encounters }}</td>
               <td>{{ provider.utilization }}</td>
               <td>{{ provider.collections }}</td>
+              <td class="td-actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
+                  <button class="row-action-btn" type="button">Details</button>
+                  <button class="row-action-more" type="button" title="More actions">···</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>
