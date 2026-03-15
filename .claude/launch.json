@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ophthalmology-worktree",
+      "runtimeExecutable": "C:/Program Files/nodejs/npm.cmd",
+      "runtimeArgs": ["run", "start", "--", "--host", "127.0.0.1", "--port", "4306"],
+      "port": 4306
+    }
+  ]
+}

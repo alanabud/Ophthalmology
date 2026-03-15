@@ -2,11 +2,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
+import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
 @Component({
   selector: 'app-patients-page',
-  imports: [FormsModule, StatusChipComponent],
+  imports: [FormsModule, NewPatientModalComponent, StatusChipComponent],
   templateUrl: './patients-page.component.html',
   styleUrl: './patients-page.component.scss'
 })
@@ -14,6 +15,7 @@ export class PatientsPageComponent {
   private readonly store = inject(EnterpriseStoreService);
 
   protected readonly query = signal('');
+  protected readonly newPatientOpen = signal(false);
   protected readonly patients = computed(() => {
     const search = this.query().trim().toLowerCase();
     const records = this.store.patients();

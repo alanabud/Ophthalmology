@@ -1,0 +1,39 @@
+<app-modal [open]="open()" title="Quick Create" (closed)="closed.emit()">
+  <div class="qc-menu">
+    <button type="button" class="qc-item" (click)="selectNewPatient()">
+      <span class="qc-item__icon qc-item__icon--accent">PT</span>
+      <div class="qc-item__copy">
+        <strong>New patient</strong>
+        <p>Register a new patient to the roster</p>
+      </div>
+      <span class="qc-item__arrow">→</span>
+    </button>
+
+    <button type="button" class="qc-item" (click)="navigate('/scheduling')">
+      <span class="qc-item__icon qc-item__icon--gold">SC</span>
+      <div class="qc-item__copy">
+        <strong>New appointment</strong>
+        <p>Open the scheduling board to add a visit</p>
+      </div>
+      <span class="qc-item__arrow">→</span>
+    </button>
+
+    <button type="button" class="qc-item" (click)="navigate('/encounters')">
+      <span class="qc-item__icon qc-item__icon--info">EX</span>
+      <div class="qc-item__copy">
+        <strong>New encounter</strong>
+        <p>Start an exam or follow-up chart</p>
+      </div>
+      <span class="qc-item__arrow">→</span>
+    </button>
+
+    <button type="button" class="qc-item" (click)="navigate('/billing')">
+      <span class="qc-item__icon qc-item__icon--critical">CL</span>
+      <div class="qc-item__copy">
+        <strong>New claim</strong>
+        <p>Begin a billing claim for a recent encounter</p>
+      </div>
+      <span class="qc-item__arrow">→</span>
+    </button>
+  </div>
+</app-modal>

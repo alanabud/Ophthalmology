@@ -1,0 +1,115 @@
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.35rem;
+
+  span {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+
+    em {
+      color: var(--accent-critical);
+      font-style: normal;
+    }
+  }
+
+  input,
+  select {
+    min-height: 44px;
+    padding: 0 0.85rem;
+    border-radius: 13px;
+    width: 100%;
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 0.4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.modal-btn {
+  min-height: 42px;
+  padding: 0 1.1rem;
+  border-radius: 13px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease;
+
+  &:disabled {
+    opacity: 0.44;
+    cursor: not-allowed;
+  }
+
+  &--ghost {
+    border: 1px solid var(--line-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--line-strong);
+    }
+  }
+
+  &--primary {
+    border: 1px solid rgba(53, 192, 185, 0.4);
+    background: linear-gradient(135deg, rgba(53, 192, 185, 0.22), rgba(53, 192, 185, 0.12));
+    color: #b9fbf7;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(53, 192, 185, 0.32), rgba(53, 192, 185, 0.18));
+      border-color: rgba(53, 192, 185, 0.56);
+    }
+  }
+}
+
+.modal-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+
+  strong {
+    font-size: 1.05rem;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+}
+
+.modal-success__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(118, 215, 167, 0.3);
+  background: rgba(118, 215, 167, 0.12);
+  color: var(--accent-positive);
+  font-size: 1.3rem;
+}
