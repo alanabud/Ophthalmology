@@ -1,6 +1,7 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { PatientRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 
 interface Tab { num: number; label: string; }
@@ -30,7 +31,33 @@ export class NewPatientModalComponent {
   private readonly store = inject(EnterpriseStoreService);
 
   readonly open = input(false);
+  readonly patientToEdit = input<PatientRecord | null>(null);
   readonly closed = output<void>();
+
+  protected readonly isEditMode = signal(false);
+
+  constructor() {
+    effect(() => {
+      const p = this.patientToEdit();
+      if (p) {
+        this.isEditMode.set(true);
+        this.populateFromRecord(p);
+      } else {
+        this.isEditMode.set(false);
+      }
+    });
+  }
+
+  private populateFromRecord(p: PatientRecord): void {
+    // Split fullName into first / last (last word = last name, rest = first)
+    const parts = p.fullName.trim().split(' ');
+    this.firstName = parts.slice(0, -1).join(' ') || parts[0] || '';
+    this.lastName  = parts.length > 1 ? parts[parts.length - 1] : '';
+    this.dob           = p.dob;
+    this.insuranceName = p.insurance !== 'Not provided' ? p.insurance : '';
+    this.clinicId      = p.clinicId;
+    this.currentTab.set(1);
+  }
 
   protected readonly tabs = TABS;
   protected readonly currentTab = signal(1);

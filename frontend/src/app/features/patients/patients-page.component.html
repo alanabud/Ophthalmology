@@ -230,5 +230,6 @@
 
 <app-new-patient-modal
   [open]="newPatientOpen()"
-  (closed)="newPatientOpen.set(false)"
+  [patientToEdit]="editingPatient()"
+  (closed)="newPatientOpen.set(false); editingPatient.set(null)"
 />

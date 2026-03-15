@@ -22,6 +22,7 @@ export class PatientsPageComponent {
   protected readonly clinicFilter = signal('');
   protected readonly newPatientOpen = signal(false);
   protected readonly selectedPatientId = signal<string | null>(null);
+  protected readonly editingPatient = signal<import('../../core/models/enterprise.models').PatientRecord | null>(null);
 
   protected readonly allPatients = this.store.patients;
   protected readonly clinics = this.store.clinicOptions;
@@ -64,10 +65,15 @@ export class PatientsPageComponent {
 
   protected viewPatient(patient: PatientRecord): void {
     this.selectedPatientId.set(patient.id);
+    // Scroll detail panel into view on small screens
+    setTimeout(() => {
+      document.querySelector('.pt-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   }
 
   protected editPatient(patient: PatientRecord): void {
     this.selectedPatientId.set(patient.id);
+    this.editingPatient.set(patient);
     this.newPatientOpen.set(true);
   }
 
