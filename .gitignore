@@ -28,3 +28,8 @@ frontend_tmp/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Claude Code internal worktrees
+.claude/
+.claire/
+.firebase/
