@@ -1,0 +1,1413 @@
+// ─── Design tokens ────────────────────────────────────────────────────────────
+$surface-0  : #f4f6f8;
+$surface-1  : #ffffff;
+$surface-2  : #edf0f3;
+$border     : #dce1e7;
+$border-mid : #c8d0d9;
+
+$slate-900  : #1a2332;
+$slate-700  : #2d3f55;
+$slate-600  : #3d5166;
+$slate-500  : #5a6e84;
+$slate-400  : #7a8fa6;
+$slate-300  : #a8b8c8;
+
+$teal-600   : #0e7c7b;
+$teal-500   : #14a59a;
+$teal-50    : #edfaf9;
+
+$amber-600  : #c47b00;
+$amber-50   : #fffbec;
+$red-600    : #c0392b;
+$red-50     : #fff5f5;
+$green-600  : #1a7a4a;
+$green-50   : #edfaf3;
+$violet-600 : #6b3fa0;
+$violet-50  : #f5f0ff;
+
+$radius     : 6px;
+$radius-sm  : 4px;
+$radius-lg  : 10px;
+
+$shadow-sm  : 0 1px 3px rgba(0,0,0,.08);
+$shadow-modal: 0 8px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.10);
+
+// ─── Workspace shell ──────────────────────────────────────────────────────────
+:host { display: block; }
+
+.sc-workspace {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 2.3rem);
+  background: $surface-0;
+  overflow: hidden;
+}
+
+.sc-eyebrow {
+  font-size: .6875rem;
+  font-weight: 600;
+  color: $slate-400;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  margin: 0 0 .1rem;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+.sc-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .5rem 1rem;
+  background: $surface-1;
+  border-bottom: 1px solid $border;
+  flex-shrink: 0;
+
+  &__identity {
+    flex: 1;
+    h1 {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: $slate-900;
+      margin: 0;
+      letter-spacing: -.01em;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+}
+
+// ─── Buttons ─────────────────────────────────────────────────────────────────
+.sc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  height: 2rem;
+  padding: 0 .875rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius;
+  font-size: .8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  background: $surface-1;
+  color: $slate-700;
+  transition: background .12s, border-color .12s, color .12s;
+
+  &:hover { background: $surface-2; border-color: $slate-300; }
+
+  &--primary {
+    background: $teal-600; border-color: $teal-600; color: #fff;
+    &:hover { background: darken($teal-600, 6%); border-color: darken($teal-600, 6%); }
+  }
+
+  &--ai {
+    background: $violet-50; border-color: rgba($violet-600, .3); color: $violet-600;
+    font-weight: 600;
+    &:hover { background: darken($violet-50, 3%); }
+  }
+
+  &--ghost { background: transparent; border-color: transparent; color: $slate-500;
+    &:hover { background: $surface-2; border-color: $border; }
+  }
+
+  &--sm { height: 1.75rem; padding: 0 .625rem; font-size: .75rem; }
+}
+
+// ─── Control strip ────────────────────────────────────────────────────────────
+.sc-control-strip {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .4rem 1rem;
+  background: $surface-1;
+  border-bottom: 1px solid $border;
+  flex-shrink: 0;
+}
+
+.sc-date-nav {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  flex-shrink: 0;
+}
+
+.sc-ctrl-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  background: $surface-0;
+  color: $slate-500;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .1s;
+  &:hover { background: $surface-2; color: $slate-700; }
+}
+
+.sc-today-btn {
+  height: 1.75rem;
+  padding: 0 .625rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  background: $surface-0;
+  font-size: .75rem;
+  font-weight: 600;
+  color: $teal-600;
+  cursor: pointer;
+  transition: background .1s;
+  &:hover { background: $teal-50; }
+}
+
+.sc-date-input {
+  height: 1.75rem;
+  padding: 0 .375rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  background: $surface-0;
+  font-size: .75rem;
+  color: $slate-700;
+  cursor: pointer;
+  outline: none;
+  &:focus { border-color: $teal-500; }
+}
+
+.sc-date-label {
+  font-size: .8rem;
+  font-weight: 600;
+  color: $slate-700;
+  white-space: nowrap;
+  margin-left: .25rem;
+}
+
+.sc-strip-filters {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  flex: 1;
+}
+
+.sc-select {
+  height: 1.75rem;
+  padding: 0 .5rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  background: $surface-0;
+  font-size: .75rem;
+  color: $slate-700;
+  cursor: pointer;
+  outline: none;
+  max-width: 150px;
+  &:focus { border-color: $teal-500; }
+}
+
+.sc-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  height: 1.75rem;
+  padding: 0 .625rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  background: $surface-0;
+  font-size: .75rem;
+  font-weight: 500;
+  color: $slate-500;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+
+  &:hover { background: $surface-2; color: $slate-700; }
+  &--active { background: $amber-50; border-color: rgba($amber-600,.3); color: $amber-600; }
+}
+
+.sc-view-toggle {
+  display: flex;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sc-view-btn {
+  height: 1.75rem;
+  padding: 0 .625rem;
+  border: none;
+  border-right: 1px solid $border-mid;
+  background: $surface-0;
+  font-size: .75rem;
+  font-weight: 500;
+  color: $slate-500;
+  cursor: pointer;
+  transition: background .1s, color .1s;
+
+  &:last-child { border-right: none; }
+  &:hover { background: $surface-2; color: $slate-700; }
+  &--active { background: $teal-600; color: #fff; }
+}
+
+// ─── KPI strip ───────────────────────────────────────────────────────────────
+.sc-kpi-strip {
+  display: flex;
+  border-bottom: 1px solid $border;
+  background: $surface-1;
+  flex-shrink: 0;
+}
+
+.sc-kpi {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem .875rem;
+  border-right: 1px solid $border;
+  min-width: 0;
+  cursor: default;
+
+  &:last-child { border-right: none; }
+
+  strong {
+    font-size: 1.1875rem;
+    font-weight: 700;
+    color: $slate-900;
+    letter-spacing: -.02em;
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: .6875rem;
+    color: $slate-500;
+    line-height: 1.2;
+  }
+
+  &--warning  strong { color: $amber-600; }
+  &--critical strong { color: $red-600;   }
+  &--accent   strong { color: $teal-600;  }
+}
+
+// ─── Main body grid ───────────────────────────────────────────────────────────
+.sc-main-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  overflow: hidden;
+}
+
+// ─── Board wrap ───────────────────────────────────────────────────────────────
+.sc-board-wrap {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: .875rem 1rem;
+  background: $surface-0;
+}
+
+.sc-lane-board {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+// ─── Lane cards ───────────────────────────────────────────────────────────────
+.sc-lane {
+  background: $surface-1;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+}
+
+.sc-lane-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .625rem .875rem;
+  border-bottom: 1px solid $border;
+  background: $surface-0;
+
+  &__left {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  &__name {
+    font-size: .875rem;
+    font-weight: 700;
+    color: $slate-900;
+    white-space: nowrap;
+  }
+
+  &__sub {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    margin-top: .15rem;
+    font-size: .6875rem;
+    color: $slate-400;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    flex-shrink: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: .375rem;
+    flex-shrink: 0;
+  }
+}
+
+.sc-lane-avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: $teal-50;
+  border: 1.5px solid rgba($teal-600, .3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8125rem;
+  font-weight: 700;
+  color: $teal-600;
+  margin-top: .1rem; // align with top of info text
+}
+
+// ─── Lane signal chips ─────────────────────────────────────────────────────────
+.sc-lane-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  margin-top: .3rem;
+}
+
+.sc-signal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  font-size: .5875rem;
+  font-weight: 700;
+  padding: .1rem .35rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  letter-spacing: .02em;
+
+  &--open {
+    background: $teal-50;
+    color: $teal-600;
+    border: 1px solid rgba($teal-600, .22);
+  }
+
+  &--risk {
+    background: $red-50;
+    color: $red-600;
+    border: 1px solid rgba($red-600, .22);
+  }
+
+  &--ok {
+    background: $green-50;
+    color: $green-600;
+    border: 1px solid rgba($green-600, .22);
+  }
+
+  &--warn {
+    background: $amber-50;
+    color: $amber-600;
+    border: 1px solid rgba($amber-600, .25);
+  }
+
+  &--util {
+    background: $surface-2;
+    color: $slate-600;
+    border: 1px solid $border;
+    gap: .3rem;
+  }
+
+  &--fit {
+    background: $violet-50;
+    color: $violet-600;
+    border: 1px solid rgba($violet-600, .22);
+  }
+}
+
+.sc-tech-label {
+  font-size: .5875rem;
+  font-weight: 600;
+  color: $slate-400;
+  background: $surface-2;
+  border: 1px solid $border;
+  border-radius: 3px;
+  padding: .075rem .3rem;
+  white-space: nowrap;
+}
+
+// ─── Utilization mini bar (inside signal chip) ─────────────────────────────────
+.sc-util-mini {
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: $border;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  &__fill {
+    height: 100%;
+    border-radius: 2px;
+    background: $teal-500;
+    min-width: 2px;
+    transition: width .3s;
+  }
+}
+
+// ─── Utilization + lag ────────────────────────────────────────────────────────
+.sc-utilization {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+
+  &__bar {
+    width: 60px;
+    height: 5px;
+    border-radius: 3px;
+    background: $border;
+    overflow: hidden;
+  }
+
+  &__fill {
+    height: 100%;
+    border-radius: 3px;
+    background: $teal-500;
+    min-width: 2px;
+    transition: width .3s;
+  }
+
+  span {
+    font-size: .6875rem;
+    font-weight: 600;
+    color: $slate-500;
+  }
+}
+
+.sc-lag-chip {
+  font-size: .6875rem;
+  font-weight: 600;
+  padding: .15rem .4rem;
+  border-radius: 100px;
+  background: $green-50;
+  color: $green-600;
+  border: 1px solid rgba($green-600, .2);
+  white-space: nowrap;
+
+  &--warn {
+    background: $amber-50;
+    color: $amber-600;
+    border-color: rgba($amber-600, .2);
+  }
+}
+
+.sc-lane-btn {
+  height: 1.625rem;
+  padding: 0 .625rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: $surface-1;
+  color: $teal-600;
+  border-color: rgba($teal-600, .3);
+  transition: background .12s;
+
+  &:hover { background: $teal-50; }
+  &--ghost { color: $slate-500; border-color: $border-mid; &:hover { background: $surface-2; } }
+}
+
+// ─── Lane body: time-grid container ───────────────────────────────────────────
+.sc-lane-body {
+  position: relative;
+  overflow: hidden;
+}
+
+// ─── Time grid background ─────────────────────────────────────────────────────
+.sc-time-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sc-tick {
+  position: absolute;
+  left: 0;
+  right: 0;
+
+  &--hour {
+    border-top: 1.5px solid $border-mid;
+
+    .sc-tick-label {
+      color: $slate-500;
+      font-weight: 700;
+      font-size: .6rem;
+    }
+  }
+
+  &:not(&--hour) {
+    border-top: 1px dashed rgba($border-mid, .55);
+  }
+}
+
+.sc-tick-label {
+  position: absolute;
+  left: 6px;
+  top: 3px;
+  font-size: .5625rem;
+  color: $slate-300;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+@keyframes now-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .4; transform: scale(1.5); }
+}
+
+.sc-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px solid $red-600;
+  z-index: 2;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 40px;
+    top: -4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $red-600;
+    animation: now-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+.sc-now-label {
+  position: absolute;
+  left: 2px;
+  top: -8px;
+  font-size: .55rem;
+  font-weight: 700;
+  color: $red-600;
+  background: $red-50;
+  border: 1px solid rgba($red-600, .2);
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+// ─── Appointment column ───────────────────────────────────────────────────────
+.sc-appt-col {
+  position: relative;
+  z-index: 1;
+  padding: 0 .625rem .75rem 46px; // left = time-label zone
+  display: flex;
+  flex-direction: column;
+}
+
+// ─── Appointment blocks ───────────────────────────────────────────────────────
+.sc-appt-block {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .4rem .5rem .375rem;
+  border-radius: $radius;
+  border: 1px solid $border;
+  background: $surface-0;
+  border-left: 3px solid $teal-500;
+  transition: background .1s;
+  cursor: default;
+  position: relative; // needed for hover-reveal overlay
+
+  &:hover {
+    background: $surface-2;
+    .sc-appt-block__actions { opacity: 1; }
+  }
+
+  &--critical { border-left-color: $red-600;   background: $red-50;   &:hover { background: darken($red-50, 2%); } }
+  &--warning  { border-left-color: $amber-600; background: $amber-50; &:hover { background: darken($amber-50, 2%); } }
+  &--success  { border-left-color: $green-600; background: $green-50; &:hover { background: darken($green-50, 2%); } }
+  &--accent   { border-left-color: $teal-600;  background: $teal-50;  &:hover { background: darken($teal-50, 2%); } }
+  &--info     { border-left-color: $slate-400; }
+
+  &__time {
+    flex-shrink: 0;
+    font-size: .6875rem;
+    font-weight: 700;
+    color: $slate-600;
+    font-variant-numeric: tabular-nums;
+    min-width: 34px;
+    padding-top: .1rem;
+    line-height: 1.2;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+  }
+
+  &__row1 {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  &__patient {
+    flex: 1;
+    font-size: .8125rem;
+    font-weight: 600;
+    color: $slate-900;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  &__dur {
+    font-size: .6rem;
+    color: $slate-400;
+    flex-shrink: 0;
+    font-weight: 600;
+    letter-spacing: .02em;
+  }
+
+  &__detail {
+    display: block;
+    font-size: .6875rem;
+    color: $slate-500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .2rem;
+    margin-top: .15rem;
+  }
+
+  &__actions {
+    display: flex;
+    gap: .2rem;
+    opacity: 0;
+    transition: opacity .12s;
+    flex-shrink: 0;
+    margin-top: .1rem;
+  }
+}
+
+// ─── Drag handle ──────────────────────────────────────────────────────────────
+.sc-drag-handle {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity .12s;
+  cursor: grab;
+  color: $slate-300;
+  display: flex;
+  align-items: center;
+  padding: .1rem .05rem;
+  margin-top: .1rem;
+
+  &:active { cursor: grabbing; }
+}
+
+.sc-appt-block:hover .sc-drag-handle { opacity: 1; }
+
+// ─── Category left-border overrides ───────────────────────────────────────────
+.sc-appt-block {
+  &--cat-urgent    { border-left-color: $red-600;    }
+  &--cat-walk-in   { border-left-color: $amber-600;  }
+  &--cat-post-op   { border-left-color: $violet-600; }
+  &--cat-injection { border-left-color: $teal-600;   }
+  &--cat-surgery   { border-left-color: $slate-700;  }
+  &--cat-block     { border-left-color: $slate-400; background: $surface-2; }
+
+  // Type row: badge + visit-type text
+  &__type-row {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    min-width: 0;
+  }
+}
+
+// ─── Category badges ──────────────────────────────────────────────────────────
+.sc-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: .5rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  padding: .075rem .3rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &--urgent    { background: $red-50;       color: $red-600;    border: 1px solid rgba($red-600, .25);    }
+  &--walk-in   { background: $amber-50;     color: $amber-600;  border: 1px solid rgba($amber-600, .25);  }
+  &--post-op   { background: $violet-50;    color: $violet-600; border: 1px solid rgba($violet-600, .25); }
+  &--injection { background: $teal-50;      color: $teal-600;   border: 1px solid rgba($teal-600, .25);   }
+  &--surgery   { background: rgba($slate-700, .06); color: $slate-700; border: 1px solid rgba($slate-700, .2); }
+  &--block     { background: $surface-2;    color: $slate-500;  border: 1px solid $border; }
+  &--standard  { display: none; } // standard has no badge
+}
+
+// ─── Meta chips (room, payer, auth, risk) ──────────────────────────────────────
+.sc-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .15rem;
+  font-size: .5875rem;
+  font-weight: 600;
+  padding: .075rem .3rem;
+  border-radius: 3px;
+  background: $surface-2;
+  color: $slate-500;
+  border: 1px solid $border;
+  white-space: nowrap;
+  line-height: 1.4;
+
+  &--room {
+    background: rgba($teal-600, .07);
+    color: $teal-600;
+    border-color: rgba($teal-600, .2);
+  }
+
+  &--warn {
+    background: $amber-50;
+    color: $amber-600;
+    border-color: rgba($amber-600, .25);
+  }
+
+  &--risk {
+    background: $red-50;
+    color: $red-600;
+    border-color: rgba($red-600, .25);
+  }
+}
+
+.sc-appt-action {
+  width: 22px;
+  height: 22px;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  background: $surface-1;
+  color: $slate-400;
+  font-size: .75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .1s, color .1s, border-color .1s;
+  line-height: 1;
+  padding: 0;
+
+  &:hover { background: $teal-50; color: $teal-600; border-color: rgba($teal-600,.3); }
+}
+
+// ─── Open slots section ────────────────────────────────────────────────────────
+.sc-open-slots {
+  border: 1px dashed $border-mid;
+  border-radius: $radius;
+  padding: .4rem .5rem;
+  background: rgba($teal-50, .4);
+
+  &__label {
+    font-size: .5625rem;
+    font-weight: 700;
+    color: $slate-400;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin: 0 0 .3rem;
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+  }
+}
+
+.sc-open-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  height: 1.625rem;
+  padding: 0 .5rem;
+  border: 1px dashed rgba($teal-600, .45);
+  border-radius: $radius-sm;
+  background: $surface-1;
+  font-size: .6875rem;
+  font-weight: 600;
+  color: $teal-600;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, box-shadow .12s;
+  font-variant-numeric: tabular-nums;
+
+  &:hover {
+    background: $teal-50;
+    border-color: $teal-600;
+    box-shadow: 0 0 0 3px rgba($teal-600, .08);
+  }
+
+  svg { flex-shrink: 0; }
+}
+
+// ─── Open slot row (time + Fit button) ────────────────────────────────────────
+.sc-open-slot-row {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.sc-slot-fit-btn {
+  height: 1.625rem;
+  padding: 0 .5rem;
+  border: 1px solid rgba($violet-600, .3);
+  border-radius: $radius-sm;
+  background: $violet-50;
+  font-size: .6875rem;
+  font-weight: 700;
+  color: $violet-600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s;
+  flex-shrink: 0;
+
+  &:hover { background: darken($violet-50, 4%); }
+}
+
+// ─── Legacy empty slot (fallback when no openSlotTimes) ───────────────────────
+.sc-empty-slot {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .375rem .625rem;
+  border: 1px dashed $border-mid;
+  border-radius: $radius;
+  background: transparent;
+  font-size: .75rem;
+  font-weight: 500;
+  color: $slate-400;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  width: 100%;
+  text-align: left;
+  margin-top: 8px;
+
+  &:hover {
+    background: $teal-50;
+    color: $teal-600;
+    border-color: rgba($teal-600, .4);
+  }
+
+  svg { flex-shrink: 0; }
+}
+
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+.sc-sidebar {
+  border-left: 1px solid $border;
+  background: $surface-1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-sidebar-section {
+  border-bottom: 1px solid $border;
+  padding: .75rem;
+
+  &:last-child { border-bottom: none; }
+}
+
+.sc-sidebar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .625rem;
+
+  p { margin: 0; }
+
+  strong {
+    display: block;
+    font-size: .875rem;
+    font-weight: 700;
+    color: $slate-900;
+    margin-top: .1rem;
+  }
+}
+
+.sc-sidebar-eyebrow {
+  font-size: .6rem;
+  font-weight: 700;
+  color: $slate-400;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+// ─── Waitlist items ───────────────────────────────────────────────────────────
+.sc-waitlist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .5rem 0;
+  border-top: 1px solid $border;
+
+  &:first-of-type { border-top: none; }
+
+  &__patient {
+    flex: 1;
+    min-width: 0;
+
+    strong {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: $slate-900;
+    }
+    span {
+      display: block;
+      font-size: .6875rem;
+      color: $slate-500;
+      margin-top: .1rem;
+    }
+  }
+
+  &__window {
+    font-size: .625rem !important;
+    color: $slate-400 !important;
+  }
+
+  &__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .3rem;
+    flex-shrink: 0;
+  }
+}
+
+.sc-inline-btn {
+  height: 1.5rem;
+  padding: 0 .5rem;
+  border: 1px solid rgba($teal-600, .3);
+  border-radius: $radius-sm;
+  background: $teal-50;
+  font-size: .6875rem;
+  font-weight: 600;
+  color: $teal-600;
+  cursor: pointer;
+  transition: background .1s;
+  white-space: nowrap;
+  &:hover { background: darken($teal-50, 4%); }
+}
+
+// ─── AI cards ─────────────────────────────────────────────────────────────────
+.sc-ai-card {
+  padding: .5rem .625rem;
+  border-radius: $radius;
+  border: 1px solid $border;
+  background: $surface-0;
+  margin-bottom: .5rem;
+
+  &:last-child { margin-bottom: 0; }
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .375rem;
+    margin-bottom: .25rem;
+
+    strong {
+      font-size: .8rem;
+      font-weight: 600;
+      color: $slate-900;
+      line-height: 1.3;
+    }
+  }
+
+  p {
+    font-size: .75rem;
+    color: $slate-500;
+    margin: 0 0 .375rem;
+    line-height: 1.4;
+  }
+
+  &--warning { background: $amber-50; border-color: rgba($amber-600, .2); }
+  &--critical { background: $red-50;  border-color: rgba($red-600, .2);   }
+  &--accent   { background: $teal-50; border-color: rgba($teal-600, .2);  }
+}
+
+// ─── Sidebar conflicts section ────────────────────────────────────────────────
+.sc-sidebar-section--conflicts {
+  background: rgba($red-50, .4);
+}
+
+.sc-conflict-count {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 .35rem;
+  border-radius: 10px;
+  background: $red-600;
+  color: #fff;
+  font-size: .6375rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-conflict-item {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .45rem .5rem;
+  border-radius: $radius;
+  border: 1px solid $border;
+  background: $surface-1;
+  margin-bottom: .35rem;
+
+  &:last-child { margin-bottom: 0; }
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+
+    strong {
+      display: block;
+      font-size: .75rem;
+      font-weight: 600;
+      color: $slate-900;
+      line-height: 1.25;
+    }
+
+    span {
+      display: block;
+      font-size: .6375rem;
+      color: $slate-500;
+      margin-top: .1rem;
+      line-height: 1.3;
+    }
+  }
+
+  &--warning {
+    border-color: rgba($amber-600, .3);
+    background: $amber-50;
+  }
+
+  &--critical {
+    border-color: rgba($red-600, .3);
+    background: $red-50;
+  }
+}
+
+.sc-conflict-action {
+  flex-shrink: 0;
+  height: 1.5rem;
+  padding: 0 .5rem;
+  border: 1px solid $border-mid;
+  border-radius: $radius-sm;
+  background: $surface-1;
+  font-size: .6375rem;
+  font-weight: 700;
+  color: $slate-600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .1s, color .1s, border-color .1s;
+  margin-top: .05rem;
+
+  .sc-conflict-item--warning & {
+    border-color: rgba($amber-600, .35);
+    color: $amber-600;
+    background: #fff;
+    &:hover { background: $amber-50; }
+  }
+
+  .sc-conflict-item--critical & {
+    border-color: rgba($red-600, .35);
+    color: $red-600;
+    background: #fff;
+    &:hover { background: $red-50; }
+  }
+
+  &:hover { background: $surface-2; border-color: $slate-300; }
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+.sc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 40, .5);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.sc-modal {
+  width: 90vw;
+  max-width: 960px;
+  height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: $surface-1;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-modal;
+  overflow: hidden;
+}
+
+.sc-modal-header {
+  display: flex;
+  align-items: center;
+  padding: .75rem 1.25rem;
+  border-bottom: 1px solid $border;
+  flex-shrink: 0;
+  gap: .75rem;
+
+  &__left { flex: 1; h2 { font-size: .9375rem; font-weight: 700; color: $slate-900; margin: 0; } }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+}
+
+.sc-modal-progress-label {
+  font-size: .75rem;
+  color: $slate-400;
+  font-weight: 500;
+}
+
+.sc-modal-close {
+  width: 26px; height: 26px;
+  border: none; background: none;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  color: $slate-400;
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+  &:hover { background: $surface-2; color: $slate-700; }
+}
+
+.sc-modal-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 188px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.sc-modal-rail {
+  border-right: 1px solid $border;
+  background: $surface-0;
+  overflow-y: auto;
+  padding: .5rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-modal-rail-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .875rem;
+  font-size: .8rem;
+  font-weight: 500;
+  color: $slate-500;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  text-align: left;
+  width: 100%;
+  transition: background .1s, color .1s, border-color .1s;
+
+  &:hover { background: $surface-2; color: $slate-700; }
+
+  &--active {
+    background: $teal-50;
+    color: $teal-600;
+    border-left-color: $teal-600;
+    font-weight: 600;
+
+    .sc-rail-badge { background: $teal-600; color: #fff; }
+  }
+}
+
+.sc-rail-badge {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: $border;
+  color: $slate-400;
+  font-size: .6rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s;
+}
+
+// ─── Modal form ───────────────────────────────────────────────────────────────
+.sc-modal-form {
+  overflow-y: auto;
+  padding: 1.125rem 1.5rem;
+}
+
+.sf-section {
+  margin-bottom: 1.5rem;
+  &:last-child { margin-bottom: 0; }
+}
+
+.sf-section-label {
+  font-size: .6875rem;
+  font-weight: 700;
+  color: $teal-600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  margin-bottom: .625rem;
+  padding-bottom: .35rem;
+  border-bottom: 2px solid rgba($teal-600, .15);
+}
+
+.sf-grid {
+  display: grid;
+  gap: .625rem .875rem;
+
+  &--1 { grid-template-columns: 1fr; }
+  &--2 { grid-template-columns: repeat(2, 1fr); }
+  &--3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+.sf-field {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+
+  &--span2 { grid-column: span 2; }
+  &--span3 { grid-column: span 3; }
+
+  &--required span::after { content: ' *'; color: $red-600; }
+
+  span {
+    font-size: .6875rem;
+    font-weight: 600;
+    color: $slate-500;
+    letter-spacing: .03em;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    height: 2rem;
+    padding: 0 .625rem;
+    border: 1px solid $border-mid;
+    border-radius: $radius;
+    background: $surface-0;
+    font-size: .8125rem;
+    color: $slate-900;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+
+    &::placeholder { color: $slate-300; }
+    &:focus {
+      border-color: $teal-500;
+      box-shadow: 0 0 0 3px rgba($teal-500, .12);
+      background: #fff;
+    }
+  }
+
+  textarea {
+    height: auto;
+    padding: .5rem .625rem;
+    resize: vertical;
+    line-height: 1.45;
+  }
+}
+
+// ─── Modal footer ─────────────────────────────────────────────────────────────
+.sc-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .625rem 1.25rem;
+  border-top: 1px solid $border;
+  background: $surface-0;
+  flex-shrink: 0;
+}
+
+.sc-modal-footer-progress {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+
+  span {
+    font-size: .6875rem;
+    color: $slate-400;
+  }
+}
+
+.sc-modal-progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: $border;
+  overflow: hidden;
+
+  &__fill {
+    height: 100%;
+    border-radius: 2px;
+    background: $teal-600;
+    transition: width .25s ease;
+  }
+}

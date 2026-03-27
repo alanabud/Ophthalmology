@@ -1,0 +1,40 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">Inventory forecasting</p>
+      <h1>Implants, medications, and optical materials with shortage prevention and reorder intelligence.</h1>
+      <p class="page-subtitle">Focused on high-risk ophthalmology inventory where stockouts directly affect surgery, injections, and retail margin.</p>
+    </div>
+  </header>
+
+  <article class="panel">
+    <div class="panel__header">
+      <div><p class="panel__eyebrow">Forecast and shortages</p><h2>Inventory watchlist</h2></div>
+      <app-status-chip [label]="inventory().length + ' tracked items'" tone="critical" />
+    </div>
+    <table class="dense-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Location</th>
+          <th>On hand</th>
+          <th>Runway</th>
+          <th>Forecast</th>
+          <th>Next order</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of inventory(); track item.item) {
+          <tr>
+            <td>{{ item.item }}</td>
+            <td>{{ item.location }}</td>
+            <td>{{ item.onHand }}</td>
+            <td><app-status-chip [label]="item.daysRemaining" [tone]="item.tone" /></td>
+            <td>{{ item.forecast }}</td>
+            <td>{{ item.nextOrder }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </article>
+</section>

@@ -1,9 +1,12 @@
 <section class="workspace-page">
-  <header class="page-header">
+  <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">Compliance watchtower</p>
       <h1>Audit visibility, PHI-sensitive access review, MFA posture, and policy-aware operational controls.</h1>
       <p class="page-subtitle">This is designed to read like a real healthcare control center, not a generic security page.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New role</button>
     </div>
   </header>
 
@@ -42,8 +45,8 @@
               <td>{{ role.lastChange }}</td>
               <td class="td-actions">
                 <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                  <button class="row-action-btn" type="button">Edit</button>
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewRole(role)">View</button>
+                  <button class="row-action-btn" type="button" (click)="openEdit(role)">Edit</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
@@ -54,3 +57,55 @@
     </article>
   </section>
 </section>
+
+<!-- View modal -->
+<app-modal [open]="viewOpen()" title="Role details" (closed)="closeView()">
+  @if (selectedRole()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Role</span><strong>{{ selectedRole()!.role }}</strong></div>
+      <div class="rec-kv-row"><span>Scope</span><strong>{{ selectedRole()!.scope }}</strong></div>
+      <div class="rec-kv-row"><span>Clinics</span><strong>{{ selectedRole()!.clinics }}</strong></div>
+      <div class="rec-kv-row"><span>MFA</span><strong>{{ selectedRole()!.mfa }}</strong></div>
+      <div class="rec-kv-row"><span>Last change</span><strong>{{ selectedRole()!.lastChange }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="openEdit(selectedRole()!); closeView()">Edit role</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- Create / Edit modal -->
+<app-modal [open]="formOpen()" [title]="editingRole() ? 'Edit role' : 'New role'" (closed)="closeForm()">
+  <div class="rec-form">
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Role name *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fRole" placeholder="e.g. Billing Coordinator" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Scope</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fScope" placeholder="e.g. Clinic / Network" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Clinics</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fClinics" placeholder="e.g. All / Winter Park" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">MFA requirement</label>
+        <select class="rec-form-input" [(ngModel)]="fMfa">
+          <option value="Required">Required</option>
+          <option value="Enforced">Enforced</option>
+          <option value="Optional">Optional</option>
+          <option value="Exempt">Exempt</option>
+        </select>
+      </div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="closeForm()">Cancel</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="saveRole()" [disabled]="!fRole.trim()">
+        {{ editingRole() ? 'Save changes' : 'Create role' }}
+      </button>
+    </div>
+  </div>
+</app-modal>

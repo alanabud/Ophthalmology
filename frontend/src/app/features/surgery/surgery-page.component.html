@@ -1,9 +1,12 @@
 <section class="workspace-page">
-  <header class="page-header">
+  <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">ASC control center</p>
       <h1>Case readiness, implant assurance, staffing, and postop pipeline in one surgical command view.</h1>
       <p class="page-subtitle">This page is tuned for surgical coordinators, ASC nurses, and executives watching margin and case velocity.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New case</button>
     </div>
   </header>
 
@@ -27,7 +30,10 @@
                 <strong>{{ caseItem.patient }} • {{ caseItem.procedure }}</strong>
                 <p>{{ caseItem.surgeon }} • {{ caseItem.date }}</p>
               </div>
-              <app-status-chip [label]="caseItem.readiness" [tone]="caseItem.tone" />
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <app-status-chip [label]="caseItem.readiness" [tone]="caseItem.tone" />
+                <button class="row-action-btn row-action-btn--primary" type="button" style="margin:0;" (click)="viewCase(caseItem)">View</button>
+              </div>
             </div>
             <div class="key-value-stack">
               <div class="key-value-row"><span>Implant</span><strong>{{ caseItem.implant }}</strong></div>
@@ -51,3 +57,58 @@
     </article>
   </section>
 </section>
+
+<!-- View modal -->
+<app-modal [open]="viewOpen()" title="Surgery case details" (closed)="closeView()">
+  @if (selectedCase()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedCase()!.patient }}</strong></div>
+      <div class="rec-kv-row"><span>Procedure</span><strong>{{ selectedCase()!.procedure }}</strong></div>
+      <div class="rec-kv-row"><span>Surgeon</span><strong>{{ selectedCase()!.surgeon }}</strong></div>
+      <div class="rec-kv-row"><span>Date</span><strong>{{ selectedCase()!.date }}</strong></div>
+      <div class="rec-kv-row"><span>Readiness</span><strong>{{ selectedCase()!.readiness }}</strong></div>
+      <div class="rec-kv-row"><span>Implant</span><strong>{{ selectedCase()!.implant }}</strong></div>
+      <div class="rec-kv-row"><span>Clearance</span><strong>{{ selectedCase()!.clearance }}</strong></div>
+      <div class="rec-kv-row"><span>Risk</span><strong>{{ selectedCase()!.risk }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- New case modal -->
+<app-modal [open]="createOpen()" title="New surgery case" (closed)="closeCreate()">
+  <div class="rec-form">
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Patient *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Patient full name" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Procedure *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fProcedure" placeholder="e.g. Phacoemulsification OD" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Surgeon</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fSurgeon" placeholder="Surgeon name" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Date</label>
+        <input class="rec-form-input" type="date" [(ngModel)]="fDate" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Implant</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fImplant" placeholder="e.g. Alcon AcrySof IQ" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Risk level</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fRisk" placeholder="e.g. Low / Moderate / High" />
+      </div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="closeCreate()">Cancel</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="saveCase()" [disabled]="!fPatient.trim() || !fProcedure.trim()">Create case</button>
+    </div>
+  </div>
+</app-modal>

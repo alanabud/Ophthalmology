@@ -1,0 +1,688 @@
+<div class="sc-workspace">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       A. HEADER
+  ══════════════════════════════════════════════════════════════ -->
+  <header class="sc-header">
+    <div class="sc-header__identity">
+      <p class="sc-eyebrow">Scheduling Command</p>
+      <h1>Clinic Board</h1>
+    </div>
+    <div class="sc-header__actions">
+      <button class="sc-btn sc-btn--primary" type="button" (click)="openNewAppt()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        New appointment
+      </button>
+      <button class="sc-btn" type="button" (click)="openWalkIn()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 2a2 2 0 100-4 2 2 0 000 4zM4 6c0-1.1.9-2 2-2h2a2 2 0 012 2v5H4V6z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+        Add walk-in
+      </button>
+      <button class="sc-btn sc-btn--ai" type="button" (click)="openWaitlistFit()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 1l1.8 3.6L13 5.5l-3 2.9.7 4.1L7 10.5 3.3 12.5l.7-4.1L1 5.5l4.2-.9L7 1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+        </svg>
+        Waitlist fit
+      </button>
+      <button class="sc-btn sc-btn--ghost" type="button" (click)="openBlockTime()">Block time</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       B. CONTROL STRIP
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="sc-control-strip">
+    <div class="sc-date-nav">
+      <button class="sc-ctrl-btn" type="button" (click)="prevDay()" aria-label="Previous day">‹</button>
+      <button class="sc-today-btn" type="button" (click)="goToday()">Today</button>
+      <button class="sc-ctrl-btn" type="button" (click)="nextDay()" aria-label="Next day">›</button>
+      <input class="sc-date-input" type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
+      <span class="sc-date-label">{{ displayDate() }}</span>
+    </div>
+    <div class="sc-strip-filters">
+      <select class="sc-select" [ngModel]="filterClinic()" (ngModelChange)="filterClinic.set($event)">
+        <option value="all">All clinics</option>
+        <option>Winter Park Retina</option><option>Clermont Cataract Center</option>
+        <option>Lake Nona Glaucoma</option><option>Tampa ASC + Optical</option>
+      </select>
+      <select class="sc-select" [ngModel]="filterProvider()" (ngModelChange)="filterProvider.set($event)">
+        <option value="all">All providers</option>
+        <option>Dr. Alina Cho</option><option>Dr. Marcus Vale</option>
+        <option>Dr. Evelyn Sato</option><option>Dr. Priya Rios</option><option>Dr. Jordan Pike</option>
+      </select>
+      <select class="sc-select" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
+        <option value="all">All statuses</option>
+        <option>Scheduled</option><option>Checked in</option><option>In exam</option>
+        <option>Ready for rooming</option><option>Walk-in</option><option>Cancelled</option><option>No-show</option>
+      </select>
+      <button class="sc-filter-toggle" type="button" [class.sc-filter-toggle--active]="filterConflicts()" (click)="toggleConflicts()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M7 4v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="7" cy="10.5" r=".8" fill="currentColor"/>
+        </svg>
+        Conflicts only
+      </button>
+    </div>
+    <div class="sc-view-toggle">
+      <button class="sc-view-btn" type="button" [class.sc-view-btn--active]="activeView() === 'lane'" (click)="setView('lane')">Lane</button>
+      <button class="sc-view-btn" type="button" [class.sc-view-btn--active]="activeView() === 'day'"  (click)="setView('day')">Day</button>
+      <button class="sc-view-btn" type="button" [class.sc-view-btn--active]="activeView() === 'week'" (click)="setView('week')">Week</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       C. KPI STRIP
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="sc-kpi-strip">
+    @for (stat of kpiStats(); track stat.label) {
+      <div class="sc-kpi sc-kpi--{{ stat.tone }}">
+        <strong>{{ stat.value }}</strong>
+        <span>{{ stat.label }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       D. MAIN BODY: BOARD + SIDEBAR
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="sc-main-body">
+
+    <!-- ── Lane board ───────────────────────────────────────── -->
+    <div class="sc-board-wrap">
+      <div class="sc-lane-board">
+
+        @for (lane of scheduleLanes(); track lane.provider) {
+          <div class="sc-lane">
+
+            <!-- Lane header -->
+            <div class="sc-lane-header">
+              <div class="sc-lane-avatar">{{ lane.provider.split(' ').pop()![0] }}</div>
+
+              <div class="sc-lane-header__info">
+                <div class="sc-lane-header__name-row">
+                  <strong>{{ lane.provider }}</strong>
+                </div>
+                <div class="sc-lane-header__sub">
+                  {{ lane.specialty }}
+                  @if (lane.tech) {
+                    <span class="sc-tech-label">· Tech: {{ lane.tech }}</span>
+                  }
+                </div>
+
+                <!-- Signal chips -->
+                <div class="sc-lane-signals">
+                  <!-- On-time / behind -->
+                  <span
+                    class="sc-signal-chip"
+                    [class.sc-signal-chip--ok]="!lane.lag.toLowerCase().includes('behind') && !lane.lag.toLowerCase().includes('lag') && !lane.lag.toLowerCase().includes('+')"
+                    [class.sc-signal-chip--warn]="lane.lag.toLowerCase().includes('behind') || lane.lag.toLowerCase().includes('lag') || lane.lag.toLowerCase().includes('+')"
+                  >
+                    @if (!lane.lag.toLowerCase().includes('behind') && !lane.lag.toLowerCase().includes('lag') && !lane.lag.toLowerCase().includes('+')) {
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 5l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    } @else {
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 2v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    }
+                    {{ lane.lag }}
+                  </span>
+
+                  <!-- Utilization -->
+                  <span class="sc-signal-chip sc-signal-chip--util">
+                    <span class="sc-util-mini">
+                      <span class="sc-util-mini__fill" [style.width]="lane.utilization"></span>
+                    </span>
+                    {{ lane.utilization }}
+                  </span>
+
+                  <!-- Open slots -->
+                  @if (lane.openSlotCount) {
+                    <span class="sc-signal-chip sc-signal-chip--open">
+                      <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                      {{ lane.openSlotCount }} open
+                    </span>
+                  }
+
+                  <!-- Risk count -->
+                  @if (lane.riskCount) {
+                    <span class="sc-signal-chip sc-signal-chip--risk">
+                      <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5L9 8.5H1L5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5 4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                      {{ lane.riskCount }} risk
+                    </span>
+                  }
+
+                  <!-- Waitlist fit opportunities -->
+                  @if (lane.waitlistFitCount) {
+                    <span class="sc-signal-chip sc-signal-chip--fit">
+                      <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1l1.2 2.6 2.8.4-2 2 .5 2.8L5 7.4 2.5 8.8l.5-2.8-2-2 2.8-.4L5 1z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+                      {{ lane.waitlistFitCount }} fit
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <div class="sc-lane-header__actions">
+                <button class="sc-lane-btn" type="button" (click)="openNewAppt(lane.provider)">+ Appt</button>
+                <button class="sc-lane-btn sc-lane-btn--ghost" type="button" (click)="openBlockTime(lane.provider)">Block</button>
+              </div>
+            </div><!-- /lane-header -->
+
+            <!-- Lane body: time grid + appointments -->
+            <div class="sc-lane-body" [style.min-height.px]="laneBodyHeight">
+
+              <!-- Background: time grid lines -->
+              <div class="sc-time-grid" aria-hidden="true">
+                @for (tick of halfHourTicks; track tick.top) {
+                  <div class="sc-tick" [class.sc-tick--hour]="tick.isHour" [style.top.px]="tick.top">
+                    <span class="sc-tick-label">{{ tick.label }}</span>
+                  </div>
+                }
+                @if (nowLineTop() !== null) {
+                  <div class="sc-now-line" [style.top.px]="nowLineTop()!">
+                    <span class="sc-now-label">Now</span>
+                  </div>
+                }
+              </div>
+
+              <!-- Foreground: appointment blocks -->
+              <div class="sc-appt-col">
+                @for (block of lane.blocks; track block.time + block.patient; let i = $index) {
+                  <div
+                    class="sc-appt-block sc-appt-block--cat-{{ block.category ?? 'standard' }}"
+                    [class.sc-appt-block--critical]="block.tone === 'critical'"
+                    [class.sc-appt-block--warning]="block.tone === 'warning'"
+                    [class.sc-appt-block--success]="block.tone === 'success'"
+                    [class.sc-appt-block--accent]="block.tone === 'accent'"
+                    [class.sc-appt-block--info]="block.tone === 'info'"
+                    [style.margin-top.px]="blockMarginTop(lane.blocks, i)"
+                  >
+                    <!-- Drag handle -->
+                    <div class="sc-drag-handle" aria-hidden="true" title="Drag to reschedule">
+                      <svg width="7" height="10" viewBox="0 0 7 10" fill="currentColor">
+                        <circle cx="2" cy="1.5" r="1.1"/><circle cx="5" cy="1.5" r="1.1"/>
+                        <circle cx="2" cy="5"   r="1.1"/><circle cx="5" cy="5"   r="1.1"/>
+                        <circle cx="2" cy="8.5" r="1.1"/><circle cx="5" cy="8.5" r="1.1"/>
+                      </svg>
+                    </div>
+
+                    <!-- Time stamp -->
+                    <div class="sc-appt-block__time">{{ block.time }}</div>
+
+                    <!-- Main content -->
+                    <div class="sc-appt-block__main">
+                      <!-- Row 1: patient + status + duration -->
+                      <div class="sc-appt-block__row1">
+                        <strong class="sc-appt-block__patient">{{ block.patient }}</strong>
+                        <app-status-chip [label]="block.status" [tone]="block.tone" />
+                        <span class="sc-appt-block__dur">{{ block.duration }}</span>
+                      </div>
+
+                      <!-- Row 2: category badge + visit type -->
+                      <div class="sc-appt-block__type-row">
+                        @if (categoryLabel(block.category)) {
+                          <span class="sc-cat-badge sc-cat-badge--{{ block.category }}">{{ categoryLabel(block.category) }}</span>
+                        }
+                        <span class="sc-appt-block__detail">{{ block.visitType }}</span>
+                      </div>
+
+                      <!-- Row 3: room + payer + flags -->
+                      <div class="sc-appt-block__meta">
+                        <span class="sc-meta-chip sc-meta-chip--room">
+                          <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                            <rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                            <path d="M1 4h8" stroke="currentColor" stroke-width="1.2"/>
+                          </svg>
+                          {{ block.lane }}
+                        </span>
+                        @if (block.payer) {
+                          <span class="sc-meta-chip">{{ block.payer }}</span>
+                        }
+                        @if (block.authFlag === 'pending') {
+                          <span class="sc-meta-chip sc-meta-chip--warn">
+                            <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1.5L9 8.5H1L5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5 4v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                            Auth pending
+                          </span>
+                        }
+                        @if (block.riskFlag) {
+                          <span class="sc-meta-chip sc-meta-chip--risk">{{ block.riskFlag }}</span>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Hover-reveal actions -->
+                    <div class="sc-appt-block__actions">
+                      <button class="sc-appt-action" type="button" title="Check in">✓</button>
+                      <button class="sc-appt-action" type="button" title="Reschedule">
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <path d="M2 6a4 4 0 004 4 4 4 0 004-4 4 4 0 00-4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                          <path d="M6 2V1M6 2l-1.5 1.5M6 2l1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </button>
+                      <button class="sc-appt-action" type="button" title="Edit">
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <path d="M8.5 1.5l2 2-7 7H1.5v-2l7-7z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                        </svg>
+                      </button>
+                      <button class="sc-appt-action" type="button" title="More actions">⋯</button>
+                    </div>
+                  </div>
+                }
+
+                <!-- Open slots: time-specific with Fit option -->
+                @if (lane.openSlotTimes?.length) {
+                  <div class="sc-open-slots" [style.margin-top.px]="openSlotsMargin(lane)">
+                    <p class="sc-open-slots__label">Open capacity</p>
+                    <div class="sc-open-slots__list">
+                      @for (slotTime of lane.openSlotTimes; track slotTime) {
+                        <div class="sc-open-slot-row">
+                          <button class="sc-open-slot" type="button" (click)="openNewAppt(lane.provider)">
+                            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                              <path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            {{ slotTime }}
+                          </button>
+                          <button class="sc-slot-fit-btn" type="button" (click)="openWaitlistFit()" title="Fit a waitlist patient to this slot">
+                            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                              <path d="M5 1l1.2 2.6 2.8.4-2 2 .5 2.8L5 7.4 2.5 8.8l.5-2.8-2-2 2.8-.4L5 1z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+                            </svg>
+                            Fit
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+              </div><!-- /sc-appt-col -->
+
+            </div><!-- /sc-lane-body -->
+
+          </div><!-- /sc-lane -->
+        }
+
+      </div><!-- /sc-lane-board -->
+    </div><!-- /sc-board-wrap -->
+
+    <!-- ── Right sidebar: 3 grouped sections ──────────────── -->
+    <aside class="sc-sidebar">
+
+      <!-- 1. Waitlist opportunities -->
+      <div class="sc-sidebar-section">
+        <div class="sc-sidebar-header">
+          <div>
+            <p class="sc-sidebar-eyebrow">Waitlist</p>
+            <strong>Best-fit openings</strong>
+          </div>
+          <button class="sc-btn sc-btn--ai sc-btn--sm" type="button" (click)="openWaitlistFit()">Fit all</button>
+        </div>
+
+        @for (entry of waitlist(); track entry.patient) {
+          <div class="sc-waitlist-item">
+            <div class="sc-waitlist-item__patient">
+              <strong>{{ entry.patient }}</strong>
+              <span>{{ entry.request }}</span>
+              <span class="sc-waitlist-item__window">{{ entry.preferredWindow }}</span>
+            </div>
+            <div class="sc-waitlist-item__right">
+              <app-status-chip [label]="entry.fitScore" [tone]="entry.tone" />
+              <button class="sc-inline-btn" type="button" (click)="openWaitlistFit()">Fit</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- 2. Schedule optimization -->
+      <div class="sc-sidebar-section">
+        <div class="sc-sidebar-header">
+          <div>
+            <p class="sc-sidebar-eyebrow">AI optimization</p>
+            <strong>Recommendations</strong>
+          </div>
+        </div>
+
+        @for (insight of aiInsights(); track insight.id) {
+          <div class="sc-ai-card sc-ai-card--{{ insight.tone }}">
+            <div class="sc-ai-card__head">
+              <strong>{{ insight.title }}</strong>
+              <app-status-chip [label]="insight.confidence" [tone]="insight.tone" />
+            </div>
+            <p>{{ insight.recommendation }}</p>
+            <button class="sc-inline-btn" type="button">Apply</button>
+          </div>
+        }
+      </div>
+
+      <!-- 3. Conflicts & risks -->
+      <div class="sc-sidebar-section sc-sidebar-section--conflicts">
+        <div class="sc-sidebar-header">
+          <div>
+            <p class="sc-sidebar-eyebrow">Live conflicts</p>
+            <strong>Risks &amp; blockers</strong>
+          </div>
+          <span class="sc-conflict-count">{{ scheduleConflicts().length }}</span>
+        </div>
+
+        @for (conflict of scheduleConflicts(); track conflict.id) {
+          <div class="sc-conflict-item sc-conflict-item--{{ conflict.tone }}">
+            <div class="sc-conflict-item__body">
+              <strong>{{ conflict.label }}</strong>
+              <span>{{ conflict.detail }}</span>
+            </div>
+            <button class="sc-conflict-action" type="button">{{ conflict.action }}</button>
+          </div>
+        }
+      </div>
+
+    </aside>
+
+  </div><!-- /sc-main-body -->
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       E. NEW APPOINTMENT MODAL
+  ══════════════════════════════════════════════════════════════ -->
+  @if (showNewApptModal()) {
+    <div class="sc-modal-backdrop" (click)="closeModal()">
+      <div class="sc-modal" (click)="stopProp($event)" role="dialog" aria-modal="true">
+
+        <div class="sc-modal-header">
+          <div class="sc-modal-header__left">
+            <p class="sc-eyebrow">Scheduling</p>
+            <h2>{{ apptModalTitle() }}</h2>
+          </div>
+          <div class="sc-modal-header__right">
+            <span class="sc-modal-progress-label">{{ apptSectionIndex() + 1 }} / {{ apptSections.length }}</span>
+            <button class="sc-modal-close" type="button" (click)="closeModal()" aria-label="Close">✕</button>
+          </div>
+        </div>
+
+        <div class="sc-modal-body">
+          <nav class="sc-modal-rail">
+            @for (sec of apptSections; track sec.id) {
+              <button
+                class="sc-modal-rail-item"
+                type="button"
+                [class.sc-modal-rail-item--active]="apptModalSection() === sec.id"
+                (click)="setApptSection(sec.id)"
+              >
+                <span class="sc-rail-badge">{{ sec.badge }}</span>
+                <span>{{ sec.label }}</span>
+              </button>
+            }
+          </nav>
+
+          <div class="sc-modal-form">
+            @switch (apptModalSection()) {
+
+              @case ('patient') {
+                <div class="sf-section">
+                  <p class="sf-section-label">Patient lookup</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field sf-field--required sf-field--span2">
+                      <span>Patient name or MRN search</span>
+                      <input type="search" [(ngModel)]="form.patientSearch" placeholder="Search by name, MRN, DOB…" name="patientSearch" />
+                    </label>
+                    <label class="sf-field"><span>MRN (if known)</span>
+                      <input type="text" [(ngModel)]="form.patientMrn" placeholder="WP-000000" name="patientMrn" />
+                    </label>
+                    <label class="sf-field"><span>New or existing patient</span>
+                      <select [(ngModel)]="form.isNewPatient" name="isNewPatient">
+                        <option>Existing</option><option>New patient</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="sf-section">
+                  <p class="sf-section-label">Visit type</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field sf-field--required"><span>Visit type</span>
+                      <select [(ngModel)]="form.visitType" name="visitType">
+                        <option value="">Select visit type</option>
+                        <option>New patient exam</option><option>Established patient exam</option>
+                        <option>Cataract consult</option><option>Retina consult</option>
+                        <option>Glaucoma evaluation</option><option>Post-op visit</option>
+                        <option>Injection visit</option><option>Optical pickup</option>
+                        <option>Urgent / walk-in</option><option>Telehealth</option>
+                        <option>Block — provider unavailable</option><option>Block — lunch / admin</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>New or established</span>
+                      <select [(ngModel)]="form.newEstablished" name="newEstablished">
+                        <option>Established</option><option>New</option>
+                      </select>
+                    </label>
+                    <label class="sf-field sf-field--span2"><span>Visit reason / chief complaint</span>
+                      <input type="text" [(ngModel)]="form.visitReason" placeholder="Chief complaint or brief reason…" name="visitReason" />
+                    </label>
+                    <label class="sf-field"><span>Priority</span>
+                      <select [(ngModel)]="form.priority" name="priority">
+                        <option>Normal</option><option>High</option><option>Urgent</option><option>Routine</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Waitlist candidate</span>
+                      <select [(ngModel)]="form.waitlistCandidate" name="waitlistCandidate">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              @case ('provider') {
+                <div class="sf-section">
+                  <p class="sf-section-label">Provider assignment</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field sf-field--required"><span>Provider</span>
+                      <select [(ngModel)]="form.provider" name="provider">
+                        <option value="">Select provider</option>
+                        <option>Dr. Alina Cho</option><option>Dr. Marcus Vale</option>
+                        <option>Dr. Evelyn Sato</option><option>Dr. Priya Rios</option><option>Dr. Jordan Pike</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Specialty</span>
+                      <select [(ngModel)]="form.specialty" name="specialty">
+                        <option value="">Select</option>
+                        <option>General ophthalmology</option><option>Retina</option>
+                        <option>Cataract / Cornea</option><option>Glaucoma</option>
+                        <option>ASC / Surgery</option><option>Optical</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="sf-section">
+                  <p class="sf-section-label">Location &amp; resource</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field sf-field--required"><span>Clinic</span>
+                      <select [(ngModel)]="form.clinic" name="clinic">
+                        <option value="">Select clinic</option>
+                        <option>Winter Park Retina</option><option>Clermont Cataract Center</option>
+                        <option>Lake Nona Glaucoma Institute</option><option>Tampa ASC + Optical</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Room / lane</span>
+                      <select [(ngModel)]="form.room" name="room">
+                        <option value="">Auto-assign</option>
+                        <option>Retina 1</option><option>Retina 2</option><option>Retina 3</option>
+                        <option>Cataract 1</option><option>Cataract 2</option>
+                        <option>Glaucoma 1</option><option>Exam 1</option><option>Exam 2</option>
+                        <option>ASC OR-1</option><option>ASC OR-2</option><option>Telehealth</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              @case ('datetime') {
+                <div class="sf-section">
+                  <p class="sf-section-label">Appointment time</p>
+                  <div class="sf-grid sf-grid--3">
+                    <label class="sf-field sf-field--required"><span>Date</span>
+                      <input type="date" [(ngModel)]="form.apptDate" name="apptDate" />
+                    </label>
+                    <label class="sf-field sf-field--required"><span>Start time</span>
+                      <input type="time" [(ngModel)]="form.startTime" name="startTime" />
+                    </label>
+                    <label class="sf-field"><span>End time</span>
+                      <input type="time" [(ngModel)]="form.endTime" name="endTime" />
+                    </label>
+                    <label class="sf-field"><span>Duration (min)</span>
+                      <select [(ngModel)]="form.duration" name="duration">
+                        <option>15</option><option>20</option><option>30</option>
+                        <option>45</option><option>60</option><option>90</option><option>120</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="sf-section">
+                  <p class="sf-section-label">Scheduling rules</p>
+                  <div class="sf-grid sf-grid--3">
+                    <label class="sf-field"><span>Overbook</span>
+                      <select [(ngModel)]="form.overbook" name="overbook">
+                        <option>No</option><option>Yes — with warning</option><option>Yes — pre-approved</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Conflict override</span>
+                      <select [(ngModel)]="form.conflictOverride" name="conflictOverride">
+                        <option>No</option><option>Yes — supervisor approved</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Status</span>
+                      <select [(ngModel)]="form.status" name="status">
+                        <option>Scheduled</option><option>Walk-in</option><option>Waitlist</option>
+                        <option>Blocked</option><option>Tentative</option><option>Cancelled</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Source</span>
+                      <select [(ngModel)]="form.source" name="source">
+                        <option>Front desk</option><option>Phone</option><option>Online portal</option>
+                        <option>Waitlist fit</option><option>AI suggestion</option><option>Provider direct</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Confirmation state</span>
+                      <select [(ngModel)]="form.confirmationState" name="confirmationState">
+                        <option>Unconfirmed</option><option>Confirmed — patient called</option>
+                        <option>Confirmed — SMS</option><option>Confirmed — portal</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              @case ('insurance') {
+                <div class="sf-section">
+                  <p class="sf-section-label">Coverage</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field sf-field--span2"><span>Insurance / payer</span>
+                      <input type="text" [(ngModel)]="form.insurance" placeholder="Medicare, BCBS, Aetna, Self-pay…" name="insurance" />
+                    </label>
+                    <label class="sf-field"><span>Copay expected</span>
+                      <input type="text" [(ngModel)]="form.copayExpected" placeholder="$20.00" name="copayExpected" />
+                    </label>
+                    <label class="sf-field"><span>Prior auth required</span>
+                      <select [(ngModel)]="form.priorAuthRequired" name="priorAuthRequired">
+                        <option>No</option><option>Yes — approved</option>
+                        <option>Yes — pending</option><option>Per procedure</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Prior auth number</span>
+                      <input type="text" [(ngModel)]="form.priorAuthNumber" placeholder="Auth #" name="priorAuthNumber" />
+                    </label>
+                    <label class="sf-field"><span>Referral required</span>
+                      <select [(ngModel)]="form.referralRequired" name="referralRequired">
+                        <option>No</option><option>Yes — on file</option><option>Yes — pending</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              @case ('arrival') {
+                <div class="sf-section">
+                  <p class="sf-section-label">Arrival logistics</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field"><span>Interpreter needed</span>
+                      <select [(ngModel)]="form.interpreterNeeded" name="interpreterNeeded">
+                        <option>No</option><option>Yes — Spanish</option>
+                        <option>Yes — Haitian Creole</option><option>Yes — other</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Transportation issue</span>
+                      <select [(ngModel)]="form.transportationIssue" name="transportationIssue">
+                        <option>No</option><option>Yes — needs assistance</option>
+                        <option>Monitor — past no-show</option>
+                      </select>
+                    </label>
+                    <label class="sf-field sf-field--span2"><span>Arrival / front desk notes</span>
+                      <textarea [(ngModel)]="form.arrivalNotes" placeholder="Check-in instructions, dilation timing…" name="arrivalNotes" rows="3"></textarea>
+                    </label>
+                    <label class="sf-field sf-field--span2"><span>Clinical prep notes</span>
+                      <textarea [(ngModel)]="form.clinicalPrepNotes" placeholder="Pre-visit prep, pre-testing order, imaging required…" name="clinicalPrepNotes" rows="3"></textarea>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              @case ('reminders') {
+                <div class="sf-section">
+                  <p class="sf-section-label">Patient reminders</p>
+                  <div class="sf-grid sf-grid--2">
+                    <label class="sf-field"><span>Primary reminder method</span>
+                      <select [(ngModel)]="form.reminderPreference" name="reminderPreference">
+                        <option>SMS</option><option>Email</option>
+                        <option>Phone call</option><option>Portal</option><option>No reminder</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>SMS reminder</span>
+                      <select [(ngModel)]="form.reminderSms" name="reminderSms">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Email reminder</span>
+                      <select [(ngModel)]="form.reminderEmail" name="reminderEmail">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="sf-field"><span>Phone call reminder</span>
+                      <select [(ngModel)]="form.reminderCall" name="reminderCall">
+                        <option>No</option><option>Yes — 1 day before</option><option>Yes — 2 days before</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="sf-section">
+                  <p class="sf-section-label">Scheduler notes</p>
+                  <div class="sf-grid sf-grid--1">
+                    <label class="sf-field"><span>Internal scheduler notes</span>
+                      <textarea [(ngModel)]="form.schedulerNotes" placeholder="Notes for front desk, schedulers, or care team — not visible to patient…" name="schedulerNotes" rows="4"></textarea>
+                    </label>
+                  </div>
+                </div>
+              }
+
+            }
+          </div><!-- /sc-modal-form -->
+        </div><!-- /sc-modal-body -->
+
+        <div class="sc-modal-footer">
+          <button class="sc-btn" type="button" [disabled]="apptSectionIndex() === 0" (click)="prevSection()">← Back</button>
+          <div class="sc-modal-footer-progress">
+            <div class="sc-modal-progress-bar">
+              <div class="sc-modal-progress-bar__fill" [style.width.%]="((apptSectionIndex() + 1) / apptSections.length) * 100"></div>
+            </div>
+            <span>{{ apptSectionIndex() + 1 }} / {{ apptSections.length }} · {{ apptSections[apptSectionIndex()].label }}</span>
+          </div>
+          @if (apptSectionIndex() < apptSections.length - 1) {
+            <button class="sc-btn sc-btn--primary" type="button" (click)="nextSection()">Next →</button>
+          } @else {
+            <button class="sc-btn sc-btn--primary" type="button" (click)="submitAppt()">Schedule appointment</button>
+          }
+          <button class="sc-btn sc-btn--ghost" type="button" (click)="closeModal()">Cancel</button>
+        </div>
+
+      </div><!-- /sc-modal -->
+    </div><!-- /sc-modal-backdrop -->
+  }
+
+</div><!-- /sc-workspace -->

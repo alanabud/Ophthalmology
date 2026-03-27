@@ -1,0 +1,1657 @@
+<div class="po-workspace">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       A. HEADER
+  ════════════════════════════════════════════════════════════════ -->
+  <header class="po-header">
+    <div class="po-header__identity">
+      <p class="po-eyebrow">Patient Operations</p>
+      <h1>Patient Intelligence Workspace</h1>
+    </div>
+    <div class="po-header__toolbar">
+      <label class="po-search">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input
+          type="search"
+          [ngModel]="query()"
+          (ngModelChange)="setQuery($event)"
+          placeholder="Search patient, MRN, status, insurance, risk flag…"
+        />
+      </label>
+      <button class="po-btn po-btn--primary" type="button" (click)="openNewPatient()">
+        + New patient
+      </button>
+      <button class="po-btn" type="button">
+        Pre-visit briefing
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       B. KPI STRIP
+  ════════════════════════════════════════════════════════════════ -->
+  <div class="po-kpi-strip">
+    @for (stat of kpiStats(); track stat.label) {
+      <div class="po-kpi" [class]="'po-kpi po-kpi--' + stat.tone">
+        <div class="po-kpi__value">{{ stat.value }}</div>
+        <div class="po-kpi__label">{{ stat.label }}</div>
+        <div class="po-kpi__sub">{{ stat.sub }}</div>
+      </div>
+    }
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       C + D. MASTER-DETAIL BODY
+  ════════════════════════════════════════════════════════════════ -->
+  <div class="po-body">
+
+    <!-- C. PATIENT ROSTER -->
+    <section class="po-roster">
+      <div class="po-roster-toolbar">
+        <span class="po-roster-count">{{ filteredPatients().length }} patients</span>
+        <div class="po-roster-filters">
+          <select class="po-select">
+            <option>All statuses</option>
+            <option>Arrived</option>
+            <option>In exam</option>
+            <option>Imaging queue</option>
+            <option>Surgery ready</option>
+            <option>Pre-op hold</option>
+            <option>Follow-up overdue</option>
+          </select>
+          <select class="po-select">
+            <option>All providers</option>
+            <option>Dr. Cho</option>
+            <option>Dr. Vale</option>
+            <option>Dr. Sato</option>
+            <option>Dr. Rios</option>
+            <option>Dr. Pike</option>
+          </select>
+          <select class="po-select">
+            <option>All clinics</option>
+            <option>Winter Park Retina</option>
+            <option>Clermont Cataract Center</option>
+            <option>Lake Nona Glaucoma</option>
+            <option>Tampa ASC + Optical</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="po-roster-table-wrap">
+        <table class="po-table">
+          <colgroup>
+            <col class="col-patient">
+            <col class="col-status">
+            <col class="col-visit">
+            <col class="col-provider">
+            <col class="col-balance">
+            <col class="col-chart">
+            <col class="col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="col-patient">Patient</th>
+              <th class="col-status">Status</th>
+              <th class="col-visit">Next visit</th>
+              <th class="col-provider">Provider</th>
+              <th class="col-balance">Balance</th>
+              <th class="col-chart">Readiness</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of filteredPatients(); track trackById($index, p)) {
+              <tr
+                class="po-row"
+                [class.po-row--selected]="selectedId() === p.id"
+                [class.po-row--balance]="p.balance !== '$0.00'"
+                [class.po-row--overdue]="p.status.toLowerCase().includes('overdue') || p.status.toLowerCase().includes('recall')"
+                [class.po-row--risk]="p.aiFlag.toLowerCase().includes('high') || p.aiFlag.toLowerCase().includes('critical') || p.aiFlag.toLowerCase().includes('risk')"
+                (click)="selectPatient(p.id)"
+              >
+                <td class="col-patient">
+                  <div class="po-patient-cell">
+                    <div class="po-patient-avatar">{{ p.fullName[0] }}</div>
+                    <div class="po-patient-meta">
+                      <strong>{{ p.fullName }}</strong>
+                      <span>{{ p.mrn }} · DOB {{ p.dob }}</span>
+                      @if (p.aiFlag && p.aiFlag !== 'None' && p.aiFlag !== '—') {
+                        <span class="po-ai-badge">{{ p.aiFlag }}</span>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td class="col-status">
+                  <app-status-chip [label]="p.status" [tone]="p.statusTone" />
+                </td>
+                <td class="col-visit">
+                  <span class="po-cell-primary">{{ p.nextVisit }}</span>
+                </td>
+                <td class="col-provider">
+                  <span class="po-cell-secondary">{{ p.insurance }}</span>
+                </td>
+                <td class="col-balance">
+                  <span class="po-balance" [class.po-balance--due]="p.balance !== '$0.00'">{{ p.balance }}</span>
+                </td>
+                <td class="col-chart">
+                  <div class="po-readiness-cell">
+                    <div class="po-chart-bar">
+                      <div class="po-chart-bar__fill" [style.width]="p.chartCompleteness"></div>
+                    </div>
+                    <span class="po-readiness-pct">{{ p.chartCompleteness }}</span>
+                  </div>
+                </td>
+                <td class="col-actions" (click)="stopProp($event)">
+                  <button class="po-row-action po-row-action--menu" type="button" title="Row actions" aria-label="Row actions">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3"  r="1.5"/>
+                      <circle cx="8" cy="8"  r="1.5"/>
+                      <circle cx="8" cy="13" r="1.5"/>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- D. SELECTED PATIENT DETAIL PANE -->
+    <aside class="po-detail">
+      @if (selectedPatient(); as patient) {
+        <div class="po-detail-patient-header">
+          <div class="po-detail-avatar">{{ patient.fullName[0] }}</div>
+          <div class="po-detail-patient-name">
+            <strong>{{ patient.fullName }}</strong>
+            <span>MRN {{ patient.mrn }} · DOB {{ patient.dob }}</span>
+            <span class="po-detail-payer">{{ patient.insurance }}</span>
+          </div>
+          <div class="po-detail-header-right">
+            <app-status-chip [label]="patient.status" [tone]="patient.statusTone" />
+            @if (patient.balance !== '$0.00') {
+              <span class="po-detail-balance-badge">{{ patient.balance }}</span>
+            }
+          </div>
+        </div>
+
+        <!-- Quick action bar -->
+        <div class="po-quick-actions">
+          <button class="po-qa-btn po-qa-btn--primary" type="button">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2 13V5l6-3 6 3v8"/><rect x="5" y="8" width="2.5" height="5"/><rect x="8.5" y="6" width="3" height="3" rx=".5"/></svg>
+            Open chart
+          </button>
+          <button class="po-qa-btn" type="button">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 3V2m6 1V2M2 7h12"/></svg>
+            Schedule
+          </button>
+          <button class="po-qa-btn" type="button">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/></svg>
+            Encounter
+          </button>
+          <button class="po-qa-btn" type="button">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5"/></svg>
+            Collect
+          </button>
+          <button class="po-qa-btn" type="button">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M12 4L6 10M6 4h6v6"/></svg>
+            Briefing
+          </button>
+        </div>
+
+        <nav class="po-detail-tabs">
+          @for (tab of detailTabs; track tab.id) {
+            <button
+              class="po-detail-tab"
+              type="button"
+              [class.po-detail-tab--active]="detailTab() === tab.id"
+              (click)="setDetailTab(tab.id)"
+            >{{ tab.label }}</button>
+          }
+        </nav>
+
+        <div class="po-detail-body">
+
+          @switch (detailTab()) {
+
+            @case ('overview') {
+              <!-- Appointment & balance summary -->
+              <div class="pd-summary-row">
+                <div class="pd-summary-card">
+                  <span class="pd-summary-card__label">Next visit</span>
+                  <strong class="pd-summary-card__value">{{ patient.nextVisit }}</strong>
+                </div>
+                <div class="pd-summary-card">
+                  <span class="pd-summary-card__label">Last encounter</span>
+                  <strong class="pd-summary-card__value">{{ patient.lastEncounter }}</strong>
+                </div>
+                <div class="pd-summary-card" [class.pd-summary-card--alert]="patient.balance !== '$0.00'">
+                  <span class="pd-summary-card__label">Balance due</span>
+                  <strong class="pd-summary-card__value">{{ patient.balance }}</strong>
+                </div>
+              </div>
+
+              <!-- Clinical readiness checklist -->
+              <div class="pd-section">
+                <p class="pd-section-label">Clinical readiness</p>
+                <div class="pd-checklist">
+                  <div class="pd-check" [class.pd-check--ok]="patient.chartCompleteness === '100%'" [class.pd-check--warn]="patient.chartCompleteness !== '100%'">
+                    <span class="pd-check__icon">{{ patient.chartCompleteness === '100%' ? '✓' : '!' }}</span>
+                    <span class="pd-check__label">Chart — {{ patient.chartCompleteness }} complete</span>
+                  </div>
+                  <div class="pd-check" [class.pd-check--ok]="patient.imageStatus === 'Complete'" [class.pd-check--warn]="patient.imageStatus !== 'Complete'">
+                    <span class="pd-check__icon">{{ patient.imageStatus === 'Complete' ? '✓' : '○' }}</span>
+                    <span class="pd-check__label">Imaging — {{ patient.imageStatus }}</span>
+                  </div>
+                  <div class="pd-check pd-check--ok">
+                    <span class="pd-check__icon">✓</span>
+                    <span class="pd-check__label">Insurance verified — {{ patient.insurance }}</span>
+                  </div>
+                  <div class="pd-check" [class.pd-check--warn]="patient.balance !== '$0.00'" [class.pd-check--ok]="patient.balance === '$0.00'">
+                    <span class="pd-check__icon">{{ patient.balance === '$0.00' ? '✓' : '!' }}</span>
+                    <span class="pd-check__label">Balance {{ patient.balance === '$0.00' ? 'clear' : 'outstanding: ' + patient.balance }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Care gaps & AI signal -->
+              @if (patient.careGap) {
+                <div class="pd-section">
+                  <p class="pd-section-label">Care gaps &amp; risk</p>
+                  <div class="pd-alert pd-alert--warning">
+                    <strong>Care gap</strong>
+                    <p>{{ patient.careGap }}</p>
+                  </div>
+                  @if (patient.aiFlag && patient.aiFlag !== 'None') {
+                    <div class="pd-alert pd-alert--accent">
+                      <strong>AI signal</strong>
+                      <p>{{ patient.aiFlag }}</p>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Open tasks -->
+              <div class="pd-section">
+                <p class="pd-section-label">Open tasks</p>
+                <div class="pd-task-list">
+                  <div class="pd-task">
+                    <span class="pd-task__dot pd-task__dot--warning"></span>
+                    <span class="pd-task__text">Confirm next appointment</span>
+                  </div>
+                  <div class="pd-task">
+                    <span class="pd-task__dot pd-task__dot--neutral"></span>
+                    <span class="pd-task__text">Review recall eligibility</span>
+                  </div>
+                  <div class="pd-task">
+                    <span class="pd-task__dot pd-task__dot--neutral"></span>
+                    <span class="pd-task__text">Close chart documentation</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @case ('demographics') {
+              <div class="pd-section">
+                <p class="pd-section-label">Identity</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv pd-kv--full"><span>Full name</span><strong>{{ patient.fullName }}</strong></div>
+                  <div class="pd-kv"><span>MRN</span><strong>{{ patient.mrn }}</strong></div>
+                  <div class="pd-kv"><span>Date of birth</span><strong>{{ patient.dob }}</strong></div>
+                  <div class="pd-kv"><span>Last encounter</span><strong>{{ patient.lastEncounter }}</strong></div>
+                </div>
+              </div>
+              <div class="pd-section">
+                <p class="pd-section-label">Contact</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv"><span>Mobile</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Email</span><strong>—</strong></div>
+                  <div class="pd-kv pd-kv--full"><span>Address</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Emergency contact</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Language</span><strong>English</strong></div>
+                </div>
+              </div>
+            }
+
+            @case ('insurance') {
+              <div class="pd-section">
+                <p class="pd-section-label">Primary insurance</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv pd-kv--full"><span>Payer</span><strong>{{ patient.insurance }}</strong></div>
+                  <div class="pd-kv"><span>Member ID</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Group</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Copay</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Deductible</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Effective</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Terminates</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Prior auth</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Referral req.</span><strong>—</strong></div>
+                </div>
+              </div>
+              <div class="pd-section">
+                <p class="pd-section-label">Secondary / Tertiary</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv pd-kv--full"><span>Secondary payer</span><strong>—</strong></div>
+                  <div class="pd-kv pd-kv--full"><span>Tertiary payer</span><strong>—</strong></div>
+                </div>
+              </div>
+              <div class="pd-section">
+                <p class="pd-section-label">Guarantor</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv"><span>Name</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Financial class</span><strong>—</strong></div>
+                </div>
+              </div>
+            }
+
+            @case ('financial') {
+              <div class="pd-section">
+                <p class="pd-section-label">Account balance</p>
+                <div class="pd-balance-hero">
+                  <span class="pd-balance-amount" [class.pd-balance-amount--due]="patient.balance !== '$0.00'">
+                    {{ patient.balance }}
+                  </span>
+                  <span class="pd-balance-label">outstanding</span>
+                </div>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv"><span>Aging bucket</span><strong>Current</strong></div>
+                  <div class="pd-kv"><span>Collections</span><strong>None</strong></div>
+                  <div class="pd-kv"><span>Payment plan</span><strong>No</strong></div>
+                  <div class="pd-kv"><span>Credit hold</span><strong>No</strong></div>
+                  <div class="pd-kv"><span>Deposit req.</span><strong>No</strong></div>
+                  <div class="pd-kv"><span>Financial assist.</span><strong>No</strong></div>
+                </div>
+              </div>
+            }
+
+            @case ('clinical') {
+              <div class="pd-section">
+                <p class="pd-section-label">Clinical readiness</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv pd-kv--full"><span>Chart completeness</span><strong>{{ patient.chartCompleteness }}</strong></div>
+                  <div class="pd-kv pd-kv--full"><span>Imaging status</span><strong>{{ patient.imageStatus }}</strong></div>
+                  <div class="pd-kv pd-kv--full"><span>Care gap</span><strong>{{ patient.careGap }}</strong></div>
+                  <div class="pd-kv"><span>Fall risk</span><strong>No</strong></div>
+                  <div class="pd-kv"><span>Transport risk</span><strong>No</strong></div>
+                  <div class="pd-kv"><span>Surgical candidate</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Retina risk</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Glaucoma monitoring</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Diabetic eye care</span><strong>—</strong></div>
+                </div>
+              </div>
+              <div class="pd-section">
+                <p class="pd-section-label">Referring care team</p>
+                <div class="pd-kv-grid">
+                  <div class="pd-kv"><span>PCP</span><strong>—</strong></div>
+                  <div class="pd-kv"><span>Referring provider</span><strong>—</strong></div>
+                  <div class="pd-kv pd-kv--full"><span>Allergies</span><strong>NKDA</strong></div>
+                </div>
+              </div>
+            }
+
+            @case ('briefing') {
+              <div class="pd-section">
+                <p class="pd-section-label">AI pre-visit intelligence</p>
+                @for (b of patientBriefings(); track b.title) {
+                  <div class="pd-briefing-card" [class]="'pd-briefing-card pd-briefing-card--' + b.tone">
+                    <div class="pd-briefing-card__header">
+                      <strong>{{ b.title }}</strong>
+                      <app-status-chip label="AI" [tone]="b.tone" />
+                    </div>
+                    <p>{{ b.summary }}</p>
+                  </div>
+                }
+              </div>
+              <div class="pd-section">
+                <p class="pd-section-label">Risk signal</p>
+                <div class="pd-alert pd-alert--accent">
+                  <strong>Active AI flag</strong>
+                  <p>{{ patient.aiFlag }}</p>
+                </div>
+              </div>
+            }
+
+          }
+        </div>
+      } @else {
+        <div class="po-detail-empty">
+          <div class="po-detail-empty__header">
+            <div class="po-detail-empty__icon">
+              <svg width="28" height="28" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+                <circle cx="18" cy="18" r="17" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
+                <circle cx="18" cy="14" r="5" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M7 30c0-6.075 4.925-11 11-11s11 4.925 11 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <strong class="po-detail-empty__title">Patient preview</strong>
+              <p class="po-detail-empty__desc">Select any patient to open their full workspace</p>
+            </div>
+          </div>
+
+          <div class="po-detail-empty__section">
+            <p class="po-detail-empty__section-label">Recently active</p>
+            @for (p of allPatients().slice(0, 3); track p.id) {
+              <button class="po-recent-row" type="button" (click)="selectPatient(p.id)">
+                <div class="po-recent-avatar">{{ p.fullName[0] }}</div>
+                <div class="po-recent-meta">
+                  <strong>{{ p.fullName }}</strong>
+                  <span>{{ p.mrn }} · {{ p.nextVisit }}</span>
+                </div>
+                <app-status-chip [label]="p.status" [tone]="p.statusTone" />
+              </button>
+            }
+          </div>
+
+          <div class="po-detail-empty__section">
+            <p class="po-detail-empty__section-label">Urgent today</p>
+            @for (p of allPatients().slice(0, 3); track p.id) {
+              @if (p.balance !== '$0.00' || p.aiFlag !== 'None') {
+                <div class="po-urgent-row">
+                  <span class="po-urgent-dot"></span>
+                  <span class="po-urgent-name">{{ p.fullName }}</span>
+                  <span class="po-urgent-flag">{{ p.balance !== '$0.00' ? 'Balance ' + p.balance : p.aiFlag }}</span>
+                </div>
+              }
+            }
+          </div>
+
+          <div class="po-detail-empty__section po-detail-empty__section--actions">
+            <p class="po-detail-empty__section-label">Today's actions</p>
+            <div class="po-today-checklist">
+              <div class="po-today-item">
+                <span class="po-today-item__dot po-today-item__dot--warning"></span>
+                <span>7 recall patients need outreach</span>
+              </div>
+              <div class="po-today-item">
+                <span class="po-today-item__dot po-today-item__dot--critical"></span>
+                <span>14 balances &gt; $250 to collect</span>
+              </div>
+              <div class="po-today-item">
+                <span class="po-today-item__dot po-today-item__dot--warning"></span>
+                <span>3 charts unsigned — closing today</span>
+              </div>
+              <div class="po-today-item">
+                <span class="po-today-item__dot po-today-item__dot--warning"></span>
+                <span>6 pending auths expiring this week</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </aside>
+
+  </div><!-- /po-body -->
+
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       E. PATIENT REGISTRATION / MAINTENANCE MODAL
+  ════════════════════════════════════════════════════════════════ -->
+  @if (showModal()) {
+    <div class="po-modal-backdrop" (click)="closeModal()">
+      <div class="po-modal" (click)="stopProp($event)" role="dialog" aria-modal="true">
+
+        <!-- Modal header -->
+        <div class="po-modal-header">
+          <div class="po-modal-header__left">
+            <p class="po-eyebrow">Patient Registration &amp; Maintenance</p>
+            <h2>New patient record</h2>
+          </div>
+          <div class="po-modal-header__right">
+            <span class="po-modal-step-label">
+              Step {{ registrationTabIndex() + 1 }} of {{ registrationTabs.length }}
+              <span class="po-modal-step-name">· {{ registrationTabs[registrationTabIndex()].label }}</span>
+            </span>
+            <button class="po-modal-close" type="button" (click)="closeModal()" aria-label="Close">✕</button>
+          </div>
+        </div>
+
+        <!-- Modal body: tab rail + form -->
+        <div class="po-modal-body">
+
+          <!-- Tab rail -->
+          <nav class="po-modal-rail">
+            @for (tab of registrationTabs; track tab.id; let i = $index) {
+              <button
+                class="po-modal-rail-item"
+                type="button"
+                [class.po-modal-rail-item--active]="registrationTab() === tab.id"
+                [class.po-modal-rail-item--done]="i < registrationTabIndex()"
+                (click)="setRegistrationTab(tab.id)"
+              >
+                <span class="po-modal-rail-item__badge">
+                  @if (i < registrationTabIndex()) {
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 5l2.5 2.5 4.5-4"/></svg>
+                  } @else {
+                    {{ tab.badge }}
+                  }
+                </span>
+                <span class="po-modal-rail-item__label">{{ tab.label }}</span>
+              </button>
+            }
+          </nav>
+
+          <!-- Form content -->
+          <div class="po-modal-form">
+            @switch (registrationTab()) {
+
+              <!-- ── 01 IDENTITY ───────────────────────────────── -->
+              @case ('identity') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Patient identifiers</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field pf-field--required">
+                      <span>Last name</span>
+                      <input type="text" [(ngModel)]="form.lastName" placeholder="Last name" name="lastName" />
+                    </label>
+                    <label class="pf-field pf-field--required">
+                      <span>First name</span>
+                      <input type="text" [(ngModel)]="form.firstName" placeholder="First name" name="firstName" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Middle name</span>
+                      <input type="text" [(ngModel)]="form.middleName" placeholder="Middle name" name="middleName" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Suffix</span>
+                      <select [(ngModel)]="form.suffix" name="suffix">
+                        <option value="">—</option>
+                        <option>Jr.</option><option>Sr.</option><option>II</option><option>III</option><option>MD</option><option>DO</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred name</span>
+                      <input type="text" [(ngModel)]="form.preferredName" placeholder="Goes by…" name="preferredName" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Legal name (if different)</span>
+                      <input type="text" [(ngModel)]="form.legalName" placeholder="Legal full name" name="legalName" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Core demographics</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field pf-field--required">
+                      <span>Date of birth</span>
+                      <input type="date" [(ngModel)]="form.dob" name="dob" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Sex at birth</span>
+                      <select [(ngModel)]="form.sexAtBirth" name="sexAtBirth">
+                        <option value="">Select</option>
+                        <option>Male</option><option>Female</option><option>Unknown</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Gender identity</span>
+                      <select [(ngModel)]="form.genderIdentity" name="genderIdentity">
+                        <option value="">Select</option>
+                        <option>Man</option><option>Woman</option><option>Non-binary</option>
+                        <option>Transgender man</option><option>Transgender woman</option>
+                        <option>Prefer not to say</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Pronouns</span>
+                      <select [(ngModel)]="form.pronouns" name="pronouns">
+                        <option value="">Select</option>
+                        <option>He/Him</option><option>She/Her</option><option>They/Them</option><option>Prefer not to say</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>SSN (last 4)</span>
+                      <input type="text" [(ngModel)]="form.ssn" placeholder="••••" maxlength="4" name="ssn" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Marital status</span>
+                      <select [(ngModel)]="form.maritalStatus" name="maritalStatus">
+                        <option value="">Select</option>
+                        <option>Single</option><option>Married</option><option>Divorced</option>
+                        <option>Widowed</option><option>Separated</option><option>Unknown</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Employment &amp; language</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Employment status</span>
+                      <select [(ngModel)]="form.employmentStatus" name="employmentStatus">
+                        <option value="">Select</option>
+                        <option>Employed full-time</option><option>Employed part-time</option>
+                        <option>Self-employed</option><option>Retired</option>
+                        <option>Student</option><option>Unemployed</option><option>Unknown</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Occupation</span>
+                      <input type="text" [(ngModel)]="form.occupation" placeholder="Occupation" name="occupation" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Employer</span>
+                      <input type="text" [(ngModel)]="form.employer" placeholder="Employer name" name="employer" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Primary language</span>
+                      <select [(ngModel)]="form.language" name="language">
+                        <option>English</option><option>Spanish</option><option>Haitian Creole</option>
+                        <option>Portuguese</option><option>French</option><option>Mandarin</option>
+                        <option>Arabic</option><option>Vietnamese</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Interpreter needed</span>
+                      <select [(ngModel)]="form.interpreterNeeded" name="interpreterNeeded">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Race, ethnicity &amp; nationality</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Race</span>
+                      <select [(ngModel)]="form.race" name="race">
+                        <option value="">Select</option>
+                        <option>White</option><option>Black or African American</option>
+                        <option>Asian</option><option>American Indian or Alaska Native</option>
+                        <option>Native Hawaiian or Other Pacific Islander</option>
+                        <option>Two or more races</option><option>Unknown</option><option>Prefer not to say</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Ethnicity</span>
+                      <select [(ngModel)]="form.ethnicity" name="ethnicity">
+                        <option value="">Select</option>
+                        <option>Hispanic or Latino</option><option>Not Hispanic or Latino</option>
+                        <option>Unknown</option><option>Prefer not to say</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Nationality</span>
+                      <input type="text" [(ngModel)]="form.nationality" placeholder="US Citizen" name="nationality" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">System identifiers</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>MRN (auto-assigned)</span>
+                      <input type="text" [(ngModel)]="form.mrn" placeholder="Auto-generated on save" name="mrn" />
+                    </label>
+                    <label class="pf-field">
+                      <span>External ID</span>
+                      <input type="text" [(ngModel)]="form.externalId" placeholder="EHR / HIE external ID" name="externalId" />
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 02 DEMOGRAPHICS (same tab, extended) ───────── -->
+              @case ('demographics') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Extended demographic detail</p>
+                  <div class="pf-grid pf-grid--2">
+                    <label class="pf-field">
+                      <span>Date of birth</span>
+                      <input type="date" [(ngModel)]="form.dob" name="dob2" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Sex at birth</span>
+                      <select [(ngModel)]="form.sexAtBirth" name="sexAtBirth2">
+                        <option value="">Select</option>
+                        <option>Male</option><option>Female</option><option>Unknown</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Gender identity</span>
+                      <select [(ngModel)]="form.genderIdentity" name="genderIdentity2">
+                        <option value="">Select</option>
+                        <option>Man</option><option>Woman</option><option>Non-binary</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Pronouns</span>
+                      <select [(ngModel)]="form.pronouns" name="pronouns2">
+                        <option value="">Select</option>
+                        <option>He/Him</option><option>She/Her</option><option>They/Them</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Race</span>
+                      <select [(ngModel)]="form.race" name="race2">
+                        <option value="">Select</option>
+                        <option>White</option><option>Black or African American</option>
+                        <option>Asian</option><option>Other</option><option>Unknown</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Ethnicity</span>
+                      <select [(ngModel)]="form.ethnicity" name="ethnicity2">
+                        <option value="">Select</option>
+                        <option>Hispanic or Latino</option><option>Not Hispanic or Latino</option><option>Unknown</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 03 CONTACT & ADDRESS ───────────────────────── -->
+              @case ('contact') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Phone &amp; email</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field pf-field--required">
+                      <span>Mobile phone</span>
+                      <input type="tel" [(ngModel)]="form.mobilePhone" placeholder="(407) 000-0000" name="mobilePhone" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Home phone</span>
+                      <input type="tel" [(ngModel)]="form.homePhone" placeholder="(407) 000-0000" name="homePhone" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Work phone</span>
+                      <input type="tel" [(ngModel)]="form.workPhone" placeholder="(407) 000-0000" name="workPhone" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Email address</span>
+                      <input type="email" [(ngModel)]="form.email" placeholder="email@domain.com" name="email" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred contact method</span>
+                      <select [(ngModel)]="form.preferredContact" name="preferredContact">
+                        <option>Mobile</option><option>Home phone</option><option>Work phone</option>
+                        <option>Email</option><option>Portal</option><option>Mail</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Primary address</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field pf-field--span2">
+                      <span>Address line 1</span>
+                      <input type="text" [(ngModel)]="form.address1" placeholder="Street address" name="address1" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Address line 2</span>
+                      <input type="text" [(ngModel)]="form.address2" placeholder="Apt, suite, unit…" name="address2" />
+                    </label>
+                    <label class="pf-field">
+                      <span>City</span>
+                      <input type="text" [(ngModel)]="form.city" placeholder="City" name="city" />
+                    </label>
+                    <label class="pf-field">
+                      <span>State</span>
+                      <select [(ngModel)]="form.state" name="state">
+                        <option value="">Select state</option>
+                        <option>FL</option><option>GA</option><option>AL</option><option>SC</option>
+                        <option>NC</option><option>TX</option><option>CA</option><option>NY</option>
+                        <option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>ZIP code</span>
+                      <input type="text" [(ngModel)]="form.zip" placeholder="32801" maxlength="10" name="zip" />
+                    </label>
+                    <label class="pf-field">
+                      <span>County</span>
+                      <input type="text" [(ngModel)]="form.county" placeholder="Orange County" name="county" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Country</span>
+                      <select [(ngModel)]="form.country" name="country">
+                        <option>United States</option><option>Canada</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Time zone</span>
+                      <select [(ngModel)]="form.timeZone" name="timeZone">
+                        <option>Eastern (ET)</option><option>Central (CT)</option>
+                        <option>Mountain (MT)</option><option>Pacific (PT)</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Emergency contact</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Name</span>
+                      <input type="text" [(ngModel)]="form.emergencyName" placeholder="Full name" name="emergencyName" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Relationship</span>
+                      <select [(ngModel)]="form.emergencyRelation" name="emergencyRelation">
+                        <option value="">Select</option>
+                        <option>Spouse</option><option>Parent</option><option>Child</option>
+                        <option>Sibling</option><option>Friend</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Phone</span>
+                      <input type="tel" [(ngModel)]="form.emergencyPhone" placeholder="(407) 000-0000" name="emergencyPhone" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Guardian (if applicable)</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Guardian name</span>
+                      <input type="text" [(ngModel)]="form.guardianName" placeholder="Full name" name="guardianName" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Relationship</span>
+                      <select [(ngModel)]="form.guardianRelation" name="guardianRelation">
+                        <option value="">Select</option>
+                        <option>Parent</option><option>Legal guardian</option><option>Power of attorney</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Phone</span>
+                      <input type="tel" [(ngModel)]="form.guardianPhone" placeholder="(407) 000-0000" name="guardianPhone" />
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 04 INSURANCE & GUARANTOR ───────────────────── -->
+              @case ('insurance') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Primary insurance</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field pf-field--required">
+                      <span>Payer name</span>
+                      <input type="text" [(ngModel)]="form.primaryPayer" placeholder="Medicare, BCBS, Aetna…" name="primaryPayer" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Plan name</span>
+                      <input type="text" [(ngModel)]="form.primaryPlan" placeholder="Plan name" name="primaryPlan" />
+                    </label>
+                    <label class="pf-field pf-field--required">
+                      <span>Member ID</span>
+                      <input type="text" [(ngModel)]="form.memberId" placeholder="Member / subscriber ID" name="memberId" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Group number</span>
+                      <input type="text" [(ngModel)]="form.groupNumber" placeholder="Group #" name="groupNumber" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Policy holder name</span>
+                      <input type="text" [(ngModel)]="form.policyHolder" placeholder="Subscriber name" name="policyHolder" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Policy holder DOB</span>
+                      <input type="date" [(ngModel)]="form.policyHolderDob" name="policyHolderDob" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Policy holder employer</span>
+                      <input type="text" [(ngModel)]="form.policyHolderEmployer" placeholder="Employer" name="policyHolderEmployer" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Relation to subscriber</span>
+                      <select [(ngModel)]="form.relationToSubscriber" name="relationToSubscriber">
+                        <option>Self</option><option>Spouse</option><option>Child</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Copay</span>
+                      <input type="text" [(ngModel)]="form.copay" placeholder="$20.00" name="copay" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Deductible</span>
+                      <input type="text" [(ngModel)]="form.deductible" placeholder="$1,500.00" name="deductible" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Coinsurance %</span>
+                      <input type="text" [(ngModel)]="form.coinsurance" placeholder="20%" name="coinsurance" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Effective date</span>
+                      <input type="date" [(ngModel)]="form.effectiveDate" name="effectiveDate" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Termination date</span>
+                      <input type="date" [(ngModel)]="form.terminationDate" name="terminationDate" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Prior auth required</span>
+                      <select [(ngModel)]="form.priorAuthRequired" name="priorAuthRequired">
+                        <option>No</option><option>Yes</option><option>Per procedure</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Referral required</span>
+                      <select [(ngModel)]="form.referralRequired" name="referralRequired">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Secondary insurance</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Secondary payer</span>
+                      <input type="text" [(ngModel)]="form.secondaryPayer" placeholder="Payer name" name="secondaryPayer" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Secondary plan</span>
+                      <input type="text" [(ngModel)]="form.secondaryPlan" placeholder="Plan name" name="secondaryPlan" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Secondary member ID</span>
+                      <input type="text" [(ngModel)]="form.secondaryMemberId" placeholder="Member ID" name="secondaryMemberId" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Tertiary payer</span>
+                      <input type="text" [(ngModel)]="form.tertiaryPayer" placeholder="Tertiary payer" name="tertiaryPayer" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Financial class</span>
+                      <select [(ngModel)]="form.financialClass" name="financialClass">
+                        <option>Commercial</option><option>Medicare</option><option>Medicaid</option>
+                        <option>Medicare Advantage</option><option>Self-pay</option><option>Workers comp</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Self-pay flag</span>
+                      <select [(ngModel)]="form.selfPay" name="selfPay">
+                        <option>No</option><option>Yes</option><option>Partial</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Guarantor</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Guarantor name</span>
+                      <input type="text" [(ngModel)]="form.guarantorName" placeholder="Full name" name="guarantorName" />
+                    </label>
+                    <label class="pf-field pf-field--span2">
+                      <span>Guarantor address</span>
+                      <input type="text" [(ngModel)]="form.guarantorAddress" placeholder="Street address, city, state, ZIP" name="guarantorAddress" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Guarantor phone</span>
+                      <input type="tel" [(ngModel)]="form.guarantorPhone" placeholder="(407) 000-0000" name="guarantorPhone" />
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 05 CLINICAL / REFERRALS ────────────────────── -->
+              @case ('clinical') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Care team &amp; referral</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Primary care provider (PCP)</span>
+                      <input type="text" [(ngModel)]="form.pcp" placeholder="Dr. Last, First" name="pcp" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Referring provider</span>
+                      <input type="text" [(ngModel)]="form.referringProvider" placeholder="Referring MD" name="referringProvider" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Referral source</span>
+                      <select [(ngModel)]="form.referringSource" name="referringSource">
+                        <option value="">Select</option>
+                        <option>PCP referral</option><option>Specialist referral</option><option>Patient self-referral</option>
+                        <option>Recall outreach</option><option>Web</option><option>Social media</option>
+                        <option>Word of mouth</option><option>Health fair</option><option>Other</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Clinic location</span>
+                      <select [(ngModel)]="form.clinicLocation" name="clinicLocation">
+                        <option value="">Select clinic</option>
+                        <option>Winter Park Retina</option><option>Clermont Cataract Center</option>
+                        <option>Lake Nona Glaucoma Institute</option><option>Tampa ASC + Optical</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Assigned provider</span>
+                      <select [(ngModel)]="form.assignedProvider" name="assignedProvider">
+                        <option value="">Select provider</option>
+                        <option>Dr. Alina Cho</option><option>Dr. Marcus Vale</option>
+                        <option>Dr. Evelyn Sato</option><option>Dr. Priya Rios</option><option>Dr. Jordan Pike</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Specialty</span>
+                      <select [(ngModel)]="form.specialty" name="specialty">
+                        <option value="">Select</option>
+                        <option>General ophthalmology</option><option>Retina</option><option>Cataract / Cornea</option>
+                        <option>Glaucoma</option><option>ASC / Surgery</option><option>Optical</option>
+                      </select>
+                    </label>
+                    <label class="pf-field pf-field--span3">
+                      <span>Visit reason / chief complaint</span>
+                      <input type="text" [(ngModel)]="form.visitReason" placeholder="Chief complaint or visit reason" name="visitReason" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Ocular &amp; medical history</p>
+                  <div class="pf-grid pf-grid--2">
+                    <label class="pf-field pf-field--tall">
+                      <span>Ocular history</span>
+                      <textarea [(ngModel)]="form.ocularHistory" placeholder="Prior diagnoses, surgeries, treatments…" name="ocularHistory" rows="4"></textarea>
+                    </label>
+                    <label class="pf-field pf-field--tall">
+                      <span>Medical history summary</span>
+                      <textarea [(ngModel)]="form.medicalHistory" placeholder="Systemic conditions relevant to ophthalmic care…" name="medicalHistory" rows="4"></textarea>
+                    </label>
+                    <label class="pf-field pf-field--tall">
+                      <span>Allergies</span>
+                      <textarea [(ngModel)]="form.allergies" placeholder="NKDA, or list drug/latex/contrast allergies…" name="allergies" rows="3"></textarea>
+                    </label>
+                    <label class="pf-field pf-field--tall">
+                      <span>Current medications</span>
+                      <textarea [(ngModel)]="form.medications" placeholder="Topical drops, systemic medications, supplements…" name="medications" rows="3"></textarea>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="pf-section">
+                  <p class="pf-section-label">Clinical risk flags</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Fall risk</span>
+                      <select [(ngModel)]="form.fallRisk" name="fallRisk">
+                        <option>No</option><option>Yes</option><option>Assess at visit</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Mobility assistance</span>
+                      <select [(ngModel)]="form.mobilityAssistance" name="mobilityAssistance">
+                        <option>No</option><option>Wheelchair</option><option>Walker</option><option>Cane</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Transportation risk</span>
+                      <select [(ngModel)]="form.transportationRisk" name="transportationRisk">
+                        <option>No</option><option>Yes — needs assistance</option><option>Monitor</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Surgical candidate</span>
+                      <select [(ngModel)]="form.surgicalCandidate" name="surgicalCandidate">
+                        <option>No</option><option>Yes</option><option>Under evaluation</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Retina risk flag</span>
+                      <select [(ngModel)]="form.retinaRisk" name="retinaRisk">
+                        <option>No</option><option>Yes</option><option>Monitor</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Glaucoma monitoring</span>
+                      <select [(ngModel)]="form.glaucomaMonitoring" name="glaucomaMonitoring">
+                        <option>No</option><option>Yes</option><option>Suspect</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Diabetic eye care flag</span>
+                      <select [(ngModel)]="form.diabeticEyeCare" name="diabeticEyeCare">
+                        <option>No</option><option>Yes — Type 1</option><option>Yes — Type 2</option>
+                      </select>
+                    </label>
+                    <label class="pf-field pf-field--span2">
+                      <span>Special accommodations</span>
+                      <input type="text" [(ngModel)]="form.specialAccommodations" placeholder="Vision, hearing, cognitive, other…" name="specialAccommodations" />
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 06 SCHEDULING ──────────────────────────────── -->
+              @case ('scheduling') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Visit setup</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field pf-field--required">
+                      <span>Visit type</span>
+                      <select [(ngModel)]="form.visitType" name="visitType">
+                        <option value="">Select visit type</option>
+                        <option>New patient exam</option><option>Established patient exam</option>
+                        <option>Cataract consult</option><option>Retina consult</option>
+                        <option>Glaucoma evaluation</option><option>Post-op visit</option>
+                        <option>Injection visit</option><option>Optical pickup</option>
+                        <option>Urgent / same-day</option><option>Telehealth</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>New or established</span>
+                      <select [(ngModel)]="form.newEstablished" name="newEstablished">
+                        <option>New</option><option>Established</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Recall category</span>
+                      <select [(ngModel)]="form.recallCategory" name="recallCategory">
+                        <option value="">Select</option>
+                        <option>Annual exam</option><option>6-month pressure check</option>
+                        <option>3-month injection</option><option>Post-op 1-day</option>
+                        <option>Post-op 1-week</option><option>Post-op 1-month</option>
+                        <option>Cataract co-manage</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred location</span>
+                      <select [(ngModel)]="form.preferredLocation" name="preferredLocation">
+                        <option value="">Any location</option>
+                        <option>Winter Park Retina</option><option>Clermont Cataract Center</option>
+                        <option>Lake Nona Glaucoma Institute</option><option>Tampa ASC + Optical</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred provider</span>
+                      <select [(ngModel)]="form.preferredProvider" name="preferredProvider">
+                        <option value="">No preference</option>
+                        <option>Dr. Alina Cho</option><option>Dr. Marcus Vale</option>
+                        <option>Dr. Evelyn Sato</option><option>Dr. Priya Rios</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>No-show risk</span>
+                      <select [(ngModel)]="form.noShowRisk" name="noShowRisk">
+                        <option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred time of day</span>
+                      <select [(ngModel)]="form.preferredTimeOfDay" name="preferredTimeOfDay">
+                        <option>Morning</option><option>Midday</option><option>Afternoon</option><option>No preference</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred days</span>
+                      <input type="text" [(ngModel)]="form.preferredDays" placeholder="Mon, Wed, Fri…" name="preferredDays" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Reminder preference</span>
+                      <select [(ngModel)]="form.reminderPreference" name="reminderPreference">
+                        <option>SMS</option><option>Email</option><option>Phone call</option>
+                        <option>Portal notification</option><option>No reminder</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Waitlist eligible</span>
+                      <select [(ngModel)]="form.waitlistEligible" name="waitlistEligible">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Telehealth eligible</span>
+                      <select [(ngModel)]="form.telehealthEligible" name="telehealthEligible">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field pf-field--span3">
+                      <span>Scheduling notes</span>
+                      <textarea [(ngModel)]="form.schedulingNotes" placeholder="Special instructions for front desk or scheduling team…" name="schedulingNotes" rows="3"></textarea>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 07 FINANCIAL ───────────────────────────────── -->
+              @case ('financial') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Account balance &amp; aging</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Balance due</span>
+                      <input type="text" [(ngModel)]="form.balanceDue" placeholder="$0.00" name="balanceDue" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Aging bucket</span>
+                      <select [(ngModel)]="form.agingBucket" name="agingBucket">
+                        <option>Current</option><option>30–60 days</option><option>60–90 days</option>
+                        <option>90–120 days</option><option>&gt;120 days</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Collections status</span>
+                      <select [(ngModel)]="form.collectionsStatus" name="collectionsStatus">
+                        <option>None</option><option>Pre-collections</option><option>In collections</option>
+                        <option>Hardship plan</option><option>Written off</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Payment plan</span>
+                      <select [(ngModel)]="form.paymentPlan" name="paymentPlan">
+                        <option>No</option><option>Yes — active</option><option>Yes — completed</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Credit hold</span>
+                      <select [(ngModel)]="form.creditHold" name="creditHold">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Deposit required</span>
+                      <select [(ngModel)]="form.depositRequired" name="depositRequired">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Copay collection</span>
+                      <select [(ngModel)]="form.copayCollection" name="copayCollection">
+                        <option>Required</option><option>Waived</option><option>Deferred</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Refund balance</span>
+                      <input type="text" [(ngModel)]="form.refundBalance" placeholder="$0.00" name="refundBalance" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Bad debt flag</span>
+                      <select [(ngModel)]="form.badDebt" name="badDebt">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Financial assistance flag</span>
+                      <select [(ngModel)]="form.financialAssistance" name="financialAssistance">
+                        <option>No</option><option>Applied</option><option>Approved</option><option>Denied</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 08 COMPLIANCE / CONSENTS ───────────────────── -->
+              @case ('compliance') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Required consents</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>HIPAA consent</span>
+                      <select [(ngModel)]="form.hipaaConsent" name="hipaaConsent">
+                        <option>Not signed</option><option>Signed — on file</option><option>Declined</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Financial policy signed</span>
+                      <select [(ngModel)]="form.financialPolicySigned" name="financialPolicySigned">
+                        <option>Not signed</option><option>Signed — on file</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Assignment of benefits</span>
+                      <select [(ngModel)]="form.assignmentOfBenefits" name="assignmentOfBenefits">
+                        <option>Not signed</option><option>Signed — on file</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Release of information</span>
+                      <select [(ngModel)]="form.releaseOfInfo" name="releaseOfInfo">
+                        <option>Not signed</option><option>Signed — on file</option><option>Restricted</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Consent date</span>
+                      <input type="date" [(ngModel)]="form.consentDate" name="consentDate" />
+                    </label>
+                    <label class="pf-field">
+                      <span>Photo consent</span>
+                      <select [(ngModel)]="form.photoConsent" name="photoConsent">
+                        <option>Not signed</option><option>Signed — clinical use</option>
+                        <option>Signed — marketing</option><option>Declined</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Surgery consent</span>
+                      <select [(ngModel)]="form.surgeryConsent" name="surgeryConsent">
+                        <option>N/A</option><option>Pending</option><option>Signed — on file</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Patient portal consent</span>
+                      <select [(ngModel)]="form.portalConsent" name="portalConsent">
+                        <option>Not signed</option><option>Enrolled</option><option>Declined</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>SMS consent</span>
+                      <select [(ngModel)]="form.smsConsent" name="smsConsent">
+                        <option>Not signed</option><option>Opt-in</option><option>Opt-out</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Email consent</span>
+                      <select [(ngModel)]="form.emailConsent" name="emailConsent">
+                        <option>Not signed</option><option>Opt-in</option><option>Opt-out</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 09 DOCUMENTS ──────────────────────────────── -->
+              @case ('documents') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Document checklist</p>
+                  <div class="pf-doc-list">
+                    <div class="pf-doc-item">
+                      <div class="pf-doc-item__info">
+                        <strong>Insurance card (front &amp; back)</strong>
+                        <span>Required — primary &amp; secondary</span>
+                      </div>
+                      <select class="pf-doc-status" [(ngModel)]="form.insuranceCard" name="insuranceCard">
+                        <option value="">Not provided</option><option>Scanned &amp; verified</option>
+                        <option>Patient provided — pending scan</option><option>Expired — update required</option>
+                      </select>
+                    </div>
+                    <div class="pf-doc-item">
+                      <div class="pf-doc-item__info">
+                        <strong>Government-issued photo ID</strong>
+                        <span>Required for all new patients</span>
+                      </div>
+                      <select class="pf-doc-status" [(ngModel)]="form.photoId" name="photoId">
+                        <option value="">Not provided</option><option>Scanned &amp; verified</option>
+                        <option>Patient provided — pending scan</option>
+                      </select>
+                    </div>
+                    <div class="pf-doc-item">
+                      <div class="pf-doc-item__info">
+                        <strong>Referral document</strong>
+                        <span>If referral required by payer</span>
+                      </div>
+                      <select class="pf-doc-status" [(ngModel)]="form.referralDoc" name="referralDoc">
+                        <option value="">Not applicable</option><option>Received</option>
+                        <option>Pending — follow-up sent</option><option>Expired</option>
+                      </select>
+                    </div>
+                    <div class="pf-doc-item">
+                      <div class="pf-doc-item__info">
+                        <strong>Consent forms package</strong>
+                        <span>HIPAA, financial policy, ROI, AOB</span>
+                      </div>
+                      <select class="pf-doc-status" [(ngModel)]="form.consentForms" name="consentForms">
+                        <option value="">Not signed</option><option>Signed &amp; scanned</option>
+                        <option>E-signed via portal</option><option>Partial — needs follow-up</option>
+                      </select>
+                    </div>
+                    <div class="pf-doc-item">
+                      <div class="pf-doc-item__info">
+                        <strong>Prior authorization docs</strong>
+                        <span>Required injections, surgery, or specialized testing</span>
+                      </div>
+                      <select class="pf-doc-status" [(ngModel)]="form.priorAuthDocs" name="priorAuthDocs">
+                        <option value="">Not applicable</option><option>Approved — on file</option>
+                        <option>Pending — submitted</option><option>Denied — appeal in progress</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 10 PREFERENCES ────────────────────────────── -->
+              @case ('preferences') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Portal &amp; communication preferences</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Patient portal enabled</span>
+                      <select [(ngModel)]="form.portalEnabled" name="portalEnabled">
+                        <option>No</option><option>Yes — active</option><option>Yes — not activated</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Preferred communication</span>
+                      <select [(ngModel)]="form.communicationPreference" name="communicationPreference">
+                        <option>SMS</option><option>Email</option><option>Phone call</option>
+                        <option>Portal</option><option>Mail</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Marketing opt-out</span>
+                      <select [(ngModel)]="form.marketingOptOut" name="marketingOptOut">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Recall outreach allowed</span>
+                      <select [(ngModel)]="form.recallOutreachAllowed" name="recallOutreachAllowed">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>SMS allowed</span>
+                      <select [(ngModel)]="form.smsAllowed" name="smsAllowed">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Email allowed</span>
+                      <select [(ngModel)]="form.emailAllowed" name="emailAllowed">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Phone call allowed</span>
+                      <select [(ngModel)]="form.callAllowed" name="callAllowed">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Mail allowed</span>
+                      <select [(ngModel)]="form.mailAllowed" name="mailAllowed">
+                        <option>Yes</option><option>No</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 11 RISK & FLAGS ────────────────────────────── -->
+              @case ('risk') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Operational risk flags</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>VIP flag</span>
+                      <select [(ngModel)]="form.vipFlag" name="vipFlag">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Interpreter flag</span>
+                      <select [(ngModel)]="form.interpreterFlag" name="interpreterFlag">
+                        <option>No</option><option>Yes</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Collections risk</span>
+                      <select [(ngModel)]="form.collectionsRisk" name="collectionsRisk">
+                        <option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Compliance risk</span>
+                      <select [(ngModel)]="form.complianceRisk" name="complianceRisk">
+                        <option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>No-show risk level</span>
+                      <select [(ngModel)]="form.noShowRiskLevel" name="noShowRiskLevel">
+                        <option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Imaging backlog risk</span>
+                      <select [(ngModel)]="form.imagingBacklogRisk" name="imagingBacklogRisk">
+                        <option>None</option><option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Surgical readiness risk</span>
+                      <select [(ngModel)]="form.surgicalReadinessRisk" name="surgicalReadinessRisk">
+                        <option>None</option><option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Chart quality risk</span>
+                      <select [(ngModel)]="form.chartQualityRisk" name="chartQualityRisk">
+                        <option>None</option><option>Low</option><option>Moderate</option><option>High</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>AI risk score</span>
+                      <select [(ngModel)]="form.aiRiskScore" name="aiRiskScore">
+                        <option>Pending</option><option>Low</option><option>Moderate</option>
+                        <option>High</option><option>Critical</option>
+                      </select>
+                    </label>
+                    <label class="pf-field pf-field--span3">
+                      <span>Special handling notes</span>
+                      <textarea [(ngModel)]="form.specialHandlingNotes" placeholder="Any alerts, warnings, or special handling instructions for staff…" name="specialHandlingNotes" rows="4"></textarea>
+                    </label>
+                  </div>
+                </div>
+              }
+
+              <!-- ── 12 AUDIT & ADMIN ───────────────────────────── -->
+              @case ('audit') {
+                <div class="pf-section">
+                  <p class="pf-section-label">Record status &amp; lifecycle</p>
+                  <div class="pf-grid pf-grid--3">
+                    <label class="pf-field">
+                      <span>Record status</span>
+                      <select [(ngModel)]="form.status" name="status">
+                        <option>Active</option><option>Inactive</option><option>Deceased</option><option>Pending verification</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Active flag</span>
+                      <select [(ngModel)]="form.activeFlag" name="activeFlag">
+                        <option>Active</option><option>Inactive</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Archive state</span>
+                      <select [(ngModel)]="form.archiveState" name="archiveState">
+                        <option>None</option><option>Archived</option><option>Purge eligible</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Verification source</span>
+                      <select [(ngModel)]="form.verificationSource" name="verificationSource">
+                        <option value="">Select</option>
+                        <option>Government ID</option><option>Insurance card</option>
+                        <option>Portal self-registration</option><option>Manual staff entry</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Merge candidate</span>
+                      <select [(ngModel)]="form.mergeCandidate" name="mergeCandidate">
+                        <option>No</option><option>Under review</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Duplicate review</span>
+                      <select [(ngModel)]="form.duplicateReview" name="duplicateReview">
+                        <option>Clear</option><option>Potential duplicate — review</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>External sync status</span>
+                      <select [(ngModel)]="form.externalSyncStatus" name="externalSyncStatus">
+                        <option>Pending</option><option>Synced</option><option>Failed</option><option>Not applicable</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Source system</span>
+                      <select [(ngModel)]="form.sourceSystem" name="sourceSystem">
+                        <option>Manual Entry</option><option>EHR import</option><option>HIE feed</option>
+                        <option>Portal self-registration</option>
+                      </select>
+                    </label>
+                    <label class="pf-field">
+                      <span>Tenant ID</span>
+                      <input type="text" [(ngModel)]="form.tenantId" placeholder="AEN-001" name="tenantId" readonly />
+                    </label>
+                    <label class="pf-field">
+                      <span>Clinic ID</span>
+                      <input type="text" [(ngModel)]="form.clinicId" placeholder="Auto-assigned" name="clinicId" />
+                    </label>
+                    <label class="pf-field pf-field--span3">
+                      <span>Notes</span>
+                      <textarea [(ngModel)]="form.notes" placeholder="External-facing notes visible to clinical staff…" name="notes" rows="3"></textarea>
+                    </label>
+                    <label class="pf-field pf-field--span3">
+                      <span>Internal comments</span>
+                      <textarea [(ngModel)]="form.internalComments" placeholder="Administrative / billing internal comments — not visible to patient…" name="internalComments" rows="3"></textarea>
+                    </label>
+                  </div>
+                </div>
+              }
+
+            }
+          </div><!-- /po-modal-form -->
+        </div><!-- /po-modal-body -->
+
+        <!-- Modal footer -->
+        <div class="po-modal-footer">
+          <button
+            class="po-btn"
+            type="button"
+            [disabled]="registrationTabIndex() === 0"
+            (click)="prevTab()"
+          >← Previous</button>
+
+          <div class="po-modal-footer__progress">
+            <div class="po-modal-progress-bar">
+              <div class="po-modal-progress-bar__fill"
+                [style.width.%]="((registrationTabIndex() + 1) / registrationTabs.length) * 100"></div>
+            </div>
+            <span class="po-modal-progress-label">Step {{ registrationTabIndex() + 1 }} of {{ registrationTabs.length }} · {{ registrationTabs[registrationTabIndex()].label }}</span>
+          </div>
+
+          <div class="po-modal-footer__actions">
+            <button class="po-btn po-btn--ghost" type="button" (click)="saveDraft()">
+              Save draft
+            </button>
+            @if (savedAt()) {
+              <span class="po-autosave-label">{{ savedAt() }}</span>
+            }
+            @if (registrationTabIndex() < registrationTabs.length - 1) {
+              <button class="po-btn po-btn--primary" type="button" (click)="nextTab()">Next →</button>
+            } @else {
+              <button class="po-btn po-btn--primary" type="button" (click)="submitRegistration()">Register patient</button>
+            }
+            <button class="po-btn po-btn--ghost" type="button" (click)="closeModal()">Cancel</button>
+          </div>
+        </div>
+
+      </div><!-- /po-modal -->
+    </div><!-- /po-modal-backdrop -->
+  }
+
+</div><!-- /po-workspace -->

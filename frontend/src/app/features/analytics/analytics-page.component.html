@@ -34,8 +34,8 @@
               <td>{{ clinic.revenueDelta }}</td>
               <td class="td-actions">
                 <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                  <button class="row-action-btn" type="button">Details</button>
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewClinic(clinic)">View</button>
+                  <button class="row-action-btn" type="button" (click)="viewClinic(clinic)">Details</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
@@ -61,8 +61,8 @@
               <td>{{ provider.collections }}</td>
               <td class="td-actions">
                 <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                  <button class="row-action-btn" type="button">Details</button>
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewProvider(provider)">View</button>
+                  <button class="row-action-btn" type="button" (click)="viewProvider(provider)">Details</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
@@ -73,3 +73,41 @@
     </article>
   </section>
 </section>
+
+<!-- Clinic detail modal -->
+<app-modal [open]="clinicViewOpen()" [title]="selectedClinic()?.name ?? 'Clinic details'" (closed)="closeClinicView()">
+  @if (selectedClinic()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Clinic</span><strong>{{ selectedClinic()!.name }}</strong></div>
+      <div class="rec-kv-row"><span>Region</span><strong>{{ selectedClinic()!.region }}</strong></div>
+      <div class="rec-kv-row"><span>Readiness</span><strong>{{ selectedClinic()!.readiness }}</strong></div>
+      <div class="rec-kv-row"><span>Avg wait</span><strong>{{ selectedClinic()!.waitMinutes }} min</strong></div>
+      <div class="rec-kv-row"><span>Utilization</span><strong>{{ selectedClinic()!.utilization }}%</strong></div>
+      <div class="rec-kv-row"><span>Revenue delta</span><strong>{{ selectedClinic()!.revenueDelta }}</strong></div>
+      <div class="rec-kv-row"><span>Open issues</span><strong>{{ selectedClinic()!.openIssues }}</strong></div>
+      @if (selectedClinic()!.pressureSource) {
+        <div class="rec-kv-row"><span>Pressure source</span><strong>{{ selectedClinic()!.pressureSource }}</strong></div>
+      }
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeClinicView()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- Provider detail modal -->
+<app-modal [open]="providerViewOpen()" [title]="selectedProvider()?.provider ?? 'Provider details'" (closed)="closeProviderView()">
+  @if (selectedProvider()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Provider</span><strong>{{ selectedProvider()!.provider }}</strong></div>
+      <div class="rec-kv-row"><span>Focus</span><strong>{{ selectedProvider()!.focus }}</strong></div>
+      <div class="rec-kv-row"><span>Encounters</span><strong>{{ selectedProvider()!.encounters }}</strong></div>
+      <div class="rec-kv-row"><span>Utilization</span><strong>{{ selectedProvider()!.utilization }}</strong></div>
+      <div class="rec-kv-row"><span>Documentation lag</span><strong>{{ selectedProvider()!.documentationLag }}</strong></div>
+      <div class="rec-kv-row"><span>Collections</span><strong>{{ selectedProvider()!.collections }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeProviderView()">Close</button>
+    </div>
+  }
+</app-modal>

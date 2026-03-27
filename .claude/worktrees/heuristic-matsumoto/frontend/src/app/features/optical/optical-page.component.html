@@ -1,0 +1,56 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">Optical retail and lab workflow</p>
+      <h1>Rx-to-fulfillment, premium lens conversion, pickup orchestration, and retail intelligence.</h1>
+      <p class="page-subtitle">Built to feel like a luxury optical business surface without breaking the medical operating system.</p>
+    </div>
+  </header>
+
+  <section class="dual-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Order pipeline</p><h2>Orders in flight</h2></div>
+      </div>
+      <table class="dense-table">
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Order</th>
+            <th>Lens</th>
+            <th>Status</th>
+            <th>Pickup</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of orders(); track order.order) {
+            <tr>
+              <td>{{ order.patient }}</td>
+              <td>{{ order.order }}</td>
+              <td>{{ order.lens }}</td>
+              <td><app-status-chip [label]="order.status" [tone]="order.tone" /></td>
+              <td>{{ order.pickup }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+
+    <article class="panel panel--assistant">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Sales intelligence</p><h2>Recommendation engine</h2></div>
+      </div>
+      <div class="panel-list">
+        @for (order of orders(); track order.order) {
+          <article class="list-surface">
+            <div class="dense-header">
+              <strong>{{ order.patient }} • {{ order.frame }}</strong>
+              <app-status-chip [label]="order.status" [tone]="order.tone" />
+            </div>
+            <p>{{ order.recommendation }}</p>
+          </article>
+        }
+      </div>
+    </article>
+  </section>
+</section>

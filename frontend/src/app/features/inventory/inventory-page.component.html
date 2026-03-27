@@ -1,9 +1,12 @@
 <section class="workspace-page">
-  <header class="page-header">
+  <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">Inventory forecasting</p>
       <h1>Implants, medications, and optical materials with shortage prevention and reorder intelligence.</h1>
       <p class="page-subtitle">Focused on high-risk ophthalmology inventory where stockouts directly affect surgery, injections, and retail margin.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New item</button>
     </div>
   </header>
 
@@ -35,9 +38,9 @@
             <td>{{ item.nextOrder }}</td>
             <td class="td-actions">
               <div class="row-actions">
-                <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                <button class="row-action-btn" type="button">Edit</button>
-                <button class="row-action-btn" type="button">Order</button>
+                <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewItem(item)">View</button>
+                <button class="row-action-btn" type="button" (click)="openEdit(item)">Edit</button>
+                <button class="row-action-btn" type="button" (click)="openOrder(item)">Order</button>
                 <button class="row-action-more" type="button" title="More actions">···</button>
               </div>
             </td>
@@ -47,3 +50,73 @@
     </table>
   </article>
 </section>
+
+<!-- View modal -->
+<app-modal [open]="viewOpen()" title="Item details" (closed)="closeView()">
+  @if (selectedItem()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Item</span><strong>{{ selectedItem()!.item }}</strong></div>
+      <div class="rec-kv-row"><span>Location</span><strong>{{ selectedItem()!.location }}</strong></div>
+      <div class="rec-kv-row"><span>On hand</span><strong>{{ selectedItem()!.onHand }}</strong></div>
+      <div class="rec-kv-row"><span>Runway</span><strong>{{ selectedItem()!.daysRemaining }}</strong></div>
+      <div class="rec-kv-row"><span>Forecast</span><strong>{{ selectedItem()!.forecast }}</strong></div>
+      <div class="rec-kv-row"><span>Next order</span><strong>{{ selectedItem()!.nextOrder }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="openOrder(selectedItem()!); closeView()">Place order</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- Reorder modal -->
+<app-modal [open]="orderOpen()" [title]="'Order — ' + (selectedItem()?.item ?? '')" (closed)="closeOrder()">
+  @if (selectedItem()) {
+    <div class="rec-form">
+      <div class="rec-kv-list" style="margin-bottom: 1rem;">
+        <div class="rec-kv-row"><span>Item</span><strong>{{ selectedItem()!.item }}</strong></div>
+        <div class="rec-kv-row"><span>Location</span><strong>{{ selectedItem()!.location }}</strong></div>
+        <div class="rec-kv-row"><span>Current on hand</span><strong>{{ selectedItem()!.onHand }}</strong></div>
+        <div class="rec-kv-row"><span>Next scheduled order</span><strong>{{ selectedItem()!.nextOrder }}</strong></div>
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Quantity to order</label>
+        <input class="rec-form-input" type="number" min="1" [(ngModel)]="fOrderQty" />
+      </div>
+      <div class="rec-form-actions">
+        <button class="rec-btn" type="button" (click)="closeOrder()">Cancel</button>
+        <button class="rec-btn rec-btn--primary" type="button" (click)="confirmOrder()">Submit order</button>
+      </div>
+    </div>
+  }
+</app-modal>
+
+<!-- Create / Edit modal -->
+<app-modal [open]="formOpen()" [title]="editingItem() ? 'Edit item' : 'New inventory item'" (closed)="closeForm()">
+  <div class="rec-form">
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Item name *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fItem" placeholder="e.g. Alcon AcrySof IQ IOL" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Location</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fLocation" placeholder="e.g. ASC storeroom" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">On hand (units)</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fOnHand" placeholder="e.g. 12 units" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Next order date</label>
+        <input class="rec-form-input" type="date" [(ngModel)]="fNextOrder" />
+      </div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="closeForm()">Cancel</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="saveItem()" [disabled]="!fItem.trim()">
+        {{ editingItem() ? 'Save changes' : 'Add item' }}
+      </button>
+    </div>
+  </div>
+</app-modal>

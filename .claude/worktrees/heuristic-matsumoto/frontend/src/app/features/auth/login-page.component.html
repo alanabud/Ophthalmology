@@ -1,0 +1,69 @@
+<section class="login-grid">
+  <article class="panel login-panel">
+    <div class="panel__header">
+      <div>
+        <p class="panel__eyebrow">Workspace access</p>
+        <h1>Clinical command sign-in</h1>
+      </div>
+      <a class="ghost-inline" routerLink="/command-center">Return to workspace</a>
+    </div>
+
+    <p class="panel__body-copy">
+      This authentication surface is designed for operational teams. It supports both live backend auth and a seeded preview mode so the full platform can be evaluated before local infrastructure is finished.
+    </p>
+
+    <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label>
+        <span>Email</span>
+        <input type="email" formControlName="email" />
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input type="password" formControlName="password" />
+      </label>
+
+      <div class="dual-grid">
+        <label>
+          <span>Tenant ID</span>
+          <input type="text" formControlName="tenantId" placeholder="Optional live tenant scope" />
+        </label>
+
+        <label>
+          <span>Clinic ID</span>
+          <input type="text" formControlName="clinicId" placeholder="Optional live clinic scope" />
+        </label>
+      </div>
+
+      <div class="login-actions">
+        <button class="alert-button" type="submit" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Signing in...' : 'Attempt live sign-in' }}
+        </button>
+        <button class="soft-button" type="button" (click)="launchPreview()">Launch preview workspace</button>
+      </div>
+    </form>
+
+    <p class="utility-note">{{ feedback() }}</p>
+  </article>
+
+  <article class="panel panel--assistant login-panel">
+    <div class="panel__header">
+      <div>
+        <p class="panel__eyebrow">Preview credentials</p>
+        <h2>Immediate evaluation path</h2>
+      </div>
+      <span class="status-chip status-chip--accent">Ready now</span>
+    </div>
+
+    <div class="key-value-stack">
+      <div class="key-value-row"><span>Email</span><strong>preview.operator@acuityeye.local</strong></div>
+      <div class="key-value-row"><span>Password</span><strong>Preview!2026</strong></div>
+      <div class="key-value-row"><span>Role</span><strong>Regional preview operator</strong></div>
+    </div>
+
+    <div class="panel-list">
+      <article class="list-surface"><strong>What works in preview</strong><p>All major modules, seeded records, AI insight panels, clinic switching, and route-to-route evaluation.</p></article>
+      <article class="list-surface"><strong>What upgrades next</strong><p>Live auth, seeded database users, and backend-backed read/write flows can replace preview adapters without redesigning the UI.</p></article>
+    </div>
+  </article>
+</section>

@@ -1,9 +1,12 @@
 <section class="workspace-page">
-  <header class="page-header">
+  <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">Optical retail and lab workflow</p>
       <h1>Rx-to-fulfillment, premium lens conversion, pickup orchestration, and retail intelligence.</h1>
       <p class="page-subtitle">Built to feel like a luxury optical business surface without breaking the medical operating system.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New order</button>
     </div>
   </header>
 
@@ -33,9 +36,9 @@
               <td>{{ order.pickup }}</td>
               <td class="td-actions">
                 <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                  <button class="row-action-btn" type="button">Edit</button>
-                  <button class="row-action-btn" type="button">Track</button>
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewOrder(order)">View</button>
+                  <button class="row-action-btn" type="button" (click)="openEdit(order)">Edit</button>
+                  <button class="row-action-btn" type="button" (click)="openTrack(order)">Track</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
@@ -63,3 +66,69 @@
     </article>
   </section>
 </section>
+
+<!-- View modal -->
+<app-modal [open]="viewOpen()" title="Order details" (closed)="closeView()">
+  @if (selectedOrder()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Order ID</span><strong>{{ selectedOrder()!.order }}</strong></div>
+      <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedOrder()!.patient }}</strong></div>
+      <div class="rec-kv-row"><span>Lens</span><strong>{{ selectedOrder()!.lens }}</strong></div>
+      <div class="rec-kv-row"><span>Frame</span><strong>{{ selectedOrder()!.frame }}</strong></div>
+      <div class="rec-kv-row"><span>Status</span><strong>{{ selectedOrder()!.status }}</strong></div>
+      <div class="rec-kv-row"><span>Pickup</span><strong>{{ selectedOrder()!.pickup }}</strong></div>
+      <div class="rec-kv-row"><span>Recommendation</span><strong>{{ selectedOrder()!.recommendation }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="openEdit(selectedOrder()!); closeView()">Edit order</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- Track modal -->
+<app-modal [open]="trackOpen()" [title]="'Tracking — ' + (selectedOrder()?.order ?? '')" (closed)="closeTrack()">
+  @if (selectedOrder()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Order ID</span><strong>{{ selectedOrder()!.order }}</strong></div>
+      <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedOrder()!.patient }}</strong></div>
+      <div class="rec-kv-row"><span>Current status</span><strong>{{ selectedOrder()!.status }}</strong></div>
+      <div class="rec-kv-row"><span>Lens</span><strong>{{ selectedOrder()!.lens }}</strong></div>
+      <div class="rec-kv-row"><span>Frame</span><strong>{{ selectedOrder()!.frame }}</strong></div>
+      <div class="rec-kv-row"><span>Expected pickup</span><strong>{{ selectedOrder()!.pickup }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeTrack()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- Create / Edit modal -->
+<app-modal [open]="formOpen()" [title]="editingOrder() ? 'Edit order' : 'New optical order'" (closed)="closeForm()">
+  <div class="rec-form">
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Patient *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Patient full name" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Lens type</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fLens" placeholder="e.g. Progressive AR" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Frame</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fFrame" placeholder="e.g. Oakley OX8046" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Expected pickup date</label>
+        <input class="rec-form-input" type="date" [(ngModel)]="fPickup" />
+      </div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="closeForm()">Cancel</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="saveOrder()" [disabled]="!fPatient.trim()">
+        {{ editingOrder() ? 'Save changes' : 'Place order' }}
+      </button>
+    </div>
+  </div>
+</app-modal>

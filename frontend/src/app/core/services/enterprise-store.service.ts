@@ -15,7 +15,17 @@ import { CLAIMS } from '../data/billing.data';
 import { COMPLIANCE_EVENTS } from '../data/compliance.data';
 import { ANALYTICS_POINTS, PROVIDER_PRODUCTIVITY, ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
-import { PatientRecord, ProviderContext } from '../models/enterprise.models';
+import {
+  ClaimRecord,
+  ImagingStudy,
+  InventoryRecord,
+  OpticalOrder,
+  PatientRecord,
+  ProviderContext,
+  RoleMatrixItem,
+  SurgeryCase,
+  WaitlistRecord,
+} from '../models/enterprise.models';
 
 function clinicMatches(clinicId: string, activeClinicId: string): boolean {
   return activeClinicId === 'network' || clinicId === activeClinicId;
@@ -33,7 +43,7 @@ export class EnterpriseStoreService {
   readonly quickActions = signal(QUICK_ACTIONS);
   readonly patientBriefings = signal(PATIENT_BRIEFINGS);
   readonly analyticsPoints = signal(ANALYTICS_POINTS);
-  readonly roleMatrix = signal(ROLE_MATRIX);
+  readonly roleMatrix = signal<RoleMatrixItem[]>([...ROLE_MATRIX]);
   readonly activeClinicId = signal('network');
   readonly activeProviderId = signal('all');
   readonly selectedDate = signal('2026-03-06');
@@ -84,56 +94,131 @@ export class EnterpriseStoreService {
         ];
   });
   readonly actionQueue = computed(() => ACTION_QUEUE[this.activeClinicId()] ?? ACTION_QUEUE['network']);
+
+  // ── Patients ───────────────────────────────────────────────────────────────
   private readonly patientsBase = signal<PatientRecord[]>([...PATIENTS]);
-  readonly patients = computed(() => this.patientsBase().filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
+  readonly patients = computed(() => this.patientsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Scheduling ─────────────────────────────────────────────────────────────
   readonly scheduleLanes = computed(() =>
-    SCHEDULE_LANES.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())).filter(
-      (record) => this.activeProviderId() === 'all' || record.provider === this.currentProvider().name
+    SCHEDULE_LANES.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())).filter(
+      (r) => this.activeProviderId() === 'all' || r.provider === this.currentProvider().name
     )
   );
-  readonly waitlist = computed(() => WAITLIST.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
+  private readonly waitlistBase = signal<WaitlistRecord[]>([...WAITLIST]);
+  readonly waitlist = computed(() => this.waitlistBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Encounters ─────────────────────────────────────────────────────────────
   readonly encounterWorkspace = computed(
-    () => ENCOUNTERS.find((record) => clinicMatches(record.clinicId, this.activeClinicId())) ?? ENCOUNTERS[0]
+    () => ENCOUNTERS.find((r) => clinicMatches(r.clinicId, this.activeClinicId())) ?? ENCOUNTERS[0]
   );
-  readonly imagingStudies = computed(() => IMAGING_STUDIES.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
-  readonly surgeryCases = computed(() => SURGERY_CASES.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
-  readonly opticalOrders = computed(() => OPTICAL_ORDERS.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
-  readonly claims = computed(() => CLAIMS.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
-  readonly complianceEvents = computed(() => COMPLIANCE_EVENTS.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
-  readonly inventory = computed(() => INVENTORY.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
+
+  // ── Imaging ────────────────────────────────────────────────────────────────
+  private readonly imagingStudiesBase = signal<ImagingStudy[]>([...IMAGING_STUDIES]);
+  readonly imagingStudies = computed(() => this.imagingStudiesBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Surgery ────────────────────────────────────────────────────────────────
+  private readonly surgeryCasesBase = signal<SurgeryCase[]>([...SURGERY_CASES]);
+  readonly surgeryCases = computed(() => this.surgeryCasesBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Optical ────────────────────────────────────────────────────────────────
+  private readonly opticalOrdersBase = signal<OpticalOrder[]>([...OPTICAL_ORDERS]);
+  readonly opticalOrders = computed(() => this.opticalOrdersBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Billing ────────────────────────────────────────────────────────────────
+  private readonly claimsBase = signal<ClaimRecord[]>([...CLAIMS]);
+  readonly claims = computed(() => this.claimsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Compliance ─────────────────────────────────────────────────────────────
+  readonly complianceEvents = computed(() => COMPLIANCE_EVENTS.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Inventory ──────────────────────────────────────────────────────────────
+  private readonly inventoryBase = signal<InventoryRecord[]>([...INVENTORY]);
+  readonly inventory = computed(() => this.inventoryBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Integrations ───────────────────────────────────────────────────────────
   readonly integrations = computed(() => INTEGRATIONS);
-  readonly providerProductivity = computed(() => PROVIDER_PRODUCTIVITY.filter((record) => clinicMatches(record.clinicId, this.activeClinicId())));
+
+  // ── Analytics ──────────────────────────────────────────────────────────────
+  readonly providerProductivity = computed(() => PROVIDER_PRODUCTIVITY.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
   readonly clinicComparison = computed(() => this.clinics().filter((clinic) => clinic.id !== 'network'));
 
+  // ── Context setters ────────────────────────────────────────────────────────
   setActiveClinic(clinicId: string): void {
     this.activeClinicId.set(clinicId);
-    const providerStillValid = this.providerOptions().some((provider) => provider.id === this.activeProviderId());
-    if (!providerStillValid) {
-      this.activeProviderId.set('all');
-    }
+    const providerStillValid = this.providerOptions().some((p) => p.id === this.activeProviderId());
+    if (!providerStillValid) this.activeProviderId.set('all');
   }
 
-  setActiveProvider(providerId: string): void {
-    this.activeProviderId.set(providerId);
-  }
+  setActiveProvider(providerId: string): void { this.activeProviderId.set(providerId); }
 
-  setSelectedDate(dateValue: string): void {
-    if (dateValue) {
-      this.selectedDate.set(dateValue);
-    }
-  }
+  setSelectedDate(dateValue: string): void { if (dateValue) this.selectedDate.set(dateValue); }
 
+  toggleAiWorkspace(): void { this.aiWorkspaceOpen.update((v) => !v); }
+
+  // ── Patient CRUD ───────────────────────────────────────────────────────────
   createPatient(patient: PatientRecord): void {
-    this.patientsBase.update((current) => [...current, patient]);
+    this.patientsBase.update((list) => [...list, patient]);
+  }
+  updatePatient(updated: PatientRecord): void {
+    this.patientsBase.update((list) => list.map((p) => (p.id === updated.id ? updated : p)));
   }
 
-  toggleAiWorkspace(): void {
-    this.aiWorkspaceOpen.update((current) => !current);
+  // ── Scheduling CRUD ────────────────────────────────────────────────────────
+  createWaitlistEntry(entry: WaitlistRecord): void {
+    this.waitlistBase.update((list) => [...list, entry]);
   }
 
+  // ── Billing CRUD ───────────────────────────────────────────────────────────
+  createClaim(claim: ClaimRecord): void {
+    this.claimsBase.update((list) => [...list, claim]);
+  }
+  updateClaim(updated: ClaimRecord): void {
+    this.claimsBase.update((list) => list.map((c) => (c.claim === updated.claim ? updated : c)));
+  }
+  submitClaim(claimId: string): void {
+    this.claimsBase.update((list) =>
+      list.map((c) => (c.claim === claimId ? { ...c, status: 'Submitted', tone: 'info' as const } : c))
+    );
+  }
+
+  // ── Imaging CRUD ───────────────────────────────────────────────────────────
+  createImagingStudy(study: ImagingStudy): void {
+    this.imagingStudiesBase.update((list) => [...list, study]);
+  }
+
+  // ── Surgery CRUD ───────────────────────────────────────────────────────────
+  createSurgeryCase(surgeryCase: SurgeryCase): void {
+    this.surgeryCasesBase.update((list) => [...list, surgeryCase]);
+  }
+
+  // ── Optical CRUD ───────────────────────────────────────────────────────────
+  createOpticalOrder(order: OpticalOrder): void {
+    this.opticalOrdersBase.update((list) => [...list, order]);
+  }
+  updateOpticalOrder(updated: OpticalOrder): void {
+    this.opticalOrdersBase.update((list) => list.map((o) => (o.order === updated.order ? updated : o)));
+  }
+
+  // ── Inventory CRUD ─────────────────────────────────────────────────────────
+  createInventoryItem(item: InventoryRecord): void {
+    this.inventoryBase.update((list) => [...list, item]);
+  }
+  updateInventoryItem(updated: InventoryRecord): void {
+    this.inventoryBase.update((list) => list.map((i) => (i.item === updated.item ? updated : i)));
+  }
+
+  // ── Role / Access CRUD ─────────────────────────────────────────────────────
+  createRole(role: RoleMatrixItem): void {
+    this.roleMatrix.update((list) => [...list, role]);
+  }
+  updateRole(updated: RoleMatrixItem): void {
+    this.roleMatrix.update((list) => list.map((r) => (r.role === updated.role ? updated : r)));
+  }
+
+  // ── Auth preview ───────────────────────────────────────────────────────────
   previewSession(): TokenPairResponse {
     const clinicId = this.activeClinicId() === 'network' ? 'winter-park' : this.activeClinicId();
-
     return {
       access_token: 'preview-access-token',
       refresh_token: 'preview-refresh-token',
@@ -155,12 +240,10 @@ export class EnterpriseStoreService {
         active_tenant_id: 'acuity-eye-network',
         active_clinic_id: clinicId,
         accessible_tenant_ids: ['acuity-eye-network'],
-        accessible_clinic_ids: this.clinics().filter((clinic) => clinic.id !== 'network').map((clinic) => clinic.id),
+        accessible_clinic_ids: this.clinics().filter((c) => c.id !== 'network').map((c) => c.id),
         permissions: ['platform.*'],
         role_codes: ['platform_admin']
       }
     };
   }
 }
-
-

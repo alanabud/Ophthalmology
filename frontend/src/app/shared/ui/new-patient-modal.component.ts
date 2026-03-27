@@ -161,25 +161,38 @@ export class NewPatientModalComponent {
     const targetClinicId = this.clinicId ||
       (this.store.activeClinicId() !== 'network' ? this.store.activeClinicId() : 'winter-park');
 
-    this.store.createPatient({
-      id: `pt-new-${Date.now()}`,
-      clinicId: targetClinicId,
-      mrn: `NEW-${String(Date.now()).slice(-6)}`,
-      fullName: `${this.firstName.trim()} ${this.lastName.trim()}`,
-      dob: this.dob,
-      status: 'New Patient',
-      statusTone: 'info',
-      lastEncounter: '—',
-      nextVisit: this.appointmentDate
-        ? `${this.appointmentDate}${this.appointmentTime ? ' ' + this.appointmentTime : ''}`.trim()
-        : 'Pending scheduling',
-      balance: '$0.00',
-      insurance: this.insuranceName.trim() || 'Not provided',
-      chartCompleteness: '0%',
-      careGap: 'Initial intake pending',
-      imageStatus: 'No imaging on file',
-      aiFlag: 'New patient — no prior history'
-    });
+    if (this.isEditMode() && this.patientToEdit()) {
+      this.store.updatePatient({
+        ...this.patientToEdit()!,
+        clinicId: targetClinicId,
+        fullName: `${this.firstName.trim()} ${this.lastName.trim()}`,
+        dob: this.dob,
+        insurance: this.insuranceName.trim() || 'Not provided',
+        nextVisit: this.appointmentDate
+          ? `${this.appointmentDate}${this.appointmentTime ? ' ' + this.appointmentTime : ''}`.trim()
+          : this.patientToEdit()!.nextVisit,
+      });
+    } else {
+      this.store.createPatient({
+        id: `pt-new-${Date.now()}`,
+        clinicId: targetClinicId,
+        mrn: `NEW-${String(Date.now()).slice(-6)}`,
+        fullName: `${this.firstName.trim()} ${this.lastName.trim()}`,
+        dob: this.dob,
+        status: 'New Patient',
+        statusTone: 'info',
+        lastEncounter: '—',
+        nextVisit: this.appointmentDate
+          ? `${this.appointmentDate}${this.appointmentTime ? ' ' + this.appointmentTime : ''}`.trim()
+          : 'Pending scheduling',
+        balance: '$0.00',
+        insurance: this.insuranceName.trim() || 'Not provided',
+        chartCompleteness: '0%',
+        careGap: 'Initial intake pending',
+        imageStatus: 'No imaging on file',
+        aiFlag: 'New patient — no prior history'
+      });
+    }
 
     this.isSubmitting.set(false);
     this.submitted.set(true);

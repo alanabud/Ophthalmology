@@ -1,11 +1,14 @@
 <section class="workspace-page">
-  <header class="page-header">
+  <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">Scheduling command</p>
       <h1>Lane-based scheduling with waitlist fit, conflict visibility, and AI recovery suggestions.</h1>
       <p class="page-subtitle">
         Designed for front desk, technicians, and surgical coordinators to manage the day without hiding the reasons behind delays.
       </p>
+    </div>
+    <div class="page-header-actions">
+      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New appointment</button>
     </div>
   </header>
 
@@ -91,8 +94,8 @@
               <td><app-status-chip [label]="entry.fitScore" [tone]="entry.tone" /></td>
               <td class="td-actions">
                 <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button">View</button>
-                  <button class="row-action-btn" type="button">Book</button>
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewEntry(entry)">View</button>
+                  <button class="row-action-btn" type="button" (click)="openBook(entry)">Book</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
@@ -123,3 +126,70 @@
     </article>
   </section>
 </section>
+
+<!-- View modal -->
+<app-modal [open]="viewOpen()" title="Waitlist entry" (closed)="closeView()">
+  @if (selectedEntry()) {
+    <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedEntry()!.patient }}</strong></div>
+      <div class="rec-kv-row"><span>Request</span><strong>{{ selectedEntry()!.request }}</strong></div>
+      <div class="rec-kv-row"><span>Preferred window</span><strong>{{ selectedEntry()!.preferredWindow }}</strong></div>
+      <div class="rec-kv-row"><span>Fit score</span><strong>{{ selectedEntry()!.fitScore }}</strong></div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="openBook(selectedEntry()!); closeView()">Book this patient</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
+    </div>
+  }
+</app-modal>
+
+<!-- Book modal -->
+<app-modal [open]="bookOpen()" [title]="'Book — ' + (selectedEntry()?.patient ?? '')" (closed)="closeBook()">
+  @if (selectedEntry()) {
+    <div class="rec-form">
+      <p class="rec-form-hint">Booking <strong>{{ selectedEntry()!.patient }}</strong> for <strong>{{ selectedEntry()!.request }}</strong></p>
+      <div class="rec-form-grid">
+        <div class="rec-form-field">
+          <label class="rec-form-label">Provider *</label>
+          <input class="rec-form-input" type="text" [(ngModel)]="fBookProvider" placeholder="Provider name" />
+        </div>
+        <div class="rec-form-field">
+          <label class="rec-form-label">Date *</label>
+          <input class="rec-form-input" type="date" [(ngModel)]="fBookDate" />
+        </div>
+        <div class="rec-form-field">
+          <label class="rec-form-label">Time</label>
+          <input class="rec-form-input" type="time" [(ngModel)]="fBookTime" />
+        </div>
+      </div>
+      <div class="rec-form-actions">
+        <button class="rec-btn" type="button" (click)="closeBook()">Cancel</button>
+        <button class="rec-btn rec-btn--primary" type="button" (click)="confirmBook()" [disabled]="!fBookDate || !fBookProvider">Confirm booking</button>
+      </div>
+    </div>
+  }
+</app-modal>
+
+<!-- Create modal -->
+<app-modal [open]="createOpen()" title="New appointment" (closed)="closeCreate()">
+  <div class="rec-form">
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Patient name *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Full name" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Visit request</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fRequest" placeholder="e.g. Routine eye exam" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Preferred window</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPreferredWindow" placeholder="e.g. Weekday mornings" />
+      </div>
+    </div>
+    <div class="rec-form-actions">
+      <button class="rec-btn" type="button" (click)="closeCreate()">Cancel</button>
+      <button class="rec-btn rec-btn--primary" type="button" (click)="saveEntry()" [disabled]="!fPatient.trim()">Add to waitlist</button>
+    </div>
+  </div>
+</app-modal>

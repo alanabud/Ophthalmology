@@ -1,0 +1,49 @@
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <p class="page-kicker">Compliance watchtower</p>
+      <h1>Audit visibility, PHI-sensitive access review, MFA posture, and policy-aware operational controls.</h1>
+      <p class="page-subtitle">This is designed to read like a real healthcare control center, not a generic security page.</p>
+    </div>
+  </header>
+
+  <section class="dual-grid">
+    <article class="panel">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Audit feed</p><h2>Recent compliance events</h2></div>
+      </div>
+      <div class="panel-list">
+        @for (event of events(); track event.event) {
+          <article class="list-surface">
+            <div class="dense-header">
+              <strong>{{ event.event }}</strong>
+              <app-status-chip [label]="event.time" [tone]="event.tone" />
+            </div>
+            <p>{{ event.actor }} • {{ event.clinic }}</p>
+            <p class="utility-note">{{ event.detail }}</p>
+          </article>
+        }
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel__header">
+        <div><p class="panel__eyebrow">Permission governance</p><h2>Role and access posture</h2></div>
+      </div>
+      <table class="dense-table">
+        <thead><tr><th>Role</th><th>Scope</th><th>Clinics</th><th>MFA</th><th>Last change</th></tr></thead>
+        <tbody>
+          @for (role of roleMatrix(); track role.role) {
+            <tr>
+              <td>{{ role.role }}</td>
+              <td>{{ role.scope }}</td>
+              <td>{{ role.clinics }}</td>
+              <td><app-status-chip [label]="role.mfa" [tone]="role.tone" /></td>
+              <td>{{ role.lastChange }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </article>
+  </section>
+</section>
