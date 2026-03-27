@@ -1,0 +1,437 @@
+@if (open()) {
+  <div class="nim-backdrop" (click)="$event.target === $event.currentTarget && cancel()">
+    <div class="nim-panel" role="dialog" aria-label="Inventory item">
+
+      <!-- Header -->
+      <div class="nim-header">
+        <div class="nim-header__left">
+          <span class="nim-breadcrumb">Inventory Management</span>
+          <span class="nim-tab-indicator">Step {{ currentTab() }} of 7 — {{ currentTabLabel }}</span>
+        </div>
+        <button class="nim-close" type="button" (click)="cancel()">✕</button>
+      </div>
+
+      <!-- Title row -->
+      <div class="nim-title-row">
+        <h1 class="nim-title">{{ isEditMode() ? 'Edit inventory item' : 'New inventory item' }}</h1>
+        @if (fItemName) { <span class="nim-item-preview">{{ fItemName }}</span> }
+      </div>
+
+      <!-- Body -->
+      <div class="nim-body">
+
+        <!-- Sidebar navigation -->
+        <nav class="nim-sidebar">
+          @for (tab of tabs; track tab.num) {
+            <button type="button" class="nim-tab-btn" [class.nim-tab-btn--active]="currentTab() === tab.num" (click)="goTo(tab.num)">
+              <span class="nim-tab-icon">{{ tab.icon }}</span>
+              <span class="nim-tab-num">{{ tab.num < 10 ? '0' + tab.num : tab.num }}</span>
+              <span class="nim-tab-name">{{ tab.label }}</span>
+            </button>
+          }
+        </nav>
+
+        <!-- Content -->
+        <div class="nim-content">
+          @if (submitted()) {
+            <div class="nim-success">
+              <div class="nim-success__icon">✓</div>
+              <strong>{{ isEditMode() ? 'Item updated' : 'Item created' }}</strong>
+              <p>{{ fItemName }} has been {{ isEditMode() ? 'updated in' : 'added to' }} the inventory.</p>
+            </div>
+          } @else {
+            @switch (currentTab()) {
+
+              <!-- Tab 1: Identity -->
+              @case (1) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Basic identification</h2>
+                    <p>Core item details used for tracking, ordering, and compliance documentation.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label nim-label--required">Item name</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fItemName" placeholder="e.g. Clareon Toric IOL 19.5D" />
+                      <span class="nim-helper">Official product name as listed by manufacturer</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label nim-label--required">Category</label>
+                      <select class="nim-input" [(ngModel)]="fCategory">
+                        <option value="">Select category</option>
+                        @for (opt of categoryOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Subcategory</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fSubcategory" placeholder="e.g. Toric IOL, Anti-VEGF" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Brand</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fBrand" placeholder="e.g. Clareon, Eylea" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Manufacturer</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fManufacturer" placeholder="e.g. Alcon Laboratories" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Model / product code</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fModel" placeholder="e.g. CNWTT0" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">SKU / internal item code</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fSku" placeholder="e.g. ALC-IOL-19.5D" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Manufacturer part number</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fMfrPartNumber" placeholder="MFR part #" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Lot / batch number</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fLotNumber" placeholder="e.g. LT240318-02" />
+                      <span class="nim-helper">Required for traceable / implant items</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">UDI / device identifier</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fUdi" placeholder="e.g. 00382799002178" />
+                      <span class="nim-helper">FDA UDI or GS1 barcode</span>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Description</label>
+                      <textarea class="nim-input nim-textarea" [(ngModel)]="fDescription" placeholder="Full product description for internal reference and ordering..."></textarea>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Clinical use notes</label>
+                      <textarea class="nim-input nim-textarea" [(ngModel)]="fClinicalNotes" placeholder="Indications, contraindications, physician preferences, clinical protocols..."></textarea>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Tab 2: Stock Control -->
+              @case (2) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Stock &amp; inventory control</h2>
+                    <p>Quantities, thresholds, reorder logic, and demand forecasting parameters.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field">
+                      <label class="nim-label">On hand quantity</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fOnHandQty" placeholder="0" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Available quantity</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fAvailableQty" placeholder="0" />
+                      <span class="nim-helper">On hand minus reserved</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Reserved quantity</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fReservedQty" placeholder="0" />
+                      <span class="nim-helper">Allocated to scheduled cases</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Reorder point</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fReorderPoint" placeholder="0" />
+                      <span class="nim-helper">Trigger reorder when on hand reaches this level</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Reorder quantity</label>
+                      <input class="nim-input" type="number" min="1" [(ngModel)]="fReorderQty" placeholder="0" />
+                      <span class="nim-helper">Units to order per reorder event</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Par level (minimum)</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fParLevel" placeholder="0" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Max level</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fMaxLevel" placeholder="0" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label nim-label--required">Unit of measure</label>
+                      <select class="nim-input" [(ngModel)]="fUnitOfMeasure">
+                        <option value="">Select UOM</option>
+                        @for (opt of uomOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Package size</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fPackageSize" placeholder="e.g. Single, 10-pack" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Units per case</label>
+                      <input class="nim-input" type="number" min="1" [(ngModel)]="fUnitsPerCase" placeholder="1" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Avg monthly usage</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fAvgMonthlyUsage" placeholder="0" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Lead time (days)</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fLeadTimeDays" placeholder="0" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Last restocked date</label>
+                      <input class="nim-input" type="date" [(ngModel)]="fLastRestockedDate" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Next order date</label>
+                      <input class="nim-input" type="date" [(ngModel)]="fNextOrderDate" />
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Inventory status</label>
+                      <select class="nim-input" [(ngModel)]="fInventoryStatus">
+                        @for (opt of statusOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Tab 3: Location -->
+              @case (3) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Location &amp; storage</h2>
+                    <p>Where this item is physically stored, its storage requirements, and assignment.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field">
+                      <label class="nim-label">Facility / clinic</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fFacility" placeholder="e.g. Tampa ASC" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Department</label>
+                      <select class="nim-input" [(ngModel)]="fDepartment">
+                        <option value="">Select department</option>
+                        @for (opt of departmentOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Room</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fRoom" placeholder="e.g. OR-1, Supply room B" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Cabinet / shelf / bin</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fCabinetBin" placeholder="e.g. Cabinet A2, Shelf 3" />
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label nim-label--required">Primary location (display)</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fPrimaryLocation" placeholder="e.g. ASC Implant Vault — Cabinet A2" />
+                      <span class="nim-helper">Short description shown in tables and lists</span>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Secondary / backup location</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fSecondaryLocation" placeholder="e.g. Back-stock room B" />
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label nim-label--required">Storage condition</label>
+                      <select class="nim-input" [(ngModel)]="fStorageCondition">
+                        <option value="">Select storage condition</option>
+                        @for (opt of storageOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Assigned team</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fAssignedTeam" placeholder="e.g. Surgical Coordinator, Pharmacy tech" />
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Tab 4: Procurement -->
+              @case (4) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Procurement &amp; financials</h2>
+                    <p>Vendor relationships, pricing, purchase history, and budget allocation.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field">
+                      <label class="nim-label">Preferred vendor</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fPreferredVendor" placeholder="e.g. Alcon Direct" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Secondary vendor</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fSecondaryVendor" placeholder="e.g. McKesson Medical" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Unit cost (USD)</label>
+                      <input class="nim-input" type="number" min="0" step="0.01" [(ngModel)]="fUnitCost" placeholder="0.00" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Last purchase cost</label>
+                      <input class="nim-input" type="number" min="0" step="0.01" [(ngModel)]="fLastPurchaseCost" placeholder="0.00" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Contract / GPO price</label>
+                      <input class="nim-input" type="number" min="0" step="0.01" [(ngModel)]="fContractPrice" placeholder="0.00" />
+                      <span class="nim-helper">Negotiated contract or GPO pricing</span>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Budget category</label>
+                      <select class="nim-input" [(ngModel)]="fBudgetCategory">
+                        <option value="">Select category</option>
+                        @for (opt of budgetOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Purchase frequency</label>
+                      <select class="nim-input" [(ngModel)]="fPurchaseFrequency">
+                        <option value="">Select frequency</option>
+                        @for (opt of frequencyOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Invoice reference</label>
+                      <input class="nim-input" type="text" [(ngModel)]="fInvoiceRef" placeholder="INV-XXXXXX" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Last order date</label>
+                      <input class="nim-input" type="date" [(ngModel)]="fLastOrderDate" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Last received date</label>
+                      <input class="nim-input" type="date" [(ngModel)]="fLastReceivedDate" />
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-checkbox-label">
+                        <input type="checkbox" [(ngModel)]="fTaxable" class="nim-checkbox" />
+                        <span>Taxable item</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Tab 5: Compliance -->
+              @case (5) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Compliance &amp; traceability</h2>
+                    <p>Regulatory classification, sterility, expiration, controlled status, and chain of custody requirements.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field">
+                      <label class="nim-label">Expiration date</label>
+                      <input class="nim-input" type="date" [(ngModel)]="fExpirationDate" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Regulatory category</label>
+                      <select class="nim-input" [(ngModel)]="fRegulatoryCategory">
+                        <option value="">Select category</option>
+                        @for (opt of regulatoryOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <div class="nim-checkbox-group">
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fSterile" class="nim-checkbox" /><span>Sterile item</span></label>
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fRequiresTempControl" class="nim-checkbox" /><span>Requires temperature control</span></label>
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fControlledItem" class="nim-checkbox" /><span>Controlled item (restricted access)</span></label>
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fAuditRequired" class="nim-checkbox" /><span>Audit required at each use</span></label>
+                        <label class="nim-checkbox-label nim-checkbox-label--warn"><input type="checkbox" [(ngModel)]="fRecallFlag" class="nim-checkbox" /><span>Recall flag — do not use</span></label>
+                      </div>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">FDA / compliance notes</label>
+                      <textarea class="nim-input nim-textarea" [(ngModel)]="fFdaCompliance" placeholder="Regulatory notes, PMA conditions, tracking requirements..."></textarea>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Chain of custody notes</label>
+                      <textarea class="nim-input nim-textarea" [(ngModel)]="fCustodyNotes" placeholder="Scan requirements, implant log protocol, witnessing procedures..."></textarea>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Tab 6: Lifecycle -->
+              @case (6) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Lifecycle &amp; maintenance</h2>
+                    <p>Usage classification, service requirements, warranty coverage, and retirement criteria.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Usage type</label>
+                      <select class="nim-input" [(ngModel)]="fUsageType">
+                        <option value="">Select usage type</option>
+                        @for (opt of usageTypeOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+                      </select>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <div class="nim-checkbox-group">
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fServiceable" class="nim-checkbox" /><span>Serviceable / repairable</span></label>
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fCalibrationRequired" class="nim-checkbox" /><span>Calibration required</span></label>
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fMaintenanceRequired" class="nim-checkbox" /><span>Preventive maintenance required</span></label>
+                        <label class="nim-checkbox-label"><input type="checkbox" [(ngModel)]="fDecommissioned" class="nim-checkbox" /><span>Decommissioned — do not use</span></label>
+                      </div>
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Warranty expiration</label>
+                      <input class="nim-input" type="date" [(ngModel)]="fWarrantyExpiration" />
+                    </div>
+                    <div class="nim-field">
+                      <label class="nim-label">Useful life (months)</label>
+                      <input class="nim-input" type="number" min="0" [(ngModel)]="fUsefulLifeMonths" placeholder="0" />
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Retirement / disposal criteria</label>
+                      <textarea class="nim-input nim-textarea" [(ngModel)]="fRetirementCriteria" placeholder="Conditions for decommissioning, disposal protocol, replacement trigger..."></textarea>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Tab 7: Notes -->
+              @case (7) {
+                <div class="nim-tab-content">
+                  <div class="nim-section-header">
+                    <h2>Notes &amp; documentation</h2>
+                    <p>Internal notes, clinical protocols, and documentation tracking.</p>
+                  </div>
+                  <div class="nim-form-grid">
+                    <div class="nim-field nim-field--full">
+                      <label class="nim-label">Internal notes</label>
+                      <textarea class="nim-input nim-textarea nim-textarea--lg" [(ngModel)]="fInternalNotes" placeholder="Internal operational notes, buyer notes, inventory manager comments..."></textarea>
+                    </div>
+                    <div class="nim-field nim-field--full">
+                      <div class="nim-attachments-placeholder">
+                        <div class="nim-attach-icon">📎</div>
+                        <strong>Attachments</strong>
+                        <p>SDS sheets, IFU documents, certificates, photos, and vendor docs can be attached here in production.</p>
+                        <span class="nim-attach-note">Document upload requires backend integration.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="nim-footer">
+        <div class="nim-footer__left">
+          @if (currentTab() > 1) {
+            <button class="nim-btn nim-btn--ghost" type="button" (click)="prev()">← Previous</button>
+          }
+        </div>
+        <div class="nim-footer__right">
+          <button class="nim-btn" type="button" (click)="cancel()">Cancel</button>
+          @if (currentTab() < 7) {
+            <button class="nim-btn nim-btn--primary" type="button" (click)="next()">Next →</button>
+          } @else {
+            <button class="nim-btn nim-btn--primary" type="button" (click)="submit()" [disabled]="!canSubmit || isSubmitting()">
+              {{ isSubmitting() ? 'Saving…' : (isEditMode() ? 'Save changes' : 'Add to inventory') }}
+            </button>
+          }
+        </div>
+      </div>
+
+    </div>
+  </div>
+}

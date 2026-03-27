@@ -332,6 +332,91 @@ export interface InventoryRecord {
   tone: SurfaceTone;
   forecast: string;
   nextOrder: string;
+
+  // Basic Identification
+  id?: string;
+  itemName?: string;
+  category?: string;
+  subcategory?: string;
+  brand?: string;
+  manufacturer?: string;
+  model?: string;
+  sku?: string;
+  mfrPartNumber?: string;
+  lotNumber?: string;
+  udi?: string;
+  description?: string;
+  clinicalNotes?: string;
+
+  // Stock & Inventory Control
+  onHandQty?: number;
+  availableQty?: number;
+  reservedQty?: number;
+  reorderPoint?: number;
+  reorderQty?: number;
+  parLevel?: number;
+  maxLevel?: number;
+  unitOfMeasure?: string;
+  packageSize?: string;
+  unitsPerCase?: number;
+  avgMonthlyUsage?: number;
+  leadTimeDays?: number;
+  lastRestockedDate?: string;
+  nextOrderDate?: string;
+  lastCountDate?: string;
+  countVariance?: number;
+  inventoryStatus?: string;
+
+  // Location & Storage
+  facility?: string;
+  department?: string;
+  room?: string;
+  cabinetBin?: string;
+  storageCondition?: string;
+  assignedTeam?: string;
+  secondaryLocation?: string;
+
+  // Financial & Procurement
+  preferredVendor?: string;
+  secondaryVendor?: string;
+  unitCost?: number;
+  lastPurchaseCost?: number;
+  contractPrice?: number;
+  budgetCategory?: string;
+  purchaseFrequency?: string;
+  lastOrderDate?: string;
+  lastReceivedDate?: string;
+  invoiceRef?: string;
+  taxable?: boolean;
+
+  // Compliance & Traceability
+  expirationDate?: string;
+  requiresTempControl?: boolean;
+  sterile?: boolean;
+  controlledItem?: boolean;
+  recallFlag?: boolean;
+  regulatoryCategory?: string;
+  fdaCompliance?: string;
+  auditRequired?: boolean;
+  custodyNotes?: string;
+
+  // Lifecycle
+  usageType?: string;
+  serviceable?: boolean;
+  calibrationRequired?: boolean;
+  maintenanceRequired?: boolean;
+  warrantyExpiration?: string;
+  usefulLifeMonths?: number;
+  retirementCriteria?: string;
+  decommissioned?: boolean;
+
+  // Notes & Audit
+  internalNotes?: string;
+  attachmentCount?: number;
+  createdBy?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
 }
 
 export interface IntegrationFeedItem {

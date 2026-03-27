@@ -1,122 +1,402 @@
 <section class="workspace-page">
+
+  <!-- Page header -->
   <header class="page-header page-header--with-actions">
     <div>
-      <p class="page-kicker">Inventory forecasting</p>
+      <p class="page-kicker">Inventory management</p>
       <h1>Implants, medications, and optical materials with shortage prevention and reorder intelligence.</h1>
-      <p class="page-subtitle">Focused on high-risk ophthalmology inventory where stockouts directly affect surgery, injections, and retail margin.</p>
+      <p class="page-subtitle">Production-grade inventory tracking with full compliance, procurement, and lifecycle visibility.</p>
     </div>
     <div class="page-header-actions">
       <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New item</button>
     </div>
   </header>
 
-  <article class="panel">
-    <div class="panel__header">
-      <div><p class="panel__eyebrow">Forecast and shortages</p><h2>Inventory watchlist</h2></div>
-      <app-status-chip [label]="inventory().length + ' tracked items'" tone="critical" />
+  <!-- Summary stats -->
+  <div class="inv-stats-bar">
+    <div class="inv-stat">
+      <span class="inv-stat__value">{{ allInventory().length }}</span>
+      <span class="inv-stat__label">Total items</span>
     </div>
-    <table class="dense-table">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Location</th>
-          <th>On hand</th>
-          <th>Runway</th>
-          <th>Forecast</th>
-          <th>Next order</th>
-          <th class="th-actions"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (item of inventory(); track item.item) {
+    <div class="inv-stat inv-stat--critical">
+      <span class="inv-stat__value">{{ criticalCount() }}</span>
+      <span class="inv-stat__label">Critical</span>
+    </div>
+    <div class="inv-stat inv-stat--warning">
+      <span class="inv-stat__value">{{ lowStockCount() }}</span>
+      <span class="inv-stat__label">Low stock</span>
+    </div>
+    <div class="inv-stat inv-stat--ok">
+      <span class="inv-stat__value">{{ activeCount() }}</span>
+      <span class="inv-stat__label">Active</span>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="inv-filter-bar">
+    <div class="inv-filter-bar__search">
+      <span class="inv-filter-bar__search-icon">⌕</span>
+      <input
+        class="inv-filter-input inv-filter-input--search"
+        type="text"
+        placeholder="Search by name, SKU, lot #, manufacturer…"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+    </div>
+    <select class="inv-filter-input" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+      <option value="">All categories</option>
+      @for (opt of categoryOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+    </select>
+    <select class="inv-filter-input" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+      <option value="">All statuses</option>
+      @for (opt of statusOptions; track opt) { <option [value]="opt">{{ opt }}</option> }
+    </select>
+    @if (hasActiveFilters) {
+      <button class="inv-clear-btn" type="button" (click)="clearFilters()">✕ Clear filters</button>
+    }
+    <span class="inv-record-count">{{ filteredInventory().length }} of {{ allInventory().length }} items</span>
+  </div>
+
+  <!-- Main table panel -->
+  <article class="panel inv-panel">
+    <div class="panel__header">
+      <div>
+        <p class="panel__eyebrow">Inventory watchlist</p>
+        <h2>All tracked items</h2>
+      </div>
+      <app-status-chip [label]="filteredInventory().length + ' items'" tone="neutral" />
+    </div>
+
+    <div class="inv-table-wrap">
+      <table class="inv-table">
+        <thead>
           <tr>
-            <td>{{ item.item }}</td>
-            <td>{{ item.location }}</td>
-            <td>{{ item.onHand }}</td>
-            <td><app-status-chip [label]="item.daysRemaining" [tone]="item.tone" /></td>
-            <td>{{ item.forecast }}</td>
-            <td>{{ item.nextOrder }}</td>
-            <td class="td-actions">
-              <div class="row-actions">
-                <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewItem(item)">View</button>
-                <button class="row-action-btn" type="button" (click)="openEdit(item)">Edit</button>
-                <button class="row-action-btn" type="button" (click)="openOrder(item)">Order</button>
-                <button class="row-action-more" type="button" title="More actions">···</button>
-              </div>
-            </td>
+            <th class="inv-th inv-th--sortable inv-th--item" (click)="toggleSort('item')">
+              Item / SKU / Category <span class="inv-sort-icon">{{ sortIcon('item') }}</span>
+            </th>
+            <th class="inv-th inv-th--sortable" (click)="toggleSort('manufacturer')">
+              Manufacturer <span class="inv-sort-icon">{{ sortIcon('manufacturer') }}</span>
+            </th>
+            <th class="inv-th">Lot #</th>
+            <th class="inv-th inv-th--sortable" (click)="toggleSort('location')">
+              Location <span class="inv-sort-icon">{{ sortIcon('location') }}</span>
+            </th>
+            <th class="inv-th inv-th--num">On Hand / Par</th>
+            <th class="inv-th inv-th--num">Reorder Pt</th>
+            <th class="inv-th inv-th--num">Unit Cost</th>
+            <th class="inv-th">Vendor</th>
+            <th class="inv-th">Expiry</th>
+            <th class="inv-th inv-th--sortable" (click)="toggleSort('inventoryStatus')">
+              Status <span class="inv-sort-icon">{{ sortIcon('inventoryStatus') }}</span>
+            </th>
+            <th class="inv-th inv-th--actions"></th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (item of filteredInventory(); track item.id ?? item.item) {
+            <tr class="inv-tr" [class.inv-tr--recall]="item.recallFlag">
+              <!-- Item / SKU / Category -->
+              <td class="inv-td inv-td--item">
+                <div class="inv-item-cell">
+                  <div class="inv-item-name">{{ item.itemName ?? item.item }}</div>
+                  @if (item.sku) {
+                    <div class="inv-item-sku">{{ item.sku }}</div>
+                  }
+                  @if (item.category) {
+                    <div class="inv-item-cat">{{ item.category }}@if (item.subcategory) { · {{ item.subcategory }} }</div>
+                  }
+                  <!-- Compliance flags -->
+                  <div class="inv-flags">
+                    @if (item.sterile) { <span class="inv-flag inv-flag--sterile" title="Sterile">S</span> }
+                    @if (item.requiresTempControl) { <span class="inv-flag inv-flag--temp" title="Temp control required">❄</span> }
+                    @if (item.controlledItem) { <span class="inv-flag inv-flag--controlled" title="Controlled item">🔒</span> }
+                    @if (item.recallFlag) { <span class="inv-flag inv-flag--recall" title="RECALL — do not use">⚠</span> }
+                    @if (item.auditRequired) { <span class="inv-flag inv-flag--audit" title="Audit required">✓</span> }
+                  </div>
+                </div>
+              </td>
+
+              <!-- Manufacturer -->
+              <td class="inv-td">
+                <div class="inv-cell-primary">{{ item.manufacturer ?? '—' }}</div>
+                @if (item.brand && item.brand !== item.manufacturer) {
+                  <div class="inv-cell-secondary">{{ item.brand }}</div>
+                }
+              </td>
+
+              <!-- Lot # -->
+              <td class="inv-td">
+                <span class="inv-mono">{{ item.lotNumber ?? '—' }}</span>
+              </td>
+
+              <!-- Location -->
+              <td class="inv-td">
+                <div class="inv-cell-primary">{{ item.location }}</div>
+                @if (item.facility) {
+                  <div class="inv-cell-secondary">{{ item.facility }}</div>
+                }
+              </td>
+
+              <!-- On Hand / Par -->
+              <td class="inv-td inv-td--num">
+                <div class="inv-stock-cell">
+                  <div class="inv-stock-nums">
+                    <span class="inv-stock-onhand">{{ item.onHandQty ?? item.onHand }}</span>
+                    @if (item.parLevel != null) {
+                      <span class="inv-stock-par"> / {{ item.parLevel }}</span>
+                    }
+                    @if (item.unitOfMeasure) {
+                      <span class="inv-stock-uom"> {{ item.unitOfMeasure }}</span>
+                    }
+                  </div>
+                  <div class="stock-bar">
+                    <div class="stock-bar__fill" [class]="stockBarClass(item)" [style.width.%]="stockPercent(item)"></div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Reorder Point -->
+              <td class="inv-td inv-td--num">
+                @if (item.reorderPoint != null) {
+                  <span class="inv-num">{{ item.reorderPoint }}</span>
+                } @else {
+                  <span class="inv-dash">—</span>
+                }
+              </td>
+
+              <!-- Unit Cost -->
+              <td class="inv-td inv-td--num">
+                <span class="inv-num">{{ formatCurrency(item.unitCost) }}</span>
+                @if (item.contractPrice != null && item.contractPrice !== item.unitCost) {
+                  <div class="inv-cell-secondary inv-contract-price">GPO: {{ formatCurrency(item.contractPrice) }}</div>
+                }
+              </td>
+
+              <!-- Vendor -->
+              <td class="inv-td">
+                <div class="inv-cell-primary">{{ item.preferredVendor ?? '—' }}</div>
+                @if (item.purchaseFrequency) {
+                  <div class="inv-cell-secondary">{{ item.purchaseFrequency }}</div>
+                }
+              </td>
+
+              <!-- Expiry -->
+              <td class="inv-td">
+                @if (item.expirationDate) {
+                  <span class="inv-expiry">{{ item.expirationDate }}</span>
+                } @else {
+                  <span class="inv-dash">—</span>
+                }
+              </td>
+
+              <!-- Status -->
+              <td class="inv-td">
+                <span class="inv-status-badge" [class]="statusToneClass(item.inventoryStatus)">
+                  {{ item.inventoryStatus ?? item.daysRemaining }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="inv-td inv-td--actions">
+                <div class="row-actions">
+                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewItem(item)">View</button>
+                  <button class="row-action-btn" type="button" (click)="openEdit(item)">Edit</button>
+                  <button class="row-action-btn" type="button" (click)="openOrder(item)">Order</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (filteredInventory().length === 0) {
+        <div class="inv-empty">
+          <div class="inv-empty__icon">📦</div>
+          <strong>No items found</strong>
+          <p>@if (hasActiveFilters) { Try clearing your filters, or } Add your first inventory item to get started.</p>
+          @if (hasActiveFilters) {
+            <button class="rec-btn" type="button" (click)="clearFilters()">Clear filters</button>
+          }
+        </div>
+      }
+    </div>
   </article>
+
 </section>
 
-<!-- View modal -->
-<app-modal [open]="viewOpen()" title="Item details" (closed)="closeView()">
+<!-- New / Edit Inventory Modal -->
+<app-new-inventory-modal
+  [open]="inventoryModalOpen()"
+  [itemToEdit]="itemToEdit()"
+  (closed)="closeInventoryModal()"
+/>
+
+<!-- View detail modal -->
+<app-modal [open]="viewOpen()" title="Item detail" (closed)="closeView()">
   @if (selectedItem()) {
-    <div class="rec-kv-list">
-      <div class="rec-kv-row"><span>Item</span><strong>{{ selectedItem()!.item }}</strong></div>
-      <div class="rec-kv-row"><span>Location</span><strong>{{ selectedItem()!.location }}</strong></div>
-      <div class="rec-kv-row"><span>On hand</span><strong>{{ selectedItem()!.onHand }}</strong></div>
-      <div class="rec-kv-row"><span>Runway</span><strong>{{ selectedItem()!.daysRemaining }}</strong></div>
-      <div class="rec-kv-row"><span>Forecast</span><strong>{{ selectedItem()!.forecast }}</strong></div>
-      <div class="rec-kv-row"><span>Next order</span><strong>{{ selectedItem()!.nextOrder }}</strong></div>
+    <div class="view-detail-scroll">
+
+      <!-- Header summary -->
+      <div class="vd-summary">
+        <div class="vd-summary__left">
+          <div class="vd-item-name">{{ selectedItem()!.itemName ?? selectedItem()!.item }}</div>
+          @if (selectedItem()!.category) {
+            <div class="vd-item-meta">{{ selectedItem()!.category }}@if (selectedItem()!.subcategory) { · {{ selectedItem()!.subcategory }} }</div>
+          }
+        </div>
+        <div class="vd-summary__right">
+          <span class="inv-status-badge" [class]="statusToneClass(selectedItem()!.inventoryStatus)">
+            {{ selectedItem()!.inventoryStatus ?? selectedItem()!.daysRemaining }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Identity -->
+      <div class="vd-section">
+        <div class="vd-section-title">Identification</div>
+        <div class="rec-kv-list">
+          <div class="rec-kv-row"><span>Item name</span><strong>{{ selectedItem()!.itemName ?? selectedItem()!.item }}</strong></div>
+          @if (selectedItem()!.brand) { <div class="rec-kv-row"><span>Brand</span><strong>{{ selectedItem()!.brand }}</strong></div> }
+          @if (selectedItem()!.manufacturer) { <div class="rec-kv-row"><span>Manufacturer</span><strong>{{ selectedItem()!.manufacturer }}</strong></div> }
+          @if (selectedItem()!.model) { <div class="rec-kv-row"><span>Model</span><strong>{{ selectedItem()!.model }}</strong></div> }
+          @if (selectedItem()!.sku) { <div class="rec-kv-row"><span>SKU</span><strong class="inv-mono">{{ selectedItem()!.sku }}</strong></div> }
+          @if (selectedItem()!.mfrPartNumber) { <div class="rec-kv-row"><span>MFR part #</span><strong class="inv-mono">{{ selectedItem()!.mfrPartNumber }}</strong></div> }
+          @if (selectedItem()!.lotNumber) { <div class="rec-kv-row"><span>Lot / batch</span><strong class="inv-mono">{{ selectedItem()!.lotNumber }}</strong></div> }
+          @if (selectedItem()!.udi) { <div class="rec-kv-row"><span>UDI</span><strong class="inv-mono">{{ selectedItem()!.udi }}</strong></div> }
+          @if (selectedItem()!.description) { <div class="rec-kv-row"><span>Description</span><strong>{{ selectedItem()!.description }}</strong></div> }
+          @if (selectedItem()!.clinicalNotes) { <div class="rec-kv-row"><span>Clinical notes</span><strong>{{ selectedItem()!.clinicalNotes }}</strong></div> }
+        </div>
+      </div>
+
+      <!-- Stock -->
+      <div class="vd-section">
+        <div class="vd-section-title">Stock &amp; inventory</div>
+        <div class="rec-kv-list">
+          <div class="rec-kv-row"><span>On hand</span><strong>{{ selectedItem()!.onHandQty != null ? selectedItem()!.onHandQty + ' ' + (selectedItem()!.unitOfMeasure ?? '') : selectedItem()!.onHand }}</strong></div>
+          @if (selectedItem()!.availableQty != null) { <div class="rec-kv-row"><span>Available</span><strong>{{ selectedItem()!.availableQty }} {{ selectedItem()!.unitOfMeasure ?? '' }}</strong></div> }
+          @if (selectedItem()!.reservedQty != null) { <div class="rec-kv-row"><span>Reserved</span><strong>{{ selectedItem()!.reservedQty }}</strong></div> }
+          @if (selectedItem()!.reorderPoint != null) { <div class="rec-kv-row"><span>Reorder point</span><strong>{{ selectedItem()!.reorderPoint }}</strong></div> }
+          @if (selectedItem()!.reorderQty != null) { <div class="rec-kv-row"><span>Reorder qty</span><strong>{{ selectedItem()!.reorderQty }}</strong></div> }
+          @if (selectedItem()!.parLevel != null) { <div class="rec-kv-row"><span>Par level</span><strong>{{ selectedItem()!.parLevel }}</strong></div> }
+          @if (selectedItem()!.maxLevel != null) { <div class="rec-kv-row"><span>Max level</span><strong>{{ selectedItem()!.maxLevel }}</strong></div> }
+          @if (selectedItem()!.avgMonthlyUsage != null) { <div class="rec-kv-row"><span>Avg monthly usage</span><strong>{{ selectedItem()!.avgMonthlyUsage }}</strong></div> }
+          @if (selectedItem()!.leadTimeDays != null) { <div class="rec-kv-row"><span>Lead time</span><strong>{{ selectedItem()!.leadTimeDays }} days</strong></div> }
+          @if (selectedItem()!.lastRestockedDate) { <div class="rec-kv-row"><span>Last restocked</span><strong>{{ selectedItem()!.lastRestockedDate }}</strong></div> }
+          @if (selectedItem()!.nextOrderDate) { <div class="rec-kv-row"><span>Next order date</span><strong>{{ selectedItem()!.nextOrderDate }}</strong></div> }
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="vd-section">
+        <div class="vd-section-title">Location &amp; storage</div>
+        <div class="rec-kv-list">
+          <div class="rec-kv-row"><span>Location</span><strong>{{ selectedItem()!.location }}</strong></div>
+          @if (selectedItem()!.facility) { <div class="rec-kv-row"><span>Facility</span><strong>{{ selectedItem()!.facility }}</strong></div> }
+          @if (selectedItem()!.department) { <div class="rec-kv-row"><span>Department</span><strong>{{ selectedItem()!.department }}</strong></div> }
+          @if (selectedItem()!.room) { <div class="rec-kv-row"><span>Room</span><strong>{{ selectedItem()!.room }}</strong></div> }
+          @if (selectedItem()!.cabinetBin) { <div class="rec-kv-row"><span>Cabinet / bin</span><strong>{{ selectedItem()!.cabinetBin }}</strong></div> }
+          @if (selectedItem()!.storageCondition) { <div class="rec-kv-row"><span>Storage condition</span><strong>{{ selectedItem()!.storageCondition }}</strong></div> }
+          @if (selectedItem()!.assignedTeam) { <div class="rec-kv-row"><span>Assigned team</span><strong>{{ selectedItem()!.assignedTeam }}</strong></div> }
+          @if (selectedItem()!.secondaryLocation) { <div class="rec-kv-row"><span>Secondary location</span><strong>{{ selectedItem()!.secondaryLocation }}</strong></div> }
+        </div>
+      </div>
+
+      <!-- Procurement -->
+      <div class="vd-section">
+        <div class="vd-section-title">Procurement &amp; financials</div>
+        <div class="rec-kv-list">
+          @if (selectedItem()!.preferredVendor) { <div class="rec-kv-row"><span>Preferred vendor</span><strong>{{ selectedItem()!.preferredVendor }}</strong></div> }
+          @if (selectedItem()!.secondaryVendor) { <div class="rec-kv-row"><span>Secondary vendor</span><strong>{{ selectedItem()!.secondaryVendor }}</strong></div> }
+          @if (selectedItem()!.unitCost != null) { <div class="rec-kv-row"><span>Unit cost</span><strong>{{ formatCurrency(selectedItem()!.unitCost) }}</strong></div> }
+          @if (selectedItem()!.contractPrice != null) { <div class="rec-kv-row"><span>Contract / GPO price</span><strong>{{ formatCurrency(selectedItem()!.contractPrice) }}</strong></div> }
+          @if (selectedItem()!.budgetCategory) { <div class="rec-kv-row"><span>Budget category</span><strong>{{ selectedItem()!.budgetCategory }}</strong></div> }
+          @if (selectedItem()!.purchaseFrequency) { <div class="rec-kv-row"><span>Purchase frequency</span><strong>{{ selectedItem()!.purchaseFrequency }}</strong></div> }
+          @if (selectedItem()!.lastOrderDate) { <div class="rec-kv-row"><span>Last order date</span><strong>{{ selectedItem()!.lastOrderDate }}</strong></div> }
+          @if (selectedItem()!.lastReceivedDate) { <div class="rec-kv-row"><span>Last received</span><strong>{{ selectedItem()!.lastReceivedDate }}</strong></div> }
+          @if (selectedItem()!.invoiceRef) { <div class="rec-kv-row"><span>Invoice ref</span><strong class="inv-mono">{{ selectedItem()!.invoiceRef }}</strong></div> }
+          <div class="rec-kv-row"><span>Taxable</span><strong>{{ selectedItem()!.taxable ? 'Yes' : 'No' }}</strong></div>
+        </div>
+      </div>
+
+      <!-- Compliance -->
+      <div class="vd-section">
+        <div class="vd-section-title">Compliance &amp; traceability</div>
+        <div class="rec-kv-list">
+          @if (selectedItem()!.expirationDate) { <div class="rec-kv-row"><span>Expiration date</span><strong>{{ selectedItem()!.expirationDate }}</strong></div> }
+          @if (selectedItem()!.regulatoryCategory) { <div class="rec-kv-row"><span>Regulatory category</span><strong>{{ selectedItem()!.regulatoryCategory }}</strong></div> }
+          <div class="rec-kv-row"><span>Sterile</span><strong>{{ selectedItem()!.sterile ? 'Yes' : 'No' }}</strong></div>
+          <div class="rec-kv-row"><span>Temp control required</span><strong>{{ selectedItem()!.requiresTempControl ? 'Yes' : 'No' }}</strong></div>
+          <div class="rec-kv-row"><span>Controlled item</span><strong>{{ selectedItem()!.controlledItem ? 'Yes — restricted access' : 'No' }}</strong></div>
+          <div class="rec-kv-row"><span>Audit required</span><strong>{{ selectedItem()!.auditRequired ? 'Yes' : 'No' }}</strong></div>
+          @if (selectedItem()!.recallFlag) { <div class="rec-kv-row"><span class="vd-warn-label">Recall flag</span><strong class="vd-warn-value">RECALL — DO NOT USE</strong></div> }
+          @if (selectedItem()!.fdaCompliance) { <div class="rec-kv-row"><span>FDA / compliance notes</span><strong>{{ selectedItem()!.fdaCompliance }}</strong></div> }
+          @if (selectedItem()!.custodyNotes) { <div class="rec-kv-row"><span>Chain of custody</span><strong>{{ selectedItem()!.custodyNotes }}</strong></div> }
+        </div>
+      </div>
+
+      <!-- Lifecycle -->
+      <div class="vd-section">
+        <div class="vd-section-title">Lifecycle &amp; maintenance</div>
+        <div class="rec-kv-list">
+          @if (selectedItem()!.usageType) { <div class="rec-kv-row"><span>Usage type</span><strong>{{ selectedItem()!.usageType }}</strong></div> }
+          <div class="rec-kv-row"><span>Serviceable</span><strong>{{ selectedItem()!.serviceable ? 'Yes' : 'No' }}</strong></div>
+          <div class="rec-kv-row"><span>Calibration required</span><strong>{{ selectedItem()!.calibrationRequired ? 'Yes' : 'No' }}</strong></div>
+          <div class="rec-kv-row"><span>Maintenance required</span><strong>{{ selectedItem()!.maintenanceRequired ? 'Yes' : 'No' }}</strong></div>
+          @if (selectedItem()!.warrantyExpiration) { <div class="rec-kv-row"><span>Warranty expiration</span><strong>{{ selectedItem()!.warrantyExpiration }}</strong></div> }
+          @if (selectedItem()!.usefulLifeMonths) { <div class="rec-kv-row"><span>Useful life</span><strong>{{ selectedItem()!.usefulLifeMonths }} months</strong></div> }
+          @if (selectedItem()!.retirementCriteria) { <div class="rec-kv-row"><span>Retirement criteria</span><strong>{{ selectedItem()!.retirementCriteria }}</strong></div> }
+          <div class="rec-kv-row"><span>Decommissioned</span><strong>{{ selectedItem()!.decommissioned ? 'Yes — do not use' : 'No' }}</strong></div>
+        </div>
+      </div>
+
+      <!-- Notes & Audit -->
+      @if (selectedItem()!.internalNotes || selectedItem()!.createdBy) {
+        <div class="vd-section">
+          <div class="vd-section-title">Notes &amp; audit</div>
+          <div class="rec-kv-list">
+            @if (selectedItem()!.internalNotes) { <div class="rec-kv-row"><span>Internal notes</span><strong>{{ selectedItem()!.internalNotes }}</strong></div> }
+            @if (selectedItem()!.createdBy) { <div class="rec-kv-row"><span>Created by</span><strong>{{ selectedItem()!.createdBy }} {{ selectedItem()!.createdAt ? '· ' + selectedItem()!.createdAt : '' }}</strong></div> }
+            @if (selectedItem()!.updatedBy) { <div class="rec-kv-row"><span>Last updated by</span><strong>{{ selectedItem()!.updatedBy }} {{ selectedItem()!.updatedAt ? '· ' + selectedItem()!.updatedAt : '' }}</strong></div> }
+          </div>
+        </div>
+      }
+
     </div>
     <div class="rec-form-actions">
       <button class="rec-btn" type="button" (click)="openOrder(selectedItem()!); closeView()">Place order</button>
+      <button class="rec-btn" type="button" (click)="openEdit(selectedItem()!); closeView()">Edit item</button>
       <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
     </div>
   }
 </app-modal>
 
-<!-- Reorder modal -->
-<app-modal [open]="orderOpen()" [title]="'Order — ' + (selectedItem()?.item ?? '')" (closed)="closeOrder()">
+<!-- Order confirmation modal -->
+<app-modal [open]="orderOpen()" [title]="'Reorder — ' + (selectedItem()?.itemName ?? selectedItem()?.item ?? '')" (closed)="closeOrder()">
   @if (selectedItem()) {
     <div class="rec-form">
       <div class="rec-kv-list" style="margin-bottom: 1rem;">
-        <div class="rec-kv-row"><span>Item</span><strong>{{ selectedItem()!.item }}</strong></div>
-        <div class="rec-kv-row"><span>Location</span><strong>{{ selectedItem()!.location }}</strong></div>
-        <div class="rec-kv-row"><span>Current on hand</span><strong>{{ selectedItem()!.onHand }}</strong></div>
-        <div class="rec-kv-row"><span>Next scheduled order</span><strong>{{ selectedItem()!.nextOrder }}</strong></div>
+        <div class="rec-kv-row"><span>Item</span><strong>{{ selectedItem()!.itemName ?? selectedItem()!.item }}</strong></div>
+        @if (selectedItem()!.preferredVendor) { <div class="rec-kv-row"><span>Vendor</span><strong>{{ selectedItem()!.preferredVendor }}</strong></div> }
+        <div class="rec-kv-row"><span>Current on hand</span><strong>{{ selectedItem()!.onHandQty != null ? selectedItem()!.onHandQty + ' ' + (selectedItem()!.unitOfMeasure ?? '') : selectedItem()!.onHand }}</strong></div>
+        @if (selectedItem()!.reorderPoint != null) { <div class="rec-kv-row"><span>Reorder point</span><strong>{{ selectedItem()!.reorderPoint }}</strong></div> }
+        @if (selectedItem()!.contractPrice != null) { <div class="rec-kv-row"><span>Contract price</span><strong>{{ formatCurrency(selectedItem()!.contractPrice) }} / {{ selectedItem()!.unitOfMeasure ?? 'unit' }}</strong></div> }
+        <div class="rec-kv-row"><span>Next scheduled order</span><strong>{{ selectedItem()!.nextOrderDate ?? selectedItem()!.nextOrder }}</strong></div>
       </div>
       <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Quantity to order</label>
+        <label class="rec-form-label">Quantity to order ({{ selectedItem()!.unitOfMeasure ?? 'units' }})</label>
         <input class="rec-form-input" type="number" min="1" [(ngModel)]="fOrderQty" />
       </div>
+      @if (selectedItem()!.unitCost != null && fOrderQty) {
+        <div class="inv-order-total">
+          Estimated total: <strong>{{ formatCurrency((selectedItem()!.contractPrice ?? selectedItem()!.unitCost ?? 0) * +fOrderQty) }}</strong>
+          @if (selectedItem()!.contractPrice != null) { <span class="inv-order-total__note">(at contract price)</span> }
+        </div>
+      }
       <div class="rec-form-actions">
         <button class="rec-btn" type="button" (click)="closeOrder()">Cancel</button>
         <button class="rec-btn rec-btn--primary" type="button" (click)="confirmOrder()">Submit order</button>
       </div>
     </div>
   }
-</app-modal>
-
-<!-- Create / Edit modal -->
-<app-modal [open]="formOpen()" [title]="editingItem() ? 'Edit item' : 'New inventory item'" (closed)="closeForm()">
-  <div class="rec-form">
-    <div class="rec-form-grid">
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Item name *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fItem" placeholder="e.g. Alcon AcrySof IQ IOL" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Location</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fLocation" placeholder="e.g. ASC storeroom" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">On hand (units)</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fOnHand" placeholder="e.g. 12 units" />
-      </div>
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Next order date</label>
-        <input class="rec-form-input" type="date" [(ngModel)]="fNextOrder" />
-      </div>
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn" type="button" (click)="closeForm()">Cancel</button>
-      <button class="rec-btn rec-btn--primary" type="button" (click)="saveItem()" [disabled]="!fItem.trim()">
-        {{ editingItem() ? 'Save changes' : 'Add item' }}
-      </button>
-    </div>
-  </div>
 </app-modal>

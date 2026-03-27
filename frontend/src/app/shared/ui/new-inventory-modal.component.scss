@@ -1,0 +1,429 @@
+.nim-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(10px);
+}
+
+.nim-panel {
+  width: 100%;
+  max-width: 880px;
+  height: min(92vh, 760px);
+  border-radius: 20px;
+  border: 1px solid var(--line-subtle);
+  background: var(--bg-panel);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: nim-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes nim-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.nim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--line-subtle);
+  background: var(--surface-control);
+  flex-shrink: 0;
+}
+
+.nim-header__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nim-breadcrumb {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nim-tab-indicator {
+  font-size: 0.8rem;
+  color: var(--accent-primary);
+  font-weight: 500;
+  padding: 0.2rem 0.65rem;
+  background: var(--accent-primary-soft);
+  border-radius: 6px;
+  border: 1px solid var(--accent-primary-border);
+}
+
+.nim-close {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 120ms ease;
+
+  &:hover {
+    background: var(--surface-control-hover);
+    color: var(--text-primary);
+  }
+}
+
+.nim-title-row {
+  padding: 0.9rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--line-subtle);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.nim-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.nim-item-preview {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding: 0.2rem 0.6rem;
+  background: var(--surface-control);
+  border-radius: 6px;
+  border: 1px solid var(--line-subtle);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nim-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.nim-sidebar {
+  width: 160px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--line-subtle);
+  background: var(--surface-control);
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+.nim-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background: var(--surface-control-hover);
+  }
+
+  &.nim-tab-btn--active {
+    background: rgba(79, 70, 229, 0.08);
+    border-left-color: var(--accent-primary);
+
+    .nim-tab-num { color: var(--accent-primary); }
+    .nim-tab-name { color: var(--text-primary); font-weight: 600; }
+  }
+}
+
+.nim-tab-icon {
+  font-size: 0.9rem;
+}
+
+.nim-tab-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-subtle);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.nim-tab-name {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.nim-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.nim-tab-content {
+  padding: 1.25rem;
+}
+
+.nim-section-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--line-subtle);
+
+  h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem;
+  }
+
+  p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.5;
+  }
+}
+
+.nim-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.nim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+
+  &.nim-field--full {
+    grid-column: 1 / -1;
+  }
+}
+
+.nim-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+
+  &.nim-label--required::after {
+    content: ' *';
+    color: var(--accent-critical);
+  }
+}
+
+.nim-input {
+  height: 36px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-shell);
+  color: var(--text-primary);
+  font-size: 0.855rem;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 130ms ease, box-shadow 130ms ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  }
+
+  &::placeholder {
+    color: var(--text-placeholder);
+  }
+}
+
+select.nim-input {
+  cursor: pointer;
+}
+
+.nim-textarea {
+  height: 72px;
+  padding: 0.5rem 0.75rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.nim-textarea--lg {
+  height: 140px;
+}
+
+.nim-helper {
+  font-size: 0.72rem;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
+
+.nim-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--surface-control);
+  border-radius: 8px;
+  border: 1px solid var(--line-subtle);
+}
+
+.nim-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+
+  &.nim-checkbox-label--warn span {
+    color: var(--accent-critical);
+    font-weight: 600;
+  }
+}
+
+.nim-checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+.nim-attachments-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2rem;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 10px;
+  text-align: center;
+  color: var(--text-secondary);
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+}
+
+.nim-attach-icon {
+  font-size: 1.8rem;
+}
+
+.nim-attach-note {
+  font-size: 0.72rem;
+  color: var(--text-subtle);
+}
+
+.nim-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  height: 100%;
+  min-height: 280px;
+  text-align: center;
+  color: var(--text-primary);
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent-positive-soft);
+    color: var(--accent-positive);
+    font-size: 1.4rem;
+    display: grid;
+    place-items: center;
+    border: 2px solid rgba(22, 163, 74, 0.25);
+  }
+
+  strong {
+    font-size: 1rem;
+  }
+
+  p {
+    font-size: 0.855rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+}
+
+.nim-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-top: 1px solid var(--line-subtle);
+  background: var(--surface-control);
+  flex-shrink: 0;
+}
+
+.nim-footer__left,
+.nim-footer__right {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nim-btn {
+  height: 34px;
+  padding: 0 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-control-strong);
+  color: var(--text-secondary);
+  font-size: 0.855rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms ease;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-control-hover);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &.nim-btn--primary {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: #fff;
+    font-weight: 600;
+
+    &:hover:not(:disabled) {
+      background: #4338ca;
+    }
+  }
+
+  &.nim-btn--ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-muted);
+
+    &:hover {
+      background: var(--surface-control);
+    }
+  }
+}
