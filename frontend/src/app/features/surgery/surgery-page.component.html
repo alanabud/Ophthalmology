@@ -2,74 +2,134 @@
   <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">ASC control center</p>
-      <h1>Case readiness, implant assurance, staffing, and postop pipeline in one surgical command view.</h1>
-      <p class="page-subtitle">This page is tuned for surgical coordinators, ASC nurses, and executives watching margin and case velocity.</p>
+      <h1>Case readiness, IOL planning, anesthesia, staffing, and postop pipeline in one surgical command view.</h1>
+      <p class="page-subtitle">Tuned for surgical coordinators, ASC nurses, and executives watching margin and case velocity.</p>
     </div>
     <div class="page-header-actions">
       <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New case</button>
     </div>
   </header>
 
-  <section class="info-grid">
-    <article class="info-tile"><strong>{{ cases().length }}</strong><p>Cases in current scope</p></article>
-    <article class="info-tile"><strong>3</strong><p>Readiness gaps blocking start time</p></article>
-    <article class="info-tile"><strong>2</strong><p>Implant stock warnings</p></article>
-    <article class="info-tile"><strong>97%</strong><p>Staff coverage confirmed</p></article>
+  <!-- Stats bar -->
+  <section class="surg-stats">
+    <div class="surg-stat">
+      <span class="surg-stat__val">{{ cases().length }}</span>
+      <span class="surg-stat__lbl">Cases in scope</span>
+    </div>
+    <div class="surg-stat surg-stat--ready">
+      <span class="surg-stat__val">{{ readyCount() }}</span>
+      <span class="surg-stat__lbl">Ready to proceed</span>
+    </div>
+    <div class="surg-stat surg-stat--hold">
+      <span class="surg-stat__val">{{ holdCount() }}</span>
+      <span class="surg-stat__lbl">On hold</span>
+    </div>
+    <div class="surg-stat surg-stat--scheduled">
+      <span class="surg-stat__val">{{ scheduledCount() }}</span>
+      <span class="surg-stat__lbl">Scheduled</span>
+    </div>
   </section>
 
   <section class="dual-grid">
-    <article class="panel">
+    <article class="panel" style="grid-column: 1 / -1;">
       <div class="panel__header">
-        <div><p class="panel__eyebrow">Case board</p><h2>Upcoming surgery cases</h2></div>
+        <div><p class="panel__eyebrow">Case board</p><h2>Surgery cases</h2></div>
       </div>
-      <div class="panel-list">
-        @for (caseItem of cases(); track caseItem.patient + caseItem.date) {
-          <article class="list-surface">
-            <div class="dense-header">
-              <div>
-                <strong>{{ caseItem.patient }} • {{ caseItem.procedure }}</strong>
-                <p>{{ caseItem.surgeon }} • {{ caseItem.date }}</p>
-              </div>
-              <div style="display:flex;align-items:center;gap:0.5rem;">
-                <app-status-chip [label]="caseItem.readiness" [tone]="caseItem.tone" />
-                <button class="row-action-btn row-action-btn--primary" type="button" style="margin:0;" (click)="viewCase(caseItem)">View</button>
-              </div>
-            </div>
-            <div class="key-value-stack">
-              <div class="key-value-row"><span>Implant</span><strong>{{ caseItem.implant }}</strong></div>
-              <div class="key-value-row"><span>Clearance</span><strong>{{ caseItem.clearance }}</strong></div>
-              <div class="key-value-row"><span>Risk</span><strong>{{ caseItem.risk }}</strong></div>
-            </div>
-          </article>
-        }
-      </div>
-    </article>
-
-    <article class="panel panel--assistant">
-      <div class="panel__header">
-        <div><p class="panel__eyebrow">AI bottleneck prediction</p><h2>Case flow recommendations</h2></div>
-      </div>
-      <div class="panel-list">
-        <article class="list-surface"><strong>Close lens confirmation before 11:30</strong><p>Doing this preserves the afternoon cataract block without room compression.</p></article>
-        <article class="list-surface"><strong>Pair turnover and inventory handoff</strong><p>Case cart replenishment should happen in the same motion as implant verification.</p></article>
-        <article class="list-surface"><strong>Route postop calls through optical slack window</strong><p>This prevents coordinator overload and keeps patient follow-up SLA intact.</p></article>
+      <div class="surg-table-wrap">
+        <table class="dense-table surg-table">
+          <thead>
+            <tr>
+              <th>Case ID</th>
+              <th>Patient</th>
+              <th>Procedure</th>
+              <th>Side</th>
+              <th>Surgeon</th>
+              <th>Date / Time</th>
+              <th>IOL model</th>
+              <th>IOL power</th>
+              <th>Clearance</th>
+              <th>Readiness</th>
+              <th>Risk</th>
+              <th class="th-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (caseItem of cases(); track (caseItem.caseId ?? caseItem.patient + caseItem.date)) {
+              <tr>
+                <td class="surg-case-id">{{ caseItem.caseId || '—' }}</td>
+                <td><strong>{{ caseItem.patient }}</strong></td>
+                <td>{{ caseItem.procedure }}</td>
+                <td class="surg-side">{{ caseItem.side || '—' }}</td>
+                <td class="surg-provider">{{ caseItem.surgeon }}</td>
+                <td class="surg-mono">{{ caseItem.date }}{{ caseItem.scheduledTime ? ' · ' + caseItem.scheduledTime : '' }}</td>
+                <td class="surg-iol">{{ caseItem.iOLModel || caseItem.implant || '—' }}</td>
+                <td class="surg-mono">{{ caseItem.iOLPower || '—' }}</td>
+                <td>
+                  <span class="surg-clearance" [class.surg-clearance--ok]="caseItem.clearance === 'Cleared'" [class.surg-clearance--pending]="caseItem.clearance !== 'Cleared'">
+                    {{ caseItem.clearance }}
+                  </span>
+                </td>
+                <td><app-status-chip [label]="caseItem.readiness" [tone]="caseItem.tone" /></td>
+                <td class="surg-risk">{{ caseItem.risk }}</td>
+                <td class="td-actions">
+                  <div class="row-actions">
+                    <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewCase(caseItem)">View</button>
+                    <button class="row-action-more" type="button" title="More actions">···</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
     </article>
   </section>
+
+  <article class="panel">
+    <div class="panel__header">
+      <div><p class="panel__eyebrow">AI bottleneck prediction</p><h2>Case flow recommendations</h2></div>
+    </div>
+    <div class="panel-list">
+      <article class="list-surface"><strong>Close lens confirmation before 11:30</strong><p>Doing this preserves the afternoon cataract block without room compression.</p></article>
+      <article class="list-surface"><strong>Pair turnover and inventory handoff</strong><p>Case cart replenishment should happen in the same motion as implant verification.</p></article>
+      <article class="list-surface"><strong>Route postop calls through optical slack window</strong><p>This prevents coordinator overload and keeps patient follow-up SLA intact.</p></article>
+    </div>
+  </article>
 </section>
 
 <!-- View modal -->
 <app-modal [open]="viewOpen()" title="Surgery case details" (closed)="closeView()">
   @if (selectedCase()) {
     <div class="rec-kv-list">
+      <div class="rec-kv-row"><span>Case ID</span><strong>{{ selectedCase()!.caseId || '—' }}</strong></div>
       <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedCase()!.patient }}</strong></div>
       <div class="rec-kv-row"><span>Procedure</span><strong>{{ selectedCase()!.procedure }}</strong></div>
+      <div class="rec-kv-row"><span>Side</span><strong>{{ selectedCase()!.side || '—' }}</strong></div>
       <div class="rec-kv-row"><span>Surgeon</span><strong>{{ selectedCase()!.surgeon }}</strong></div>
       <div class="rec-kv-row"><span>Date</span><strong>{{ selectedCase()!.date }}</strong></div>
-      <div class="rec-kv-row"><span>Readiness</span><strong>{{ selectedCase()!.readiness }}</strong></div>
-      <div class="rec-kv-row"><span>Implant</span><strong>{{ selectedCase()!.implant }}</strong></div>
+      <div class="rec-kv-row"><span>Scheduled time</span><strong>{{ selectedCase()!.scheduledTime || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Anesthesia</span><strong>{{ selectedCase()!.anesthesiaType || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Anesthesiologist</span><strong>{{ selectedCase()!.anesthesiologist || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Circulator</span><strong>{{ selectedCase()!.circulator || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>IOL model</span><strong>{{ selectedCase()!.iOLModel || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>IOL power</span><strong>{{ selectedCase()!.iOLPower || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Axial length</span><strong>{{ selectedCase()!.axialLength || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Target refraction</span><strong>{{ selectedCase()!.targetRefraction || '—' }}</strong></div>
       <div class="rec-kv-row"><span>Clearance</span><strong>{{ selectedCase()!.clearance }}</strong></div>
+      <div class="rec-kv-row"><span>Readiness</span><strong>{{ selectedCase()!.readiness }}</strong></div>
       <div class="rec-kv-row"><span>Risk</span><strong>{{ selectedCase()!.risk }}</strong></div>
+      @if (selectedCase()!.allergies) {
+        <div class="rec-kv-row"><span>Allergies</span><strong>{{ selectedCase()!.allergies }}</strong></div>
+      }
+      @if (selectedCase()!.comorbidities) {
+        <div class="rec-kv-row rec-kv-row--full"><span>Comorbidities</span><strong>{{ selectedCase()!.comorbidities }}</strong></div>
+      }
+      @if (selectedCase()!.preOpDiagnosis) {
+        <div class="rec-kv-row rec-kv-row--full"><span>Pre-op diagnosis</span><strong>{{ selectedCase()!.preOpDiagnosis }}</strong></div>
+      }
+      @if (selectedCase()!.postOpPlan) {
+        <div class="rec-kv-row rec-kv-row--full"><span>Post-op plan</span><strong>{{ selectedCase()!.postOpPlan }}</strong></div>
+      }
     </div>
     <div class="rec-form-actions">
       <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
@@ -80,14 +140,29 @@
 <!-- New case modal -->
 <app-modal [open]="createOpen()" title="New surgery case" (closed)="closeCreate()">
   <div class="rec-form">
+    <p class="rec-form-section-header">Patient &amp; procedure</p>
     <div class="rec-form-grid">
       <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Patient *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Patient full name" />
+        <label class="rec-form-label">Patient name *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Full name" />
       </div>
       <div class="rec-form-field rec-form-field--full">
         <label class="rec-form-label">Procedure *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fProcedure" placeholder="e.g. Phacoemulsification OD" />
+        <select class="rec-form-input" [(ngModel)]="fProcedure">
+          <option value="">Select procedure</option>
+          @for (p of procedureOptions; track p) {
+            <option [value]="p">{{ p }}</option>
+          }
+        </select>
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Laterality</label>
+        <select class="rec-form-input" [(ngModel)]="fSide">
+          <option value="">Select eye</option>
+          @for (s of sideOptions; track s) {
+            <option [value]="s">{{ s }}</option>
+          }
+        </select>
       </div>
       <div class="rec-form-field">
         <label class="rec-form-label">Surgeon</label>
@@ -98,14 +173,76 @@
         <input class="rec-form-input" type="date" [(ngModel)]="fDate" />
       </div>
       <div class="rec-form-field">
-        <label class="rec-form-label">Implant</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fImplant" placeholder="e.g. Alcon AcrySof IQ" />
+        <label class="rec-form-label">Time</label>
+        <input class="rec-form-input" type="time" [(ngModel)]="fTime" />
+      </div>
+    </div>
+
+    <p class="rec-form-section-header">IOL planning</p>
+    <div class="rec-form-grid">
+      <div class="rec-form-field">
+        <label class="rec-form-label">IOL model</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fIolModel" placeholder="e.g. Clareon Toric SY60WF" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">IOL power</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fIolPower" placeholder="e.g. +20.0 D, T6" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Axial length</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fAxialLength" placeholder="e.g. 24.12 mm" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Target refraction</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fTargetRefraction" placeholder="e.g. -0.25 D" />
+      </div>
+    </div>
+
+    <p class="rec-form-section-header">Anesthesia &amp; team</p>
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Anesthesia type</label>
+        <select class="rec-form-input" [(ngModel)]="fAnesthesiaType">
+          <option value="">Select anesthesia</option>
+          @for (a of anesthesiaOptions; track a) {
+            <option [value]="a">{{ a }}</option>
+          }
+        </select>
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Anesthesiologist</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fAnesthesiologist" placeholder="Name or TBD" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Circulator</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fCirculator" placeholder="Name" />
+      </div>
+    </div>
+
+    <p class="rec-form-section-header">Clinical safety</p>
+    <div class="rec-form-grid">
+      <div class="rec-form-field">
+        <label class="rec-form-label">Allergies</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fAllergies" placeholder="NKDA or list" />
       </div>
       <div class="rec-form-field">
         <label class="rec-form-label">Risk level</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fRisk" placeholder="e.g. Low / Moderate / High" />
+        <input class="rec-form-input" type="text" [(ngModel)]="fRisk" placeholder="Low / Moderate / High" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Comorbidities</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fComorbidities" placeholder="e.g. Type 2 DM, HTN" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Pre-op diagnosis</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPreOpDx" placeholder="ICD-10 + description" />
+      </div>
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Post-op plan</label>
+        <textarea class="rec-form-input rec-form-textarea" [(ngModel)]="fPostOpPlan" placeholder="Drops, follow-up schedule, restrictions…" rows="3"></textarea>
       </div>
     </div>
+
     <div class="rec-form-actions">
       <button class="rec-btn" type="button" (click)="closeCreate()">Cancel</button>
       <button class="rec-btn rec-btn--primary" type="button" (click)="saveCase()" [disabled]="!fPatient.trim() || !fProcedure.trim()">Create case</button>

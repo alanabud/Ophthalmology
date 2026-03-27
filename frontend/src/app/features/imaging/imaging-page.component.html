@@ -2,7 +2,7 @@
   <header class="page-header page-header--with-actions">
     <div>
       <p class="page-kicker">Imaging operations</p>
-      <h1>Study queue, interpretation flow, and AI findings assist for diagnostic throughput.</h1>
+      <h1>Study queue, interpretation flow, laterality, clinical indication, and AI findings assist for diagnostic throughput.</h1>
       <p class="page-subtitle">Structured for imaging technicians and physicians to clear backlogs without hiding review status.</p>
     </div>
     <div class="page-header-actions">
@@ -10,34 +10,91 @@
     </div>
   </header>
 
-  <section class="dual-grid">
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Study queue</p>
-          <h2>Diagnostics in motion</h2>
-        </div>
-        <app-status-chip [label]="studies().length + ' studies'" tone="info" />
+  <!-- Stats bar -->
+  <section class="img-stats">
+    <div class="img-stat">
+      <span class="img-stat__val">{{ studies().length }}</span>
+      <span class="img-stat__lbl">Total studies</span>
+    </div>
+    <div class="img-stat img-stat--queue">
+      <span class="img-stat__val">{{ orderedCount() }}</span>
+      <span class="img-stat__lbl">Ordered / queued</span>
+    </div>
+    <div class="img-stat img-stat--ready">
+      <span class="img-stat__val">{{ readyCount() }}</span>
+      <span class="img-stat__lbl">Awaiting review</span>
+    </div>
+    <div class="img-stat img-stat--done">
+      <span class="img-stat__val">{{ interpretedCount() }}</span>
+      <span class="img-stat__lbl">Interpreted</span>
+    </div>
+    <div class="img-stat img-stat--urgent">
+      <span class="img-stat__val">{{ urgentCount() }}</span>
+      <span class="img-stat__lbl">Urgent / same-day</span>
+    </div>
+  </section>
+
+  <!-- Filter bar -->
+  <div class="img-filter-bar">
+    <input class="img-search" type="text" [(ngModel)]="searchQuery" placeholder="Search patient, study ID, provider, indication…" />
+    <select class="img-select" [(ngModel)]="modalityFilter">
+      <option value="">All modalities</option>
+      @for (m of modalityOptions; track m) {
+        <option [value]="m">{{ m }}</option>
+      }
+    </select>
+    @if (hasActiveFilters) {
+      <button class="img-clear-btn" type="button" (click)="clearFilters()">✕ Clear</button>
+    }
+    <span class="img-count">{{ filteredStudies().length }} stud{{ filteredStudies().length !== 1 ? 'ies' : 'y' }}</span>
+  </div>
+
+  <article class="panel">
+    <div class="panel__header">
+      <div>
+        <p class="panel__eyebrow">Study queue</p>
+        <h2>Diagnostics in motion</h2>
       </div>
-      <table class="dense-table">
+      <app-status-chip [label]="studies().length + ' studies'" tone="info" />
+    </div>
+    <div class="img-table-wrap">
+      <table class="dense-table img-table">
         <thead>
           <tr>
+            <th>Study ID</th>
             <th>Patient</th>
+            <th>Date</th>
             <th>Modality</th>
-            <th>Status</th>
+            <th>Laterality</th>
+            <th>Urgency</th>
+            <th>CPT</th>
             <th>Ordered by</th>
-            <th>AI finding</th>
+            <th>Status</th>
+            <th>AI signal</th>
             <th class="th-actions"></th>
           </tr>
         </thead>
         <tbody>
-          @for (study of studies(); track study.studyId) {
+          @for (study of filteredStudies(); track study.studyId) {
             <tr>
+              <td class="img-study-id">{{ study.studyId }}</td>
               <td>{{ study.patient }}</td>
-              <td>{{ study.modality }}</td>
+              <td class="img-mono">{{ study.studyDate || '—' }}</td>
+              <td><span class="img-modality-badge">{{ study.modality }}</span></td>
+              <td class="img-lat">{{ study.laterality || '—' }}</td>
+              <td>
+                @if (study.urgency) {
+                  <span class="img-urgency" [class.img-urgency--urgent]="study.urgency === 'Urgent' || study.urgency === 'STAT'" [class.img-urgency--today]="study.urgency === 'Today' || study.urgency === 'Same day'">
+                    {{ study.urgency }}
+                  </span>
+                } @else {
+                  <span>—</span>
+                }
+              </td>
+              <td class="img-mono">{{ study.cptCode || '—' }}</td>
+              <td class="img-provider">{{ study.orderedBy }}</td>
               <td><app-status-chip [label]="study.status" [tone]="study.tone" /></td>
-              <td>{{ study.orderedBy }}</td>
-              <td>{{ study.aiSignal }}</td>
+              <td class="img-ai-signal">{{ study.aiSignal }}</td>
               <td class="td-actions">
                 <div class="row-actions">
                   <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewStudy(study)">View</button>
@@ -47,30 +104,13 @@
               </td>
             </tr>
           }
+          @empty {
+            <tr><td colspan="11" class="img-empty">No studies match the current filters.</td></tr>
+          }
         </tbody>
       </table>
-    </article>
-
-    <article class="panel panel--assistant">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Preview and assist</p>
-          <h2>Interpretation support</h2>
-        </div>
-      </div>
-      @if (studies().length) {
-        <article class="list-surface">
-          <strong>{{ studies()[0].patient }} • {{ studies()[0].modality }}</strong>
-          <p>{{ studies()[0].findings }}</p>
-          <p class="utility-note">AI summary: {{ studies()[0].aiSignal }}</p>
-        </article>
-      }
-      <div class="panel-list">
-        <article class="list-surface"><strong>Annotation layer</strong><p>Retina, optic nerve, and cataract annotation zones are reserved for device overlays and physician markup.</p></article>
-        <article class="list-surface"><strong>Pending review queue</strong><p>Studies can be routed by urgency, physician, clinic, or AI severity without leaving this workspace.</p></article>
-      </div>
-    </article>
-  </section>
+    </div>
+  </article>
 </section>
 
 <!-- View modal -->
@@ -79,11 +119,27 @@
     <div class="rec-kv-list">
       <div class="rec-kv-row"><span>Study ID</span><strong>{{ selectedStudy()!.studyId }}</strong></div>
       <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedStudy()!.patient }}</strong></div>
+      <div class="rec-kv-row"><span>Study date</span><strong>{{ selectedStudy()!.studyDate || '—' }}</strong></div>
       <div class="rec-kv-row"><span>Modality</span><strong>{{ selectedStudy()!.modality }}</strong></div>
-      <div class="rec-kv-row"><span>Status</span><strong>{{ selectedStudy()!.status }}</strong></div>
+      <div class="rec-kv-row"><span>Laterality</span><strong>{{ selectedStudy()!.laterality || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Urgency</span><strong>{{ selectedStudy()!.urgency || 'Routine' }}</strong></div>
+      <div class="rec-kv-row"><span>CPT code</span><strong>{{ selectedStudy()!.cptCode || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Protocol</span><strong>{{ selectedStudy()!.protocol || '—' }}</strong></div>
+      <div class="rec-kv-row"><span>Clinical indication</span><strong>{{ selectedStudy()!.clinicalIndication || '—' }}</strong></div>
       <div class="rec-kv-row"><span>Ordered by</span><strong>{{ selectedStudy()!.orderedBy }}</strong></div>
+      <div class="rec-kv-row"><span>Status</span><strong>{{ selectedStudy()!.status }}</strong></div>
       <div class="rec-kv-row"><span>Findings</span><strong>{{ selectedStudy()!.findings }}</strong></div>
       <div class="rec-kv-row"><span>AI signal</span><strong>{{ selectedStudy()!.aiSignal }}</strong></div>
+      @if (selectedStudy()!.impressionSummary) {
+        <div class="rec-kv-row rec-kv-row--full"><span>Impression</span><strong>{{ selectedStudy()!.impressionSummary }}</strong></div>
+      }
+      @if (selectedStudy()!.reportedBy) {
+        <div class="rec-kv-row"><span>Reported by</span><strong>{{ selectedStudy()!.reportedBy }}</strong></div>
+        <div class="rec-kv-row"><span>Reported date</span><strong>{{ selectedStudy()!.reportedDate }}</strong></div>
+      }
+      @if (selectedStudy()!.qualityScore) {
+        <div class="rec-kv-row"><span>Quality score</span><strong>{{ selectedStudy()!.qualityScore }}</strong></div>
+      }
     </div>
     <div class="rec-form-actions">
       <button class="rec-btn" type="button" (click)="openReview(selectedStudy()!); closeView()">Open review</button>
@@ -93,18 +149,30 @@
 </app-modal>
 
 <!-- Review modal -->
-<app-modal [open]="reviewOpen()" [title]="'Review — ' + (selectedStudy()?.patient ?? '')" (closed)="closeReview()">
+<app-modal [open]="reviewOpen()" [title]="'Review — ' + (selectedStudy()?.patient ?? '') + ' · ' + (selectedStudy()?.modality ?? '')" (closed)="closeReview()">
   @if (selectedStudy()) {
     <div class="rec-form">
       <div class="rec-kv-list" style="margin-bottom: 1rem;">
         <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedStudy()!.patient }}</strong></div>
         <div class="rec-kv-row"><span>Modality</span><strong>{{ selectedStudy()!.modality }}</strong></div>
+        <div class="rec-kv-row"><span>Laterality</span><strong>{{ selectedStudy()!.laterality || '—' }}</strong></div>
+        <div class="rec-kv-row"><span>Clinical indication</span><strong>{{ selectedStudy()!.clinicalIndication || '—' }}</strong></div>
         <div class="rec-kv-row"><span>AI signal</span><strong>{{ selectedStudy()!.aiSignal }}</strong></div>
-        <div class="rec-kv-row"><span>Findings</span><strong>{{ selectedStudy()!.findings }}</strong></div>
+        <div class="rec-kv-row rec-kv-row--full"><span>Findings</span><strong>{{ selectedStudy()!.findings }}</strong></div>
       </div>
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Physician interpretation / notes</label>
-        <textarea class="rec-form-input rec-form-textarea" [(ngModel)]="fReviewNotes" placeholder="Enter interpretation notes..."></textarea>
+      <div class="rec-form-grid">
+        <div class="rec-form-field rec-form-field--full">
+          <label class="rec-form-label">Impression summary</label>
+          <textarea class="rec-form-input rec-form-textarea" [(ngModel)]="fImpressionSummary" placeholder="Structured impression for the report…" rows="3"></textarea>
+        </div>
+        <div class="rec-form-field rec-form-field--full">
+          <label class="rec-form-label">Physician interpretation / additional notes</label>
+          <textarea class="rec-form-input rec-form-textarea" [(ngModel)]="fReviewNotes" placeholder="Enter interpretation notes…" rows="3"></textarea>
+        </div>
+        <div class="rec-form-field">
+          <label class="rec-form-label">Quality score</label>
+          <input class="rec-form-input" type="text" [(ngModel)]="fQualityScore" placeholder="e.g. 9/10" />
+        </div>
       </div>
       <div class="rec-form-actions">
         <button class="rec-btn" type="button" (click)="closeReview()">Cancel</button>
@@ -115,12 +183,13 @@
 </app-modal>
 
 <!-- New study modal -->
-<app-modal [open]="createOpen()" title="New imaging study" (closed)="closeCreate()">
+<app-modal [open]="createOpen()" title="Order imaging study" (closed)="closeCreate()">
   <div class="rec-form">
+    <p class="rec-form-section-header">Patient &amp; order</p>
     <div class="rec-form-grid">
       <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Patient *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Patient full name" />
+        <label class="rec-form-label">Patient name *</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Full name" />
       </div>
       <div class="rec-form-field">
         <label class="rec-form-label">Modality *</label>
@@ -132,10 +201,49 @@
         </select>
       </div>
       <div class="rec-form-field">
+        <label class="rec-form-label">Laterality</label>
+        <select class="rec-form-input" [(ngModel)]="fLaterality">
+          <option value="">Select eye</option>
+          @for (l of lateralityOptions; track l) {
+            <option [value]="l">{{ l }}</option>
+          }
+        </select>
+      </div>
+      <div class="rec-form-field">
         <label class="rec-form-label">Ordered by</label>
         <input class="rec-form-input" type="text" [(ngModel)]="fOrderedBy" placeholder="Provider name" />
       </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Study date</label>
+        <input class="rec-form-input" type="date" [(ngModel)]="fStudyDate" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Urgency</label>
+        <select class="rec-form-input" [(ngModel)]="fUrgency">
+          <option value="">Select urgency</option>
+          @for (u of urgencyOptions; track u) {
+            <option [value]="u">{{ u }}</option>
+          }
+        </select>
+      </div>
     </div>
+
+    <p class="rec-form-section-header">Clinical details</p>
+    <div class="rec-form-grid">
+      <div class="rec-form-field rec-form-field--full">
+        <label class="rec-form-label">Clinical indication</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fClinicalIndication" placeholder="e.g. DME monitoring — established patient on Eylea therapy" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">Protocol</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fProtocol" placeholder="e.g. 5-line raster + volume cube" />
+      </div>
+      <div class="rec-form-field">
+        <label class="rec-form-label">CPT code</label>
+        <input class="rec-form-input" type="text" [(ngModel)]="fCptCode" placeholder="e.g. 92134" />
+      </div>
+    </div>
+
     <div class="rec-form-actions">
       <button class="rec-btn" type="button" (click)="closeCreate()">Cancel</button>
       <button class="rec-btn rec-btn--primary" type="button" (click)="saveStudy()" [disabled]="!fPatient.trim() || !fModality">Order study</button>
