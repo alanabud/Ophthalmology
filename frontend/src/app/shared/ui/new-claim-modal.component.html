@@ -1,0 +1,1088 @@
+@if (open()) {
+  <div class="ncm-backdrop" (click)="$event.target === $event.currentTarget && cancel()">
+    <div class="ncm-panel" role="dialog" aria-label="Claim entry">
+
+      <!-- ── Header ──────────────────────────────────────── -->
+      <div class="ncm-header">
+        <div class="ncm-header__left">
+          <span class="ncm-breadcrumb">Revenue Cycle · Claim Maintenance</span>
+          <span class="ncm-tab-indicator">Tab {{ currentTab() }} of 10</span>
+          @if (isEditMode()) {
+            <span class="ncm-mode-badge ncm-mode-badge--edit">Edit mode</span>
+          }
+        </div>
+        <button class="ncm-close" type="button" (click)="cancel()" aria-label="Close">✕</button>
+      </div>
+
+      <!-- ── Title row ────────────────────────────────────── -->
+      <div class="ncm-title-row">
+        <div class="ncm-title-row__left">
+          <h1 class="ncm-title">{{ isEditMode() ? 'Edit claim' : 'New claim' }}</h1>
+          @if (claimStatus) {
+            <span class="ncm-status-pill ncm-status-pill--{{ claimStatusTone }}">{{ claimStatus }}</span>
+          }
+        </div>
+        @if (!submitted()) {
+          <div class="ncm-title-row__meta">
+            <span class="ncm-meta-item"><span class="ncm-meta-label">Type</span>{{ claimType }}</span>
+            <span class="ncm-meta-item"><span class="ncm-meta-label">Priority</span>{{ priority }}</span>
+            <span class="ncm-meta-item"><span class="ncm-meta-label">DOS</span>{{ dateOfService || '—' }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- ── Body ─────────────────────────────────────────── -->
+      <div class="ncm-body">
+
+        <!-- Sidebar nav -->
+        <nav class="ncm-sidebar">
+          @for (tab of tabs; track tab.num) {
+            <button
+              type="button"
+              class="ncm-tab-btn"
+              [class.ncm-tab-btn--active]="currentTab() === tab.num"
+              (click)="goTo(tab.num)"
+            >
+              <span class="ncm-tab-num">{{ tab.num < 10 ? '0' + tab.num : tab.num }}</span>
+              <span class="ncm-tab-name">{{ tab.label }}</span>
+            </button>
+          }
+        </nav>
+
+        <!-- Content area -->
+        <div class="ncm-content">
+
+          @if (submitted()) {
+            <div class="ncm-success">
+              <div class="ncm-success__icon">✓</div>
+              <strong>{{ isEditMode() ? 'Claim updated' : 'Claim created' }}</strong>
+              <p>The claim has been saved to the work queue as <em>{{ claimStatus }}</em>.</p>
+              <button class="ncm-success__close" type="button" (click)="cancel()">Close</button>
+            </div>
+
+          } @else {
+
+            @switch (currentTab()) {
+
+              <!-- ══ Tab 1: Claim Overview ══════════════════ -->
+              @case (1) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Claim Identifiers & Status</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Claim type *</span>
+                        <select [(ngModel)]="claimType" name="claimType">
+                          <option>Professional</option>
+                          <option>Institutional</option>
+                          <option>Procedure</option>
+                          <option>Surgery</option>
+                          <option>Optical / vision</option>
+                          <option>Injection / treatment</option>
+                          <option>Follow-up claim</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Claim status *</span>
+                        <select [(ngModel)]="claimStatus" name="claimStatus">
+                          <option>Draft</option>
+                          <option>In review</option>
+                          <option>Ready to submit</option>
+                          <option>Submitted</option>
+                          <option>Accepted</option>
+                          <option>Rejected</option>
+                          <option>Denied</option>
+                          <option>Partially paid</option>
+                          <option>Paid</option>
+                          <option>Appealed</option>
+                          <option>Closed</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Priority</span>
+                        <select [(ngModel)]="priority" name="priority">
+                          <option>Routine</option>
+                          <option>Normal</option>
+                          <option>High</option>
+                          <option>Urgent</option>
+                          <option>Stat</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Service Dates & Source</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Date of service *</span>
+                        <input type="date" [(ngModel)]="dateOfService" name="dateOfService" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Service date end</span>
+                        <input type="date" [(ngModel)]="serviceDateEnd" name="serviceDateEnd" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Billing batch</span>
+                        <input type="text" [(ngModel)]="billingBatch" name="billingBatch" placeholder="e.g. BATCH-2026-04" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Place of service</span>
+                        <select [(ngModel)]="placeOfService" name="pos">
+                          <option value="">— select —</option>
+                          <option>11 — Office</option>
+                          <option>21 — Inpatient hospital</option>
+                          <option>22 — Outpatient hospital</option>
+                          <option>24 — ASC</option>
+                          <option>49 — Independent clinic</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Department / specialty</span>
+                        <input type="text" [(ngModel)]="department" name="department" placeholder="e.g. Retina, Cataract" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Work queue</span>
+                        <select [(ngModel)]="workQueue" name="workQueue">
+                          <option>General</option>
+                          <option>Denial queue</option>
+                          <option>Follow-up queue</option>
+                          <option>Ready to submit</option>
+                          <option>Awaiting auth</option>
+                          <option>Appeal queue</option>
+                          <option>High-balance</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Visit References</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Encounter / visit ref</span>
+                        <input type="text" [(ngModel)]="encounterRef" name="encounterRef" placeholder="ENC-XXXXXX" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Appointment ref</span>
+                        <input type="text" [(ngModel)]="appointmentRef" name="appointmentRef" placeholder="APT-XXXXXX" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Surgical case ref</span>
+                        <input type="text" [(ngModel)]="surgicalCaseRef" name="surgicalCaseRef" placeholder="SRG-XXXXXX" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Provider Assignment</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Rendering provider *</span>
+                        <input type="text" [(ngModel)]="renderingProvider" name="renderingProvider" placeholder="Provider name or NPI" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Billing provider</span>
+                        <input type="text" [(ngModel)]="billingProvider" name="billingProvider" placeholder="Provider name or NPI" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Supervising provider</span>
+                        <input type="text" [(ngModel)]="supervisingProvider" name="supervisingProvider" placeholder="Provider name or NPI" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Referring provider</span>
+                        <input type="text" [(ngModel)]="referringProvider" name="referringProvider" placeholder="Provider name or NPI" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Ordering provider</span>
+                        <input type="text" [(ngModel)]="orderingProvider" name="orderingProvider" placeholder="Provider name or NPI" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Assigned biller</span>
+                        <input type="text" [(ngModel)]="assignedBiller" name="assignedBiller" placeholder="Biller name" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 2: Patient & Subscriber ══════════ -->
+              @case (2) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Patient Lookup</h2>
+                    <div class="ncm-grid-2">
+                      <label class="ncm-field ncm-field--full">
+                        <span>Patient search *</span>
+                        <input type="text" [(ngModel)]="patientSearch" name="patientSearch"
+                          placeholder="Search by name, MRN, DOB, or account number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>MRN</span>
+                        <input type="text" [(ngModel)]="mrn" name="mrn" placeholder="Medical record number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Account number</span>
+                        <input type="text" [(ngModel)]="accountNumber" name="accountNumber" placeholder="Account number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Date of birth</span>
+                        <input type="date" [(ngModel)]="patientDob" name="patientDob" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Sex</span>
+                        <select [(ngModel)]="patientSex" name="patientSex">
+                          <option value="">— select —</option>
+                          <option>Male</option>
+                          <option>Female</option>
+                          <option>Unknown</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Preferred language</span>
+                        <select [(ngModel)]="preferredLanguage" name="preferredLanguage">
+                          <option>English</option>
+                          <option>Spanish</option>
+                          <option>Portuguese</option>
+                          <option>French</option>
+                          <option>Haitian Creole</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Guarantor</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Guarantor name</span>
+                        <input type="text" [(ngModel)]="guarantorName" name="guarantorName" placeholder="Full name" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Guarantor relationship</span>
+                        <select [(ngModel)]="guarantorRel" name="guarantorRel">
+                          <option>Self</option>
+                          <option>Spouse</option>
+                          <option>Parent</option>
+                          <option>Child</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Subscriber Information</h2>
+                    <label class="ncm-checkbox-row">
+                      <input type="checkbox" [(ngModel)]="subscriberSameAsPatient" name="sameAsPatient" />
+                      <span>Subscriber is same as patient</span>
+                    </label>
+                    @if (!subscriberSameAsPatient) {
+                      <div class="ncm-grid-3">
+                        <label class="ncm-field">
+                          <span>Subscriber name</span>
+                          <input type="text" [(ngModel)]="subscriberName" name="subscriberName" placeholder="Full legal name" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Subscriber DOB</span>
+                          <input type="date" [(ngModel)]="subscriberDob" name="subscriberDob" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Member ID</span>
+                          <input type="text" [(ngModel)]="subscriberMemberId" name="subMemberId" placeholder="Member ID" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Group number</span>
+                          <input type="text" [(ngModel)]="subscriberGroupNumber" name="subGroup" placeholder="Group number" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Employer</span>
+                          <input type="text" [(ngModel)]="subscriberEmployer" name="subEmployer" placeholder="Employer" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Relationship to patient</span>
+                          <select [(ngModel)]="subscriberRelationship" name="subRel">
+                            <option>Self</option>
+                            <option>Spouse</option>
+                            <option>Child</option>
+                            <option>Parent</option>
+                            <option>Other</option>
+                          </select>
+                        </label>
+                      </div>
+                    }
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Eligibility</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Eligibility status</span>
+                        <select [(ngModel)]="eligibilityStatus" name="eligStatus">
+                          <option value="">— not checked —</option>
+                          <option>Verified — active</option>
+                          <option>Verified — inactive</option>
+                          <option>Pending verification</option>
+                          <option>Unable to verify</option>
+                          <option>Expired</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Verified date</span>
+                        <input type="date" [(ngModel)]="eligibilityVerifiedDate" name="eligDate" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Verified by</span>
+                        <input type="text" [(ngModel)]="eligibilityVerifiedBy" name="eligBy" placeholder="Staff name" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 3: Insurance / Payer ══════════════ -->
+              @case (3) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Payer Hierarchy</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Primary payer *</span>
+                        <input type="text" [(ngModel)]="primaryPayer" name="primaryPayer"
+                          placeholder="e.g. Medicare, Aetna" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Secondary payer</span>
+                        <input type="text" [(ngModel)]="secondaryPayer" name="secondaryPayer" placeholder="Secondary payer" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Tertiary payer</span>
+                        <input type="text" [(ngModel)]="tertiaryPayer" name="tertiaryPayer" placeholder="Tertiary payer" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Plan name</span>
+                        <input type="text" [(ngModel)]="planName" name="planName" placeholder="Plan name" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Financial class</span>
+                        <select [(ngModel)]="financialClass" name="finClass">
+                          <option value="">— select —</option>
+                          <option>Medicare</option>
+                          <option>Medicaid</option>
+                          <option>Commercial</option>
+                          <option>Self-pay</option>
+                          <option>Workers comp</option>
+                          <option>Auto liability</option>
+                          <option>Veterans Affairs</option>
+                          <option>Tricare</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Payer type</span>
+                        <select [(ngModel)]="payerType" name="payerType">
+                          <option value="">— select —</option>
+                          <option>Medical</option>
+                          <option>Vision</option>
+                          <option>Dual benefit</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Claim destination</span>
+                        <input type="text" [(ngModel)]="claimDestination" name="claimDest" placeholder="e.g. Change Healthcare" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Clearinghouse</span>
+                        <input type="text" [(ngModel)]="clearinghouse" name="clearinghouse" placeholder="Clearinghouse name" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Plan Details</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Member ID</span>
+                        <input type="text" [(ngModel)]="memberId" name="memberId" placeholder="Member ID" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Group number</span>
+                        <input type="text" [(ngModel)]="groupNumber" name="groupNum" placeholder="Group number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Plan effective date</span>
+                        <input type="date" [(ngModel)]="planEffectiveDate" name="planEff" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Plan termination date</span>
+                        <input type="date" [(ngModel)]="planTermDate" name="planTerm" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Authorization & Referral</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-checkbox-row ncm-field">
+                        <input type="checkbox" [(ngModel)]="authRequired" name="authReqd" />
+                        <span>Authorization required</span>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Authorization number</span>
+                        <input type="text" [(ngModel)]="authNumber" name="authNum" placeholder="Auth number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Auth valid from</span>
+                        <input type="date" [(ngModel)]="authValidFrom" name="authFrom" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Auth valid to</span>
+                        <input type="date" [(ngModel)]="authValidTo" name="authTo" />
+                      </label>
+                      <label class="ncm-checkbox-row ncm-field">
+                        <input type="checkbox" [(ngModel)]="referralRequired" name="refReqd" />
+                        <span>Referral required</span>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Referral number</span>
+                        <input type="text" [(ngModel)]="referralNumber" name="refNum" placeholder="Referral number" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Special Indicators</h2>
+                    <div class="ncm-check-cluster">
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="accidentIndicator" name="accident" /><span>Accident-related claim</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="autoInsurance" name="autoIns" /><span>Auto insurance indicator</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="workersComp" name="wc" /><span>Workers' compensation</span></label>
+                    </div>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>COB details / notes</span>
+                      <textarea [(ngModel)]="cobDetails" name="cobDetails" rows="2" placeholder="Coordination of benefits details"></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 4: Ophthalmology Clinical Context ═ -->
+              @case (4) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Visit Classification</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Eye laterality</span>
+                        <select [(ngModel)]="laterality" name="laterality">
+                          <option value="">— select —</option>
+                          <option>OD — Right eye</option>
+                          <option>OS — Left eye</option>
+                          <option>OU — Both eyes</option>
+                          <option>Not applicable</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Visit type / category</span>
+                        <select [(ngModel)]="visitType" name="visitType">
+                          <option value="">— select —</option>
+                          <option>Routine eye exam</option>
+                          <option>Follow-up</option>
+                          <option>Cataract evaluation</option>
+                          <option>Retina visit</option>
+                          <option>Glaucoma visit</option>
+                          <option>Cornea visit</option>
+                          <option>Oculoplastics</option>
+                          <option>Post-op</option>
+                          <option>Procedure visit</option>
+                          <option>Injection visit</option>
+                          <option>Optical / refraction</option>
+                          <option>Emergency</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Medical vs vision benefit</span>
+                        <select [(ngModel)]="medVisionBenefit" name="medVision">
+                          <option>Medical</option>
+                          <option>Vision</option>
+                          <option>Dual — bill medical primary</option>
+                          <option>Optical / non-covered</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Diagnosis Coding (ICD-10)</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Primary diagnosis (Dx1)</span>
+                        <input type="text" [(ngModel)]="primaryDx" name="dx1" placeholder="e.g. H26.9 — Cataract" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Secondary diagnosis (Dx2)</span>
+                        <input type="text" [(ngModel)]="secondaryDx" name="dx2" placeholder="ICD-10 code + description" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Tertiary diagnosis (Dx3)</span>
+                        <input type="text" [(ngModel)]="tertiaryDx" name="dx3" placeholder="ICD-10 code + description" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Procedure & Surgery Linkage</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Linked procedure</span>
+                        <input type="text" [(ngModel)]="procedureLink" name="procLink" placeholder="Procedure description or code" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Linked surgical procedure</span>
+                        <input type="text" [(ngModel)]="surgicalProcLink" name="surgLink" placeholder="Surgical procedure" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Post-Op / Global Period</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-checkbox-row ncm-field">
+                        <input type="checkbox" [(ngModel)]="globalPeriod" name="globalPeriod" />
+                        <span>Global period indicator</span>
+                      </label>
+                      @if (globalPeriod) {
+                        <label class="ncm-field">
+                          <span>Post-op day</span>
+                          <input type="text" [(ngModel)]="postOpDay" name="postOpDay" placeholder="e.g. Day 1, Day 30" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Related surgery date</span>
+                          <input type="date" [(ngModel)]="relatedSurgeryDate" name="surgDate" />
+                        </label>
+                      }
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Injection / Medication</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Injection medication</span>
+                        <input type="text" [(ngModel)]="injectionMedication" name="injMed" placeholder="e.g. Eylea, Lucentis, Avastin" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>J-code</span>
+                        <input type="text" [(ngModel)]="injectionJCode" name="jCode" placeholder="e.g. J0178" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Documentation Flags</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Documentation completeness</span>
+                        <select [(ngModel)]="docCompleteStatus" name="docStatus">
+                          <option>Complete</option>
+                          <option>Incomplete</option>
+                          <option>Pending review</option>
+                          <option>Awaiting signature</option>
+                        </select>
+                      </label>
+                      <label class="ncm-checkbox-row ncm-field">
+                        <input type="checkbox" [(ngModel)]="operativeNoteAttached" name="opNote" />
+                        <span>Operative note attached</span>
+                      </label>
+                      <label class="ncm-checkbox-row ncm-field">
+                        <input type="checkbox" [(ngModel)]="visionRelated" name="visionRel" />
+                        <span>Vision / refraction — non-covered indicator</span>
+                      </label>
+                    </div>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>Medical necessity notes</span>
+                      <textarea [(ngModel)]="medicalNecessityNotes" name="medNotes" rows="3"
+                        placeholder="Clinical justification, symptom severity, treatment plan rationale"></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 5: Coding ══════════════════════════ -->
+              @case (5) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">
+                      CPT / HCPCS Procedure Lines
+                      @if (codingTotal) {
+                        <span class="ncm-section__total">Total: {{ codingTotal }}</span>
+                      }
+                    </h2>
+
+                    <div class="ncm-coding-grid-header">
+                      <span>CPT / HCPCS</span>
+                      <span>Mod 1</span>
+                      <span>Mod 2</span>
+                      <span>Units</span>
+                      <span>Dx Ptr</span>
+                      <span>DOS</span>
+                      <span>POS</span>
+                      <span>Charge ($)</span>
+                      <span>NDC</span>
+                      <span></span>
+                    </div>
+
+                    @for (row of cptRows; track $index; let i = $index) {
+                      <div class="ncm-coding-row">
+                        <input type="text" [(ngModel)]="row.cptCode" [name]="'cpt'+i" placeholder="CPT code" class="ncm-code-input" />
+                        <input type="text" [(ngModel)]="row.modifier1" [name]="'mod1'+i" placeholder="Mod" class="ncm-modifier-input" maxlength="2" />
+                        <input type="text" [(ngModel)]="row.modifier2" [name]="'mod2'+i" placeholder="Mod" class="ncm-modifier-input" maxlength="2" />
+                        <input type="text" [(ngModel)]="row.units" [name]="'units'+i" placeholder="1" class="ncm-units-input" />
+                        <input type="text" [(ngModel)]="row.diagPointer" [name]="'ptr'+i" placeholder="1,2" class="ncm-ptr-input" />
+                        <input type="date" [(ngModel)]="row.serviceDate" [name]="'svcdt'+i" class="ncm-date-input" />
+                        <input type="text" [(ngModel)]="row.pos" [name]="'rowpos'+i" placeholder="11" class="ncm-pos-input" maxlength="2" />
+                        <input type="text" [(ngModel)]="row.charge" [name]="'charge'+i" placeholder="0.00" class="ncm-charge-input" />
+                        <input type="text" [(ngModel)]="row.ndcCode" [name]="'ndc'+i" placeholder="NDC" class="ncm-ndc-input" />
+                        <button type="button" class="ncm-row-remove" (click)="removeCptRow(i)" [disabled]="cptRows.length <= 1" title="Remove line">✕</button>
+                      </div>
+                      <div class="ncm-coding-notes-row">
+                        <input type="text" [(ngModel)]="row.notes" [name]="'notes'+i" placeholder="Line notes (optional)" class="ncm-notes-input" />
+                      </div>
+                    }
+
+                    <button type="button" class="ncm-add-row-btn" (click)="addCptRow()">+ Add procedure line</button>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 6: Financials ══════════════════════ -->
+              @case (6) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Charges & Expected Payment</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Total charges</span>
+                        <input type="text" [(ngModel)]="totalCharges" name="totalCharges" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Allowed amount</span>
+                        <input type="text" [(ngModel)]="allowedAmount" name="allowed" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Expected reimbursement</span>
+                        <input type="text" [(ngModel)]="expectedReimb" name="expectedReimb" placeholder="$0.00" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Patient Responsibility</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Copay</span>
+                        <input type="text" [(ngModel)]="copay" name="copay" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Coinsurance</span>
+                        <input type="text" [(ngModel)]="coinsurance" name="coins" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Deductible</span>
+                        <input type="text" [(ngModel)]="deductible" name="deduct" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Non-covered amount</span>
+                        <input type="text" [(ngModel)]="nonCovered" name="nonCov" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Patient responsibility</span>
+                        <input type="text" [(ngModel)]="patientResp" name="ptResp" placeholder="$0.00" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Adjustments & Balance</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Contractual adjustment (est.)</span>
+                        <input type="text" [(ngModel)]="contractAdj" name="contractAdj" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Write-off (est.)</span>
+                        <input type="text" [(ngModel)]="writeOff" name="writeOff" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Balance due</span>
+                        <input type="text" [(ngModel)]="balanceDue" name="balanceDue" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Payment received</span>
+                        <input type="text" [(ngModel)]="paymentReceived" name="pmtRcvd" placeholder="$0.00" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Unapplied payment</span>
+                        <input type="text" [(ngModel)]="unappliedPayment" name="unapplied" placeholder="$0.00" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Fee Schedule</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Fee schedule</span>
+                        <input type="text" [(ngModel)]="feeSchedule" name="feeSchedule" placeholder="Fee schedule name" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Pricing method</span>
+                        <select [(ngModel)]="pricingMethod" name="pricingMethod">
+                          <option>Contract rate</option>
+                          <option>Medicare rate</option>
+                          <option>Usual and customary</option>
+                          <option>Self-pay discount</option>
+                          <option>Fee override (authorized)</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 7: Submission ══════════════════════ -->
+              @case (7) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Submission Method</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Submission method</span>
+                        <select [(ngModel)]="submissionMethod" name="subMethod">
+                          <option>Electronic</option>
+                          <option>Paper</option>
+                          <option>Portal</option>
+                          <option>Manual</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Clearinghouse status</span>
+                        <input type="text" [(ngModel)]="clearinghouseStatus" name="chStatus" placeholder="Clearinghouse status" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Transmission batch</span>
+                        <input type="text" [(ngModel)]="transmissionBatch" name="transBatch" placeholder="Batch number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Submission tracking #</span>
+                        <input type="text" [(ngModel)]="submissionTrack" name="trackNum" placeholder="Tracking number" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Resubmission code</span>
+                        <select [(ngModel)]="resubmissionCode" name="resubCode">
+                          <option value="">— original submission —</option>
+                          <option>7 — Replacement</option>
+                          <option>8 — Void/cancel</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Frequency code</span>
+                        <select [(ngModel)]="frequencyCode" name="freqCode">
+                          <option value="1">1 — Original</option>
+                          <option value="7">7 — Replacement</option>
+                          <option value="8">8 — Void</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Original reference number</span>
+                        <input type="text" [(ngModel)]="origRefNumber" name="origRef" placeholder="Original claim number" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Validation & Scrub Status</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Validation status</span>
+                        <select [(ngModel)]="validationStatus" name="validStatus">
+                          <option>Not validated</option>
+                          <option>Passed — no errors</option>
+                          <option>Passed — warnings only</option>
+                          <option>Failed — errors present</option>
+                          <option>Pending review</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Pre-submission scrub</span>
+                        <select [(ngModel)]="preScrubStatus" name="scrubStatus">
+                          <option value="">— not run —</option>
+                          <option>Clean</option>
+                          <option>Edits pending</option>
+                          <option>Errors — hold</option>
+                        </select>
+                      </label>
+                    </div>
+                    @if (validationStatus === 'Failed — errors present' || preScrubStatus === 'Errors — hold') {
+                      <div class="ncm-alert-banner ncm-alert-banner--error">
+                        This claim has validation or scrub errors and cannot be submitted until resolved.
+                      </div>
+                    }
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Submission Notes</h2>
+                    <label class="ncm-field ncm-field--full">
+                      <span>Notes</span>
+                      <textarea [(ngModel)]="submissionNotes" name="subNotes" rows="3"
+                        placeholder="Submission-specific instructions or context"></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 8: Denials / Follow-up ═══════════ -->
+              @case (8) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Rejection & Denial Details</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Rejection reason</span>
+                        <input type="text" [(ngModel)]="rejectionReason" name="rejReason" placeholder="Rejection reason" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Denial category</span>
+                        <select [(ngModel)]="denialCategory" name="denialCat">
+                          <option value="">— select —</option>
+                          <option>Medical necessity</option>
+                          <option>Authorization required</option>
+                          <option>Timely filing</option>
+                          <option>Eligibility / coverage</option>
+                          <option>Duplicate claim</option>
+                          <option>Coding error</option>
+                          <option>Missing information</option>
+                          <option>Coordination of benefits</option>
+                          <option>Contract / fee schedule</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Denial code</span>
+                        <input type="text" [(ngModel)]="denialCode" name="denialCode" placeholder="Denial code" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>CARC code</span>
+                        <input type="text" [(ngModel)]="carcCode" name="carc" placeholder="CARC" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>RARC code</span>
+                        <input type="text" [(ngModel)]="rarcCode" name="rarc" placeholder="RARC" />
+                      </label>
+                    </div>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>Denial description</span>
+                      <textarea [(ngModel)]="denialDescription" name="denialDesc" rows="2"
+                        placeholder="Full denial explanation"></textarea>
+                    </label>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Follow-up & Appeal</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Follow-up owner</span>
+                        <input type="text" [(ngModel)]="followUpOwner" name="fuOwner" placeholder="Staff name" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Next action</span>
+                        <input type="text" [(ngModel)]="nextAction" name="nextAction" placeholder="Next action description" />
+                      </label>
+                      <label class="ncm-field">
+                        <span>Follow-up date</span>
+                        <input type="date" [(ngModel)]="followUpDate" name="fuDate" />
+                      </label>
+                      <label class="ncm-checkbox-row ncm-field">
+                        <input type="checkbox" [(ngModel)]="appealNeeded" name="appealNeeded" />
+                        <span>Appeal needed</span>
+                      </label>
+                      @if (appealNeeded) {
+                        <label class="ncm-field">
+                          <span>Appeal deadline</span>
+                          <input type="date" [(ngModel)]="appealDeadline" name="appealDl" />
+                        </label>
+                        <label class="ncm-field">
+                          <span>Appeal status</span>
+                          <select [(ngModel)]="appealStatus" name="appealStatus">
+                            <option value="">— select —</option>
+                            <option>Not submitted</option>
+                            <option>Submitted — pending</option>
+                            <option>Under review</option>
+                            <option>Upheld</option>
+                            <option>Overturned</option>
+                            <option>Partially approved</option>
+                          </select>
+                        </label>
+                      }
+                    </div>
+                    <div class="ncm-check-cluster" style="margin-top:0.8rem">
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="rebillIndicator" name="rebill" /><span>Rebill required</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="correctedClaim" name="corrected" /><span>Corrected claim</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="timelyFilingRisk" name="tfRisk" /><span>Timely filing risk</span></label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Root Cause & Resolution</h2>
+                    <div class="ncm-grid-3">
+                      <label class="ncm-field">
+                        <span>Root cause category</span>
+                        <select [(ngModel)]="rootCauseCategory" name="rootCause">
+                          <option value="">— select —</option>
+                          <option>Front desk / registration error</option>
+                          <option>Clinical documentation gap</option>
+                          <option>Coding error</option>
+                          <option>Authorization not obtained</option>
+                          <option>Payer error</option>
+                          <option>Submission error</option>
+                          <option>Eligibility lapse</option>
+                          <option>Patient liability</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label class="ncm-field">
+                        <span>Escalation level</span>
+                        <select [(ngModel)]="escalationLevel" name="escalation">
+                          <option value="">— none —</option>
+                          <option>Biller</option>
+                          <option>Lead biller</option>
+                          <option>Billing manager</option>
+                          <option>Provider</option>
+                          <option>Legal / compliance</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>Internal billing notes</span>
+                      <textarea [(ngModel)]="internalBillingNotes" name="billingNotes" rows="3"
+                        placeholder="Internal team notes, call logs, decision history"></textarea>
+                    </label>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>Payer call notes</span>
+                      <textarea [(ngModel)]="payerCallNotes" name="callNotes" rows="2"
+                        placeholder="Payer call reference numbers, agent name, decision"></textarea>
+                    </label>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>Resolution summary</span>
+                      <textarea [(ngModel)]="resolutionSummary" name="resolution" rows="2"
+                        placeholder="How this denial / issue was resolved"></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 9: Attachments ════════════════════ -->
+              @case (9) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Supporting Documents Checklist</h2>
+                    <div class="ncm-check-cluster ncm-check-cluster--2col">
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachPriorAuth" name="attPa" /><span>Prior authorization</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachReferral" name="attRef" /><span>Referral document</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachOpNote" name="attOp" /><span>Operative / procedure note</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachClinicalNote" name="attClin" /><span>Clinical note</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachImaging" name="attImg" /><span>Imaging support (OCT, fundus, etc.)</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachConsent" name="attConsent" /><span>Consent form</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachEOB" name="attEOB" /><span>EOB / ERA related documents</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachMedNecessity" name="attMN" /><span>Medical necessity documentation</span></label>
+                      <label class="ncm-checkbox-row"><input type="checkbox" [(ngModel)]="attachOpticalRx" name="attRx" /><span>Optical Rx / refraction record</span></label>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Document Upload</h2>
+                    <div class="ncm-upload-zone">
+                      <div class="ncm-upload-icon">📎</div>
+                      <p class="ncm-upload-label">Drag and drop files here or click to upload</p>
+                      <p class="ncm-upload-hint">Accepted: PDF, TIFF, JPEG, PNG — max 25 MB per file</p>
+                      <button type="button" class="ncm-upload-btn">Browse files</button>
+                    </div>
+                    <label class="ncm-field ncm-field--full" style="margin-top:0.8rem">
+                      <span>Document notes</span>
+                      <textarea [(ngModel)]="attachDocNotes" name="docNotes" rows="2"
+                        placeholder="Attachment notes or instructions"></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 10: Audit / System ════════════════ -->
+              @case (10) {
+                <div class="ncm-form">
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">Record Audit Trail</h2>
+                    <div class="ncm-audit-grid">
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Created by</span><span class="ncm-audit-value">{{ createdBy || 'Current user' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Created on</span><span class="ncm-audit-value">{{ createdOn || 'Today' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Updated by</span><span class="ncm-audit-value">{{ updatedBy || '—' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Updated on</span><span class="ncm-audit-value">{{ updatedOn || '—' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Last activity</span><span class="ncm-audit-value">{{ lastActivity || '—' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Last claim event</span><span class="ncm-audit-value">{{ lastClaimEvent || '—' }}</span></div>
+                    </div>
+                  </section>
+
+                  <section class="ncm-section">
+                    <h2 class="ncm-section__title">System & Integration Status</h2>
+                    <div class="ncm-audit-grid">
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Last sync status</span><span class="ncm-audit-value">{{ lastSyncStatus || '—' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Integration status</span><span class="ncm-audit-value">{{ integrationStatus || '—' }}</span></div>
+                      <div class="ncm-audit-row"><span class="ncm-audit-label">Import source</span><span class="ncm-audit-value">{{ importSource || '—' }}</span></div>
+                    </div>
+                    @if (errorDetails) {
+                      <div class="ncm-alert-banner ncm-alert-banner--error" style="margin-top:0.8rem">
+                        <strong>Error:</strong> {{ errorDetails }}
+                      </div>
+                    }
+                  </section>
+                </div>
+              }
+
+            } <!-- end switch -->
+
+          } <!-- end not submitted -->
+
+          <!-- ── Tab navigation (bottom of content) ──────── -->
+          @if (!submitted()) {
+            <div class="ncm-tab-nav">
+              <button type="button" class="ncm-nav-btn" (click)="prev()" [disabled]="currentTab() === 1">← Previous</button>
+              <span class="ncm-tab-nav__label">{{ currentTabLabel }}</span>
+              <button type="button" class="ncm-nav-btn ncm-nav-btn--next" (click)="next()" [disabled]="currentTab() === 10">Next →</button>
+            </div>
+          }
+
+        </div><!-- /ncm-content -->
+
+      </div><!-- /ncm-body -->
+
+      <!-- ── Footer ────────────────────────────────────────── -->
+      @if (!submitted()) {
+        <div class="ncm-footer">
+          <button type="button" class="ncm-btn ncm-btn--ghost" (click)="cancel()">Cancel</button>
+          <div class="ncm-footer__right">
+            <button type="button" class="ncm-btn ncm-btn--secondary" (click)="saveDraft()">Save draft</button>
+            <button
+              type="button"
+              class="ncm-btn ncm-btn--primary"
+              (click)="submit()"
+              [disabled]="!canSubmit || isSubmitting()"
+            >
+              @if (isSubmitting()) { Saving… }
+              @else if (isEditMode()) { Save changes }
+              @else { Create claim }
+            </button>
+          </div>
+        </div>
+      }
+
+    </div><!-- /ncm-panel -->
+  </div><!-- /ncm-backdrop -->
+}

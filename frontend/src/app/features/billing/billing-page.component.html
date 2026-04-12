@@ -1,126 +1,305 @@
-<section class="workspace-page">
-  <header class="page-header page-header--with-actions">
-    <div>
-      <p class="page-kicker">Revenue cycle intelligence</p>
-      <h1>Claims, denials, payment readiness, AI coding assistance, and revenue risk in a single premium workspace.</h1>
-      <p class="page-subtitle">This surface is tuned for billers and revenue integrity teams who need speed, specificity, and explainable AI support.</p>
+<section class="workspace-page billing-page">
+
+  <!-- ── Page header ─────────────────────────────────────── -->
+  <header class="billing-header">
+    <div class="billing-header__left">
+      <p class="billing-eyebrow">Revenue Cycle Management</p>
+      <h1 class="billing-title">Claims &amp; Billing</h1>
+      <p class="billing-subtitle">Professional ophthalmology billing — claims, denials, follow-up, and reimbursement in one workflow.</p>
     </div>
-    <div class="page-header-actions">
-      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New claim</button>
+    <div class="billing-header__right">
+      <button class="billing-btn billing-btn--primary" type="button" (click)="openCreate()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        New claim
+      </button>
     </div>
   </header>
 
-  <section class="info-grid">
-    <article class="info-tile"><strong>{{ claims().length }}</strong><p>Claims in current review queue</p></article>
-    <article class="info-tile"><strong>12</strong><p>Drafts at preventable denial risk</p></article>
-    <article class="info-tile"><strong>$184.2K</strong><p>Outstanding balances</p></article>
-    <article class="info-tile"><strong>3.1%</strong><p>Current denial rate</p></article>
-  </section>
+  <!-- ── KPI strip ───────────────────────────────────────── -->
+  <div class="kpi-strip">
+    <article class="kpi-card">
+      <p class="kpi-value">{{ totalOutstanding() }}</p>
+      <p class="kpi-label">Claims in queue</p>
+    </article>
+    <article class="kpi-card kpi-card--accent">
+      <p class="kpi-value">{{ readyToSubmit() }}</p>
+      <p class="kpi-label">Ready to submit</p>
+    </article>
+    <article class="kpi-card kpi-card--critical">
+      <p class="kpi-value">{{ deniedCount() }}</p>
+      <p class="kpi-label">Denied / rejected</p>
+    </article>
+    <article class="kpi-card kpi-card--warning">
+      <p class="kpi-value">{{ followUpDue() }}</p>
+      <p class="kpi-label">Follow-up required</p>
+    </article>
+    <article class="kpi-card">
+      <p class="kpi-value">$184.2K</p>
+      <p class="kpi-label">Outstanding balance</p>
+    </article>
+    <article class="kpi-card">
+      <p class="kpi-value">3.1%</p>
+      <p class="kpi-label">Denial rate</p>
+    </article>
+  </div>
 
-  <section class="dual-grid">
-    <article class="panel">
-      <div class="panel__header">
-        <div><p class="panel__eyebrow">Claim queue</p><h2>Draft and exception worklist</h2></div>
-      </div>
-      <table class="dense-table">
-        <thead>
-          <tr>
-            <th>Claim</th>
-            <th>Patient</th>
-            <th>Payer</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Risk</th>
-            <th class="th-actions"></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (claim of claims(); track claim.claim) {
-            <tr>
-              <td>{{ claim.claim }}</td>
-              <td>{{ claim.patient }}</td>
-              <td>{{ claim.payer }}</td>
-              <td>{{ claim.amount }}</td>
-              <td><app-status-chip [label]="claim.status" [tone]="claim.tone" /></td>
-              <td>{{ claim.denialRisk }}</td>
-              <td class="td-actions">
-                <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewClaim(claim)">View</button>
-                  <button class="row-action-btn" type="button" (click)="openEdit(claim)">Edit</button>
-                  <button class="row-action-btn" type="button" (click)="submitClaim(claim)">Submit</button>
-                  <button class="row-action-more" type="button" title="More actions">···</button>
-                </div>
-              </td>
-            </tr>
+  <!-- ── Main content grid ───────────────────────────────── -->
+  <div class="billing-grid">
+
+    <!-- Left: claim worklist ─────────────────────────────── -->
+    <article class="billing-panel">
+
+      <!-- Work queue tabs -->
+      <div class="queue-tabs">
+        <button class="queue-tab" type="button" [class.queue-tab--active]="activeQueue() === 'all'" (click)="setQueue('all')">All claims</button>
+        <button class="queue-tab" type="button" [class.queue-tab--active]="activeQueue() === 'ready'" (click)="setQueue('ready')">Ready to submit</button>
+        <button class="queue-tab" type="button" [class.queue-tab--active]="activeQueue() === 'denial'" (click)="setQueue('denial')">
+          Denials
+          @if (deniedCount() > 0) {
+            <span class="queue-tab__badge queue-tab__badge--critical">{{ deniedCount() }}</span>
           }
-        </tbody>
-      </table>
+        </button>
+        <button class="queue-tab" type="button" [class.queue-tab--active]="activeQueue() === 'follow-up'" (click)="setQueue('follow-up')">
+          Follow-up
+          @if (followUpDue() > 0) {
+            <span class="queue-tab__badge queue-tab__badge--warning">{{ followUpDue() }}</span>
+          }
+        </button>
+        <button class="queue-tab" type="button" [class.queue-tab--active]="activeQueue() === 'drafts'" (click)="setQueue('drafts')">Drafts</button>
+      </div>
+
+      <!-- Toolbar: search + filters -->
+      <div class="worklist-toolbar">
+        <div class="worklist-search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" [(ngModel)]="searchQuery" placeholder="Search claim, patient, or payer…" />
+        </div>
+        <div class="worklist-filters">
+          <select [(ngModel)]="filterStatus" class="worklist-filter-select">
+            <option value="">All statuses</option>
+            <option>Draft</option>
+            <option>In review</option>
+            <option>Ready to submit</option>
+            <option>Submitted</option>
+            <option>Accepted</option>
+            <option>Rejected</option>
+            <option>Denied</option>
+            <option>Partially paid</option>
+            <option>Paid</option>
+            <option>Appealed</option>
+          </select>
+          <select [(ngModel)]="filterPayer" class="worklist-filter-select">
+            <option value="">All payers</option>
+            <option>Medicare</option>
+            <option>Medicaid</option>
+            <option>Aetna</option>
+            <option>United</option>
+            <option>BCBS</option>
+            <option>Cigna</option>
+            <option>Self-pay</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Claims table -->
+      <div class="claims-table-wrap">
+        <table class="claims-table">
+          <thead>
+            <tr>
+              <th>Claim ID</th>
+              <th>Patient</th>
+              <th>Payer</th>
+              <th>DOS</th>
+              <th>Charges</th>
+              <th>Status</th>
+              <th>Risk</th>
+              <th class="th-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (claim of filteredClaims(); track claim.claim) {
+              <tr (click)="viewClaim(claim)" class="claims-table__row">
+                <td class="claim-id-cell">
+                  <span class="claim-id">{{ claim.claim }}</span>
+                </td>
+                <td>
+                  <div class="patient-cell">
+                    <span class="patient-name">{{ claim.patient }}</span>
+                    @if (claim.mrn) { <span class="patient-meta">MRN {{ claim.mrn }}</span> }
+                  </div>
+                </td>
+                <td>
+                  <div class="payer-cell">
+                    <span>{{ claim.payer }}</span>
+                    @if (claim.financialClass) { <span class="payer-meta">{{ claim.financialClass }}</span> }
+                  </div>
+                </td>
+                <td class="dos-cell">{{ claim.dateOfService || '—' }}</td>
+                <td class="amount-cell">{{ claim.amount }}</td>
+                <td><app-status-chip [label]="claim.status" [tone]="claim.tone" /></td>
+                <td>
+                  <span class="risk-badge risk-badge--{{ claim.denialRisk === 'High' ? 'critical' : claim.denialRisk === 'Medium' ? 'warning' : 'neutral' }}">
+                    {{ claim.denialRisk }}
+                  </span>
+                </td>
+                <td class="td-actions" (click)="$event.stopPropagation()">
+                  <div class="row-actions">
+                    <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewClaim(claim)">View</button>
+                    <button class="row-action-btn" type="button" (click)="openEdit(claim)">Edit</button>
+                    <button class="row-action-btn" type="button" (click)="submitClaim(claim)">Submit</button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="empty-state">
+                  <div class="empty-state__inner">
+                    <div class="empty-state__icon">📋</div>
+                    <strong>No claims match your filters</strong>
+                    <p>Adjust your search or work queue selection, or create a new claim.</p>
+                    <button class="billing-btn billing-btn--secondary" type="button" (click)="openCreate()">+ New claim</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="worklist-footer">
+        <span class="worklist-count">{{ filteredClaims().length }} claim{{ filteredClaims().length !== 1 ? 's' : '' }} shown</span>
+      </div>
     </article>
 
-    <article class="panel panel--assistant">
-      <div class="panel__header">
-        <div><p class="panel__eyebrow">Denial prevention</p><h2>Embedded AI recommendations</h2></div>
+    <!-- Right: AI denial prevention ──────────────────────── -->
+    <aside class="billing-aside">
+      <div class="aside-section">
+        <div class="aside-section__header">
+          <p class="aside-section__eyebrow">AI-powered</p>
+          <h2 class="aside-section__title">Denial Prevention</h2>
+        </div>
+        <div class="ai-insight-list">
+          @for (insight of aiInsights(); track insight.id) {
+            <article class="ai-insight-card">
+              <div class="ai-insight-card__header">
+                <strong>{{ insight.title }}</strong>
+                <app-status-chip [label]="insight.confidence" [tone]="insight.tone" />
+              </div>
+              <p>{{ insight.recommendation }}</p>
+            </article>
+          }
+        </div>
       </div>
-      <div class="panel-list">
-        @for (insight of aiInsights(); track insight.id) {
-          <article class="list-surface">
-            <div class="dense-header">
-              <strong>{{ insight.title }}</strong>
-              <app-status-chip [label]="insight.confidence" [tone]="insight.tone" />
-            </div>
-            <p>{{ insight.recommendation }}</p>
-          </article>
-        }
+
+      <div class="aside-section">
+        <div class="aside-section__header">
+          <h2 class="aside-section__title">Aging Buckets</h2>
+        </div>
+        <div class="aging-list">
+          <div class="aging-row">
+            <span class="aging-label">0–30 days</span>
+            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--green" style="width:65%"></span></span>
+            <span class="aging-amount">$42.1K</span>
+          </div>
+          <div class="aging-row">
+            <span class="aging-label">31–60 days</span>
+            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--yellow" style="width:40%"></span></span>
+            <span class="aging-amount">$28.4K</span>
+          </div>
+          <div class="aging-row">
+            <span class="aging-label">61–90 days</span>
+            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--orange" style="width:22%"></span></span>
+            <span class="aging-amount">$15.3K</span>
+          </div>
+          <div class="aging-row">
+            <span class="aging-label">90+ days</span>
+            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--red" style="width:14%"></span></span>
+            <span class="aging-amount">$98.4K</span>
+          </div>
+        </div>
       </div>
-    </article>
-  </section>
+    </aside>
+
+  </div><!-- /billing-grid -->
+
 </section>
 
-<!-- View modal -->
-<app-modal [open]="viewOpen()" title="Claim details" (closed)="closeView()">
-  @if (selectedClaim()) {
-    <div class="rec-kv-list">
-      <div class="rec-kv-row"><span>Claim ID</span><strong>{{ selectedClaim()!.claim }}</strong></div>
-      <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedClaim()!.patient }}</strong></div>
-      <div class="rec-kv-row"><span>Payer</span><strong>{{ selectedClaim()!.payer }}</strong></div>
-      <div class="rec-kv-row"><span>Amount</span><strong>{{ selectedClaim()!.amount }}</strong></div>
-      <div class="rec-kv-row"><span>Status</span><strong>{{ selectedClaim()!.status }}</strong></div>
-      <div class="rec-kv-row"><span>Denial risk</span><strong>{{ selectedClaim()!.denialRisk }}</strong></div>
-      <div class="rec-kv-row"><span>Next action</span><strong>{{ selectedClaim()!.nextAction }}</strong></div>
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn" type="button" (click)="openEdit(selectedClaim()!); closeView()">Edit claim</button>
-      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
-    </div>
-  }
-</app-modal>
-
-<!-- Create / Edit modal -->
-<app-modal [open]="formOpen()" [title]="editingClaim() ? 'Edit claim' : 'New claim'" (closed)="closeForm()">
-  <div class="rec-form">
-    <div class="rec-form-grid">
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Patient *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Patient full name" />
+<!-- ── Claim detail view ────────────────────────────────── -->
+@if (viewOpen() && selectedClaim()) {
+  <div class="claim-drawer-backdrop" (click)="$event.target === $event.currentTarget && closeView()">
+    <div class="claim-drawer">
+      <div class="claim-drawer__header">
+        <div>
+          <p class="claim-drawer__id">{{ selectedClaim()!.claim }}</p>
+          <h2 class="claim-drawer__patient">{{ selectedClaim()!.patient }}</h2>
+        </div>
+        <div class="claim-drawer__header-right">
+          <app-status-chip [label]="selectedClaim()!.status" [tone]="selectedClaim()!.tone" />
+          <button class="claim-drawer__close" type="button" (click)="closeView()">✕</button>
+        </div>
       </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Payer</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPayer" placeholder="e.g. Medicare" />
+      <div class="claim-drawer__body">
+        <div class="claim-kv-section">
+          <h3 class="claim-kv-title">Claim Overview</h3>
+          <div class="claim-kv-grid">
+            <div class="claim-kv-row"><span>Claim type</span><strong>{{ selectedClaim()!.claimType || '—' }}</strong></div>
+            <div class="claim-kv-row"><span>Date of service</span><strong>{{ selectedClaim()!.dateOfService || '—' }}</strong></div>
+            <div class="claim-kv-row"><span>Charges</span><strong>{{ selectedClaim()!.amount }}</strong></div>
+            <div class="claim-kv-row"><span>Denial risk</span><strong>{{ selectedClaim()!.denialRisk }}</strong></div>
+            <div class="claim-kv-row"><span>Payer</span><strong>{{ selectedClaim()!.payer }}</strong></div>
+            <div class="claim-kv-row"><span>Work queue</span><strong>{{ selectedClaim()!.workQueue || '—' }}</strong></div>
+            <div class="claim-kv-row"><span>Rendering provider</span><strong>{{ selectedClaim()!.renderingProvider || '—' }}</strong></div>
+            <div class="claim-kv-row"><span>Assigned biller</span><strong>{{ selectedClaim()!.assignedBiller || '—' }}</strong></div>
+            <div class="claim-kv-row"><span>Next action</span><strong>{{ selectedClaim()!.nextAction }}</strong></div>
+          </div>
+        </div>
+        @if (selectedClaim()!.primaryDx || selectedClaim()!.laterality) {
+          <div class="claim-kv-section">
+            <h3 class="claim-kv-title">Clinical Context</h3>
+            <div class="claim-kv-grid">
+              @if (selectedClaim()!.laterality) {
+                <div class="claim-kv-row"><span>Laterality</span><strong>{{ selectedClaim()!.laterality }}</strong></div>
+              }
+              @if (selectedClaim()!.visitType) {
+                <div class="claim-kv-row"><span>Visit type</span><strong>{{ selectedClaim()!.visitType }}</strong></div>
+              }
+              @if (selectedClaim()!.primaryDx) {
+                <div class="claim-kv-row"><span>Primary Dx</span><strong>{{ selectedClaim()!.primaryDx }}</strong></div>
+              }
+            </div>
+          </div>
+        }
+        @if (selectedClaim()!.denialCode || selectedClaim()!.denialDescription) {
+          <div class="claim-kv-section claim-kv-section--alert">
+            <h3 class="claim-kv-title">Denial Details</h3>
+            <div class="claim-kv-grid">
+              @if (selectedClaim()!.denialCode) {
+                <div class="claim-kv-row"><span>Denial code</span><strong>{{ selectedClaim()!.denialCode }}</strong></div>
+              }
+              @if (selectedClaim()!.denialCategory) {
+                <div class="claim-kv-row"><span>Category</span><strong>{{ selectedClaim()!.denialCategory }}</strong></div>
+              }
+              @if (selectedClaim()!.denialDescription) {
+                <div class="claim-kv-row claim-kv-row--full"><span>Description</span><strong>{{ selectedClaim()!.denialDescription }}</strong></div>
+              }
+              @if (selectedClaim()!.followUpDate) {
+                <div class="claim-kv-row"><span>Follow-up date</span><strong>{{ selectedClaim()!.followUpDate }}</strong></div>
+              }
+            </div>
+          </div>
+        }
       </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Amount</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fAmount" placeholder="$0.00" />
+      <div class="claim-drawer__footer">
+        <button class="billing-btn billing-btn--secondary" type="button" (click)="closeView()">Close</button>
+        <button class="billing-btn billing-btn--primary" type="button" (click)="openEdit(selectedClaim()!); closeView()">Edit claim</button>
       </div>
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Notes / next action</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fProcedure" placeholder="e.g. Verify coding before submit" />
-      </div>
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn" type="button" (click)="closeForm()">Cancel</button>
-      <button class="rec-btn rec-btn--primary" type="button" (click)="saveClaim()" [disabled]="!fPatient.trim()">
-        {{ editingClaim() ? 'Save changes' : 'Create claim' }}
-      </button>
     </div>
   </div>
-</app-modal>
+}
+
+<!-- ── New / Edit claim modal ───────────────────────────── -->
+<app-new-claim-modal
+  [open]="claimModalOpen()"
+  [claimToEdit]="claimToEdit()"
+  (closed)="claimModalOpen.set(false)"
+/>

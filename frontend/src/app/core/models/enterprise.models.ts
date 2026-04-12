@@ -335,6 +335,20 @@ export interface OpticalOrder {
   recommendation: string;
 }
 
+export interface ClaimCptRow {
+  cptCode: string;
+  modifier1: string;
+  modifier2: string;
+  units: string;
+  diagPointer: string;
+  serviceDate: string;
+  pos: string;
+  charge: string;
+  renderingNpi: string;
+  ndcCode: string;
+  notes: string;
+}
+
 export interface ClaimRecord {
   clinicId: string;
   claim: string;
@@ -345,6 +359,72 @@ export interface ClaimRecord {
   tone: SurfaceTone;
   denialRisk: string;
   nextAction: string;
+  /* Extended production-grade fields (all optional for backward-compat) */
+  claimType?: string;
+  priority?: string;
+  dateOfService?: string;
+  billingBatch?: string;
+  placeOfService?: string;
+  renderingProvider?: string;
+  billingProvider?: string;
+  referringProvider?: string;
+  assignedBiller?: string;
+  workQueue?: string;
+  mrn?: string;
+  accountNumber?: string;
+  patientDob?: string;
+  patientSex?: string;
+  subscriberName?: string;
+  subscriberDob?: string;
+  subscriberMemberId?: string;
+  subscriberGroupNumber?: string;
+  subscriberRelationship?: string;
+  eligibilityStatus?: string;
+  eligibilityVerifiedDate?: string;
+  primaryPayer?: string;
+  secondaryPayer?: string;
+  financialClass?: string;
+  authNumber?: string;
+  authValidFrom?: string;
+  authValidTo?: string;
+  referralNumber?: string;
+  laterality?: string;
+  visitType?: string;
+  primaryDx?: string;
+  secondaryDx?: string;
+  tertiaryDx?: string;
+  globalPeriodIndicator?: boolean;
+  postOpDay?: string;
+  relatedSurgeryDate?: string;
+  medicalNecessityNotes?: string;
+  cptRows?: ClaimCptRow[];
+  totalCharges?: string;
+  allowedAmount?: string;
+  expectedReimbursement?: string;
+  copay?: string;
+  deductible?: string;
+  patientResponsibility?: string;
+  contractualAdjustment?: string;
+  balanceDue?: string;
+  feeSchedule?: string;
+  submissionMethod?: string;
+  submissionTrackingNumber?: string;
+  resubmissionCode?: string;
+  submissionNotes?: string;
+  validationStatus?: string;
+  denialCode?: string;
+  denialCategory?: string;
+  denialDescription?: string;
+  followUpOwner?: string;
+  followUpDate?: string;
+  appealDeadline?: string;
+  appealStatus?: string;
+  rootCauseCategory?: string;
+  internalBillingNotes?: string;
+  createdBy?: string;
+  createdOn?: string;
+  updatedBy?: string;
+  updatedOn?: string;
 }
 
 export interface ComplianceEvent {
