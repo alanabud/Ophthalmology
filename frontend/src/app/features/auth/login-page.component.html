@@ -1,69 +1,218 @@
-<section class="login-grid">
-  <article class="panel login-panel">
-    <div class="panel__header">
-      <div>
-        <p class="panel__eyebrow">Workspace access</p>
-        <h1>Clinical command sign-in</h1>
-      </div>
-      <a class="ghost-inline" routerLink="/command-center">Return to workspace</a>
-    </div>
+<div class="auth-shell">
 
-    <p class="panel__body-copy">
-      This authentication surface is designed for operational teams. It supports both live backend auth and a seeded preview mode so the full platform can be evaluated before local infrastructure is finished.
-    </p>
-
-    <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-      <label>
-        <span>Email</span>
-        <input type="email" formControlName="email" />
-      </label>
-
-      <label>
-        <span>Password</span>
-        <input type="password" formControlName="password" />
-      </label>
-
-      <div class="dual-grid">
-        <label>
-          <span>Tenant ID</span>
-          <input type="text" formControlName="tenantId" placeholder="Optional live tenant scope" />
-        </label>
-
-        <label>
-          <span>Clinic ID</span>
-          <input type="text" formControlName="clinicId" placeholder="Optional live clinic scope" />
-        </label>
+  <!-- ── Left brand / trust panel ─────────────────────── -->
+  <aside class="auth-brand">
+    <div class="auth-brand__inner">
+      <div class="auth-brand__logo">
+        <div class="brand-mark">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+            <path d="M2 12C2 12 5 5 12 5s10 7 10 7-3 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+          </svg>
+        </div>
+        <div>
+          <p class="auth-brand__kicker">Enterprise Platform</p>
+          <h1 class="auth-brand__name">AcuityEye Network</h1>
+        </div>
       </div>
 
-      <div class="login-actions">
-        <button class="alert-button" type="submit" [disabled]="isSubmitting()">
-          {{ isSubmitting() ? 'Signing in...' : 'Attempt live sign-in' }}
-        </button>
-        <button class="soft-button" type="button" (click)="launchPreview()">Launch preview workspace</button>
+      <div class="auth-brand__body">
+        <h2 class="auth-brand__headline">Ophthalmology Operations Command Center</h2>
+        <p class="auth-brand__desc">A unified operational platform for clinic networks. Manage scheduling, imaging, surgical coordination, billing, and compliance across every location from a single enterprise workspace.</p>
       </div>
-    </form>
 
-    <p class="utility-note">{{ feedback() }}</p>
-  </article>
-
-  <article class="panel panel--assistant login-panel">
-    <div class="panel__header">
-      <div>
-        <p class="panel__eyebrow">Preview credentials</p>
-        <h2>Immediate evaluation path</h2>
+      <div class="auth-trust-grid">
+        <div class="auth-trust-item">
+          <span class="auth-trust-icon">⊕</span>
+          <div>
+            <strong>Clinic-level visibility</strong>
+            <p>Real-time throughput, utilization, and exception monitoring across your network.</p>
+          </div>
+        </div>
+        <div class="auth-trust-item">
+          <span class="auth-trust-icon">◈</span>
+          <div>
+            <strong>Role-aware workspace</strong>
+            <p>Every user sees only what their role and clinic scope permits.</p>
+          </div>
+        </div>
+        <div class="auth-trust-item">
+          <span class="auth-trust-icon">◉</span>
+          <div>
+            <strong>Enterprise identity layer</strong>
+            <p>Microsoft and Google SSO with tenant-level access control and audit trails.</p>
+          </div>
+        </div>
       </div>
-      <span class="status-chip status-chip--accent">Ready now</span>
-    </div>
 
-    <div class="key-value-stack">
-      <div class="key-value-row"><span>Email</span><strong>preview.operator@acuityeye.local</strong></div>
-      <div class="key-value-row"><span>Password</span><strong>Preview!2026</strong></div>
-      <div class="key-value-row"><span>Role</span><strong>Regional preview operator</strong></div>
+      <div class="auth-brand__footer">
+        <span class="auth-compliance-badge">HIPAA-adjacent operations platform</span>
+        <span class="auth-compliance-badge">SOC 2 aligned</span>
+      </div>
     </div>
+  </aside>
 
-    <div class="panel-list">
-      <article class="list-surface"><strong>What works in preview</strong><p>All major modules, seeded records, AI insight panels, clinic switching, and route-to-route evaluation.</p></article>
-      <article class="list-surface"><strong>What upgrades next</strong><p>Live auth, seeded database users, and backend-backed read/write flows can replace preview adapters without redesigning the UI.</p></article>
+  <!-- ── Right sign-in card ────────────────────────────── -->
+  <main class="auth-main">
+    <div class="auth-card">
+
+      @if (authView() === 'login') {
+        <div class="auth-card__header">
+          <p class="auth-card__eyebrow">Workspace access</p>
+          <h2 class="auth-card__title">Sign in to your account</h2>
+          <p class="auth-card__sub">Use your organization account for the best experience.</p>
+        </div>
+
+        <!-- SSO buttons -->
+        <div class="sso-group">
+          <button class="sso-btn sso-btn--microsoft" type="button" (click)="signInWithMicrosoft()" [disabled]="isSubmitting()">
+            <svg class="sso-btn__icon" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+              <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+              <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+              <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+            </svg>
+            Continue with Microsoft
+          </button>
+
+          <button class="sso-btn sso-btn--google" type="button" (click)="signInWithGoogle()" [disabled]="isSubmitting()">
+            <svg class="sso-btn__icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </button>
+        </div>
+
+        <div class="auth-divider">
+          <span>or sign in with email</span>
+        </div>
+
+        <!-- Email/password form -->
+        <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+          <div class="auth-field">
+            <label class="auth-label" for="email">Email address</label>
+            <input
+              id="email"
+              class="auth-input"
+              type="email"
+              formControlName="email"
+              placeholder="you@yourorganization.com"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="auth-field">
+            <div class="auth-field__header">
+              <label class="auth-label" for="password">Password</label>
+              <button class="auth-forgot-link" type="button" (click)="showForgotPassword()">Forgot password?</button>
+            </div>
+            <div class="auth-input-wrap">
+              <input
+                id="password"
+                class="auth-input"
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="password"
+                placeholder="••••••••••••"
+                autocomplete="current-password"
+              />
+              <button class="auth-input-toggle" type="button" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+                {{ showPassword() ? '○' : '●' }}
+              </button>
+            </div>
+          </div>
+
+          @if (feedback()) {
+            <div class="auth-feedback" [class.auth-feedback--error]="feedbackIsError()">
+              {{ feedback() }}
+            </div>
+          }
+
+          <button class="auth-submit" type="submit" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Signing in…' : 'Sign in' }}
+          </button>
+        </form>
+
+        <div class="auth-preview-block">
+          <p class="auth-preview-label">
+            <span class="status-chip status-chip--accent">Preview mode</span>
+            Evaluate the full platform instantly
+          </p>
+          <button class="auth-preview-btn" type="button" (click)="launchPreview()" [disabled]="isSubmitting()">
+            Launch preview workspace
+          </button>
+        </div>
+      }
+
+      @if (authView() === 'forgot') {
+        <div class="auth-card__header">
+          <p class="auth-card__eyebrow">Account recovery</p>
+          <h2 class="auth-card__title">Reset your password</h2>
+          <p class="auth-card__sub">Enter your work email and we'll send reset instructions.</p>
+        </div>
+
+        <form class="auth-form" (ngSubmit)="submitForgot()">
+          <div class="auth-field">
+            <label class="auth-label" for="reset-email">Work email address</label>
+            <input id="reset-email" class="auth-input" type="email" [formControl]="forgotEmailCtrl" placeholder="you@yourorganization.com" />
+          </div>
+
+          @if (feedback()) {
+            <div class="auth-feedback" [class.auth-feedback--error]="feedbackIsError()">{{ feedback() }}</div>
+          }
+
+          <button class="auth-submit" type="submit" [disabled]="isSubmitting()">
+            {{ isSubmitting() ? 'Sending…' : 'Send reset instructions' }}
+          </button>
+        </form>
+
+        <button class="auth-back-link" type="button" (click)="showLogin()">← Back to sign in</button>
+      }
+
+      @if (authView() === 'unauthorized') {
+        <div class="auth-state-block auth-state-block--warn">
+          <div class="auth-state-block__icon">⊘</div>
+          <h2>Access not authorized</h2>
+          <p>Your identity was verified, but your account has not been invited to this platform. Contact your clinic administrator to request access.</p>
+          <div class="auth-state-actions">
+            <button class="auth-submit" type="button" (click)="showLogin()">Return to sign in</button>
+          </div>
+        </div>
+      }
+
+      @if (authView() === 'pending') {
+        <div class="auth-state-block auth-state-block--info">
+          <div class="auth-state-block__icon">◔</div>
+          <h2>Access pending approval</h2>
+          <p>Your access request has been received. An administrator will review and activate your account. You'll receive a notification once approved.</p>
+          <div class="auth-state-actions">
+            <button class="auth-submit auth-submit--secondary" type="button" (click)="showLogin()">Return to sign in</button>
+          </div>
+        </div>
+      }
+
+      @if (authView() === 'expired') {
+        <div class="auth-state-block auth-state-block--warn">
+          <div class="auth-state-block__icon">⏲</div>
+          <h2>Session expired</h2>
+          <p>Your session has timed out for security. Please sign in again to continue your work.</p>
+          <div class="auth-state-actions">
+            <button class="auth-submit" type="button" (click)="showLogin()">Sign in again</button>
+          </div>
+        </div>
+      }
+
+      <!-- Footer -->
+      <div class="auth-card__footer">
+        <span>AcuityEye Operations Platform</span>
+        <span class="auth-card__footer-sep">·</span>
+        <span>Enterprise Edition</span>
+        <span class="auth-card__footer-sep">·</span>
+        <a href="#">Support</a>
+      </div>
     </div>
-  </article>
-</section>
+  </main>
+
+</div>

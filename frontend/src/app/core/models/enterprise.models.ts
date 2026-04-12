@@ -266,6 +266,17 @@ export interface ImagingStudy {
   tone: SurfaceTone;
   findings: string;
   aiSignal: string;
+  studyDate?: string;
+  laterality?: string;
+  clinicalIndication?: string;
+  urgency?: string;
+  protocol?: string;
+  cptCode?: string;
+  reportedBy?: string;
+  reportedDate?: string;
+  impressionSummary?: string;
+  qualityScore?: string;
+  linkedEncounterId?: string;
 }
 
 export interface SurgeryCase {
@@ -279,6 +290,37 @@ export interface SurgeryCase {
   implant: string;
   clearance: string;
   risk: string;
+  // Extended fields
+  caseId?: string;
+  side?: string;
+  scheduledTime?: string;
+  anesthesiaType?: string;
+  anesthesiologist?: string;
+  circulator?: string;
+  iOLModel?: string;
+  iOLPower?: string;
+  axialLength?: string;
+  targetRefraction?: string;
+  allergies?: string;
+  comorbidities?: string;
+  preOpDiagnosis?: string;
+  postOpPlan?: string;
+  consentSigned?: boolean;
+  consentDate?: string;
+  bloodType?: string;
+  h2Status?: string;
+  antibioticProphylaxis?: string;
+  specialEquipment?: string;
+  caseNotes?: string;
+  aiFlag?: string;
+  checklistComplete?: boolean;
+  biometryConfirmed?: boolean;
+  patientWeight?: string;
+  patientHeight?: string;
+  emergencyContact?: string;
+  transportArranged?: boolean;
+  preOpLab?: string;
+  preOpECG?: string;
 }
 
 export interface OpticalOrder {

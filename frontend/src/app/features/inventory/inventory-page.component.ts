@@ -120,7 +120,7 @@ export class InventoryPageComponent {
 
   protected stockPercent(item: InventoryRecord): number {
     const onHand = item.onHandQty ?? 0;
-    const max = item.maxLevel ?? item.parLevel ?? onHand || 1;
+    const max = (item.maxLevel ?? item.parLevel ?? onHand) || 1;
     return Math.min(100, Math.round((onHand / max) * 100));
   }
 
