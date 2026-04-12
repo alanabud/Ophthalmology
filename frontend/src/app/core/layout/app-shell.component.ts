@@ -1,6 +1,6 @@
 import { NgClass } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { DailyBriefingSignal } from '../../core/models/enterprise.models';
 import { EnterpriseSelectComponent, EnterpriseSelectOption } from '../../shared/ui/enterprise-select.component';
@@ -32,7 +32,9 @@ export class AppShellComponent {
   protected readonly organizationName = this.store.organizationName;
   protected readonly environmentLabel = this.store.environmentLabel;
   protected readonly isAuthenticated = this.authState.isAuthenticated;
+  protected readonly isSandboxSession = this.authState.isSandboxSession;
   protected readonly displayName = this.authState.displayName;
+  protected readonly userEmail = this.authState.userEmail;
   protected readonly openAlertCount = computed(() =>
     this.notifications().reduce((count, alert) => count + alert.count, 0)
   );
@@ -96,8 +98,11 @@ export class AppShellComponent {
     }
   }
 
+  private readonly router = inject(Router);
+
   protected signOut(): void {
     this.authState.clearSession();
+    void this.router.navigateByUrl('/login');
   }
 
   private selectSignal(label?: string, tone?: DailyBriefingSignal['tone']): DailyBriefingSignal | null {

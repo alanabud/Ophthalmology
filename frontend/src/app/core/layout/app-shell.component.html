@@ -90,6 +90,10 @@
       </div>
 
       <div class="topbar__right">
+        @if (isSandboxSession()) {
+          <span class="topbar__sandbox-badge">SANDBOX</span>
+        }
+
         <button class="topbar__quick-create" type="button" (click)="openQuickCreate()">+ Quick create</button>
 
         <button class="topbar__alerts" type="button" [class.topbar__alerts--active]="openAlertCount() > 0">
@@ -103,8 +107,8 @@
         <div class="topbar__user">
           <div class="topbar__avatar">{{ accountInitials().toUpperCase() }}</div>
           <div class="topbar__user-info">
-            <strong>{{ displayName() }}</strong>
-            <span>{{ organizationName }}</span>
+            <strong>{{ isSandboxSession() ? 'Sandbox User' : displayName() }}</strong>
+            <span>{{ isSandboxSession() ? 'Sandbox session · ' + organizationName : organizationName }}</span>
           </div>
         </div>
       </div>

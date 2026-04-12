@@ -220,8 +220,8 @@ export class EnterpriseStoreService {
   previewSession(): TokenPairResponse {
     const clinicId = this.activeClinicId() === 'network' ? 'winter-park' : this.activeClinicId();
     return {
-      access_token: 'preview-access-token',
-      refresh_token: 'preview-refresh-token',
+      access_token: 'sandbox-access-token',
+      refresh_token: 'sandbox-refresh-token',
       token_type: 'bearer',
       access_token_expires_at: '2026-03-07T00:00:00Z',
       refresh_token_expires_at: '2026-03-14T00:00:00Z',
@@ -229,9 +229,9 @@ export class EnterpriseStoreService {
         user: {
           id: 'preview-user',
           email: 'preview.operator@acuityeye.local',
-          first_name: 'Preview',
-          last_name: 'Operator',
-          display_name: 'Regional Preview Operator',
+          first_name: 'Sandbox',
+          last_name: 'User',
+          display_name: 'Sandbox User',
           is_active: true,
           is_superuser: true,
           home_tenant_id: 'acuity-eye-network'

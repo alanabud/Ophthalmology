@@ -11,10 +11,13 @@ export class AuthStateService {
   readonly session = computed(() => this.sessionState());
   readonly context = computed(() => this.sessionState()?.context ?? null);
   readonly isAuthenticated = computed(() => Boolean(this.sessionState()?.accessToken));
+  readonly isSandboxSession = computed(() => this.sessionState()?.accessToken === 'sandbox-access-token');
   readonly displayName = computed(() => {
     const context = this.context();
-    return context?.user.display_name || context?.user.first_name || 'Guest';
+    if (!context) return '';
+    return context.user.display_name || [context.user.first_name, context.user.last_name].filter(Boolean).join(' ') || context.user.email || 'User';
   });
+  readonly userEmail = computed(() => this.context()?.user.email ?? '');
 
   constructor() {
     effect(() => {
