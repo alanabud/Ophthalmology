@@ -238,6 +238,11 @@ export interface WaitlistRecord {
   priority?: string;
   laterality?: string;
   visitType?: string;
+  appointmentType?: string;
+  providerPreference?: string;
+  insuranceName?: string;
+  contactPhone?: string;
+  addedDate?: string;
   chiefComplaint?: string;
   authStatus?: string;
   eligibilityStatus?: string;
@@ -416,6 +421,36 @@ export interface OpticalOrder {
   tone: SurfaceTone;
   pickup: string;
   recommendation: string;
+  /* Prescription fields */
+  odSphere?: string;
+  odCylinder?: string;
+  odAxis?: string;
+  odAdd?: string;
+  osSphere?: string;
+  osCylinder?: string;
+  osAxis?: string;
+  osAdd?: string;
+  pd?: string;
+  nearPd?: string;
+  /* Order details */
+  mrn?: string;
+  dob?: string;
+  phone?: string;
+  insurance?: string;
+  provider?: string;
+  prescribedBy?: string;
+  lab?: string;
+  labName?: string;
+  labOrderId?: string;
+  rxDate?: string;
+  dispenseDate?: string;
+  deliveryMethod?: string;
+  coating?: string;
+  coatings?: string;
+  tint?: string;
+  notes?: string;
+  balanceDue?: string;
+  depositPaid?: string;
 }
 
 export interface ClaimCptRow {
@@ -443,6 +478,16 @@ export interface ClaimRecord {
   denialRisk: string;
   nextAction: string;
   /* Extended production-grade fields (all optional for backward-compat) */
+  cptCodes?: string;
+  modifiers?: string;
+  units?: number | string;
+  revenueCode?: string;
+  icd10Primary?: string;
+  icd10Secondary?: string;
+  icd10Tertiary?: string;
+  paidAmount?: string;
+  submittedDate?: string;
+  billingNotes?: string;
   claimType?: string;
   priority?: string;
   dateOfService?: string;
