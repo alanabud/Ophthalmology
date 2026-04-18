@@ -31,6 +31,7 @@ export class PatientsPageComponent {
 
   protected readonly patients = computed(() => {
     const search = this.query().trim().toLowerCase();
+    const status = this.statusFilter();
     let records = this.store.patients();
 
     if (search) {
@@ -41,6 +42,9 @@ export class PatientsPageComponent {
           r.insurance.toLowerCase().includes(search) ||
           r.status.toLowerCase().includes(search)
       );
+    }
+    if (status) {
+      records = records.filter((r) => r.status === status);
     }
     if (this.clinicFilter()) {
       records = records.filter((r) => r.clinicId === this.clinicFilter());
@@ -54,11 +58,30 @@ export class PatientsPageComponent {
     return this.patients().find((p) => p.id === id) ?? null;
   });
 
-  protected readonly recallGaps = 7;
-  protected readonly balanceOver = 14;
-  protected readonly highRisk = 5;
-  protected readonly unsignedCharts = 3;
-  protected readonly pendingAuths = 6;
+  // Stats computed from actual patient data
+  protected readonly recallGaps = computed(() =>
+    this.store.patients().filter((p) => p.status === 'Follow-up overdue').length
+  );
+  protected readonly balanceOver = computed(() =>
+    this.store.patients().filter((p) => {
+      const amt = parseFloat((p.balance ?? '$0').replace(/[$,]/g, ''));
+      return amt > 250;
+    }).length
+  );
+  protected readonly highRisk = computed(() =>
+    this.store.patients().filter((p) => p.statusTone === 'critical').length
+  );
+  protected readonly unsignedCharts = computed(() =>
+    this.store.patients().filter((p) => {
+      const pct = parseFloat((p.chartCompleteness ?? '0%').replace('%', ''));
+      return pct < 100;
+    }).length
+  );
+  protected readonly pendingAuths = computed(() =>
+    this.store.patients().filter((p) =>
+      (p.careGap ?? '').toLowerCase().includes('auth')
+    ).length
+  );
 
   protected selectPatient(patient: PatientRecord): void {
     this.selectedPatientId.set(patient.id);

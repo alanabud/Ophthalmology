@@ -4,6 +4,8 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 
 import { DailyBriefingSignal } from '../../core/models/enterprise.models';
 import { EnterpriseSelectComponent, EnterpriseSelectOption } from '../../shared/ui/enterprise-select.component';
+import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-modal.component';
+import { NewClaimModalComponent } from '../../shared/ui/new-claim-modal.component';
 import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 import { QuickCreateModalComponent } from '../../shared/ui/quick-create-modal.component';
 import { AuthStateService } from '../services/auth-state.service';
@@ -11,7 +13,7 @@ import { EnterpriseStoreService } from '../services/enterprise-store.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [EnterpriseSelectComponent, NewPatientModalComponent, NgClass, QuickCreateModalComponent, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [EnterpriseSelectComponent, NewAppointmentModalComponent, NewClaimModalComponent, NewPatientModalComponent, NgClass, QuickCreateModalComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss'
 })
@@ -87,14 +89,20 @@ export class AppShellComponent {
 
   protected readonly quickCreateOpen = signal(false);
   protected readonly newPatientOpen = signal(false);
+  protected readonly newAppointmentOpen = signal(false);
+  protected readonly newClaimOpen = signal(false);
 
   protected openQuickCreate(): void {
     this.quickCreateOpen.set(true);
   }
 
-  protected onQuickCreateAction(action: 'new-patient'): void {
+  protected onQuickCreateAction(action: 'new-patient' | 'new-appointment' | 'new-claim'): void {
     if (action === 'new-patient') {
       this.newPatientOpen.set(true);
+    } else if (action === 'new-appointment') {
+      this.newAppointmentOpen.set(true);
+    } else if (action === 'new-claim') {
+      this.newClaimOpen.set(true);
     }
   }
 

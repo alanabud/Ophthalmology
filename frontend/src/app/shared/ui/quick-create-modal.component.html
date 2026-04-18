@@ -9,11 +9,11 @@
       <span class="qc-item__arrow">→</span>
     </button>
 
-    <button type="button" class="qc-item" (click)="navigate('/scheduling')">
+    <button type="button" class="qc-item" (click)="selectAction('new-appointment')">
       <span class="qc-item__icon qc-item__icon--gold">SC</span>
       <div class="qc-item__copy">
         <strong>New appointment</strong>
-        <p>Open the scheduling board to add a visit</p>
+        <p>Schedule a visit for any patient</p>
       </div>
       <span class="qc-item__arrow">→</span>
     </button>
@@ -27,7 +27,7 @@
       <span class="qc-item__arrow">→</span>
     </button>
 
-    <button type="button" class="qc-item" (click)="navigate('/billing')">
+    <button type="button" class="qc-item" (click)="selectAction('new-claim')">
       <span class="qc-item__icon qc-item__icon--critical">CL</span>
       <div class="qc-item__copy">
         <strong>New claim</strong>

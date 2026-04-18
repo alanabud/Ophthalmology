@@ -119,6 +119,17 @@ export class ImagingPageComponent {
   }
 
   protected saveReview(): void {
+    const study = this.selectedStudy();
+    if (study) {
+      this.store.updateImagingStudy({
+        ...study,
+        impressionSummary: this.fImpressionSummary.trim() || study.impressionSummary,
+        findings: this.fReviewNotes.trim() || study.findings,
+        qualityScore: this.fQualityScore || study.qualityScore,
+        status: 'Interpreted',
+        tone: 'success',
+      });
+    }
     this.reviewOpen.set(false);
     this.selectedStudy.set(null);
   }

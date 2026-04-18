@@ -186,6 +186,11 @@ export class EnterpriseStoreService {
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
   }
+  updateImagingStudy(updated: ImagingStudy): void {
+    this.imagingStudiesBase.update((list) =>
+      list.map((s) => (s.studyId === updated.studyId ? updated : s))
+    );
+  }
 
   // ── Surgery CRUD ───────────────────────────────────────────────────────────
   createSurgeryCase(surgeryCase: SurgeryCase): void {

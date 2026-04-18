@@ -57,9 +57,12 @@ export class LoginPageComponent {
       next: () => void this.router.navigateByUrl('/command-center'),
       error: (err) => {
         this.isSubmitting.set(false);
-        if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        const code = err?.code ?? '';
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
           this.clearFeedback();
-        } else if (err?.code === 'auth/unauthorized-domain') {
+        } else if (code === 'auth/popup-blocked') {
+          this.setFeedback('Pop-up was blocked by your browser. Please allow pop-ups for this site and try again.', true);
+        } else if (code === 'auth/unauthorized-domain') {
           this.setFeedback('This domain is not authorized. Contact your administrator.', true);
         } else {
           this.setFeedback(err?.message ?? 'Google sign-in failed. Please try again.', true);

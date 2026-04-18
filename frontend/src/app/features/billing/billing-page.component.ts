@@ -50,7 +50,25 @@ export class BillingPageComponent {
   });
 
   /* ── KPI helpers ──────────────────────────────────── */
-  protected readonly totalOutstanding = computed(() => this.claims().length);
+  protected readonly totalOutstanding = computed(() => {
+    const total = this.claims()
+      .filter((c) => c.status !== 'Paid' && c.status !== 'Voided')
+      .reduce((sum, c) => {
+        const amt = parseFloat((c.balanceDue ?? c.amount ?? '0').replace(/[$,]/g, ''));
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+    return total >= 1000
+      ? `$${(total / 1000).toFixed(1)}K`
+      : `$${total.toFixed(2)}`;
+  });
+
+  protected readonly denialRatePct = computed(() => {
+    const total = this.claims().length;
+    if (!total) return '0.0%';
+    const denied = this.claims().filter((c) => c.status === 'Denied' || c.status === 'Rejected').length;
+    return `${((denied / total) * 100).toFixed(1)}%`;
+  });
+
   protected readonly readyToSubmit = computed(() =>
     this.claims().filter((c) => c.status === 'Ready to submit' || c.status === 'Draft').length
   );
@@ -60,6 +78,37 @@ export class BillingPageComponent {
   protected readonly followUpDue = computed(() =>
     this.claims().filter((c) => c.denialRisk === 'High').length
   );
+
+  /* ── Aging buckets computed from claims ───────────── */
+  protected readonly agingBuckets = computed(() => {
+    const buckets = [
+      { label: '0–30 days', maxDays: 30, min: 0 },
+      { label: '31–60 days', maxDays: 60, min: 31 },
+      { label: '61–90 days', maxDays: 90, min: 61 },
+      { label: '90+ days', maxDays: Infinity, min: 91 },
+    ];
+    const unpaid = this.claims().filter((c) => c.status !== 'Paid' && c.status !== 'Voided');
+    const today = new Date();
+    const rows = buckets.map((b) => {
+      const inBucket = unpaid.filter((c) => {
+        if (!c.dateOfService) return b.min === 0;
+        const dos = new Date(c.dateOfService);
+        const days = Math.floor((today.getTime() - dos.getTime()) / 86400000);
+        return days >= b.min && days <= b.maxDays;
+      });
+      const total = inBucket.reduce((sum, c) => {
+        const amt = parseFloat((c.balanceDue ?? c.amount ?? '0').replace(/[$,]/g, ''));
+        return sum + (isNaN(amt) ? 0 : amt);
+      }, 0);
+      return { label: b.label, amount: total, count: inBucket.length };
+    });
+    const grandTotal = rows.reduce((s, r) => s + r.amount, 0) || 1;
+    return rows.map((r) => ({
+      ...r,
+      pct: Math.round((r.amount / grandTotal) * 100),
+      display: r.amount >= 1000 ? `$${(r.amount / 1000).toFixed(1)}K` : `$${r.amount.toFixed(0)}`,
+    }));
+  });
 
   /* ── Modal state ──────────────────────────────────── */
   protected readonly claimModalOpen   = signal(false);

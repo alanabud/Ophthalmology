@@ -49,7 +49,7 @@ export class SchedulingPageComponent {
   protected readonly confirmedCount = computed(() =>
     this.scheduleLanes()
       .flatMap((l) => l.blocks)
-      .filter((b) => b.status === 'Confirmed' || b.status === 'Checked-in').length
+      .filter((b) => b.status === 'Confirmed' || b.status === 'Checked-in' || b.status === 'Checked in').length
   );
   protected readonly noShowRisk = 5; // Static AI prediction
 

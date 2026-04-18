@@ -105,6 +105,21 @@ export class InventoryPageComponent {
   }
 
   protected confirmOrder(): void {
+    const item = this.selectedItem();
+    if (item) {
+      const qty = parseInt(this.fOrderQty, 10);
+      if (qty > 0) {
+        const currentOnHand = item.onHandQty ?? parseFloat(item.onHand) ?? 0;
+        const newQty = currentOnHand + qty;
+        this.store.updateInventoryItem({
+          ...item,
+          onHandQty: newQty,
+          onHand: String(newQty),
+          inventoryStatus: 'In stock',
+          tone: 'success',
+        });
+      }
+    }
     this.orderOpen.set(false);
     this.selectedItem.set(null);
   }

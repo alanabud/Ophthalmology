@@ -23,7 +23,12 @@
       <button class="pt-btn pt-btn--primary" type="button" (click)="newPatientOpen.set(true)">
         + New patient
       </button>
-      <button class="pt-btn pt-btn--ghost" type="button">Pre-visit briefing</button>
+      <button class="pt-btn pt-btn--ghost" type="button"
+        (click)="selectedPatientId() ? viewPatient(selectedPatient()!) : null"
+        [disabled]="!selectedPatientId()"
+        [title]="selectedPatientId() ? 'View briefing for ' + selectedPatient()!.fullName : 'Select a patient first'">
+        Pre-visit briefing
+      </button>
     </div>
   </header>
 
@@ -35,27 +40,27 @@
     </div>
     <div class="pt-stat-divider"></div>
     <div class="pt-stat">
-      <strong>{{ recallGaps }}</strong>
+      <strong>{{ recallGaps() }}</strong>
       <span>Recall gaps</span>
     </div>
     <div class="pt-stat-divider"></div>
     <div class="pt-stat">
-      <strong>{{ balanceOver }}</strong>
+      <strong>{{ balanceOver() }}</strong>
       <span>Balance &gt; $250</span>
     </div>
     <div class="pt-stat-divider"></div>
     <div class="pt-stat">
-      <strong>{{ highRisk }}</strong>
+      <strong>{{ highRisk() }}</strong>
       <span>High-risk today</span>
     </div>
     <div class="pt-stat-divider"></div>
     <div class="pt-stat">
-      <strong>{{ unsignedCharts }}</strong>
+      <strong>{{ unsignedCharts() }}</strong>
       <span>Unsigned charts</span>
     </div>
     <div class="pt-stat-divider"></div>
     <div class="pt-stat">
-      <strong>{{ pendingAuths }}</strong>
+      <strong>{{ pendingAuths() }}</strong>
       <span>Pending auths</span>
     </div>
   </div>

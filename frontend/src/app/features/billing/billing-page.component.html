@@ -34,11 +34,11 @@
       <p class="kpi-label">Follow-up required</p>
     </article>
     <article class="kpi-card">
-      <p class="kpi-value">$184.2K</p>
+      <p class="kpi-value">{{ totalOutstanding() }}</p>
       <p class="kpi-label">Outstanding balance</p>
     </article>
     <article class="kpi-card">
-      <p class="kpi-value">3.1%</p>
+      <p class="kpi-value">{{ denialRatePct() }}</p>
       <p class="kpi-label">Denial rate</p>
     </article>
   </div>
@@ -196,26 +196,20 @@
           <h2 class="aside-section__title">Aging Buckets</h2>
         </div>
         <div class="aging-list">
-          <div class="aging-row">
-            <span class="aging-label">0–30 days</span>
-            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--green" style="width:65%"></span></span>
-            <span class="aging-amount">$42.1K</span>
-          </div>
-          <div class="aging-row">
-            <span class="aging-label">31–60 days</span>
-            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--yellow" style="width:40%"></span></span>
-            <span class="aging-amount">$28.4K</span>
-          </div>
-          <div class="aging-row">
-            <span class="aging-label">61–90 days</span>
-            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--orange" style="width:22%"></span></span>
-            <span class="aging-amount">$15.3K</span>
-          </div>
-          <div class="aging-row">
-            <span class="aging-label">90+ days</span>
-            <span class="aging-bar-wrap"><span class="aging-bar aging-bar--red" style="width:14%"></span></span>
-            <span class="aging-amount">$98.4K</span>
-          </div>
+          @for (bucket of agingBuckets(); track bucket.label; let i = $index) {
+            <div class="aging-row">
+              <span class="aging-label">{{ bucket.label }}</span>
+              <span class="aging-bar-wrap">
+                <span class="aging-bar"
+                  [class.aging-bar--green]="i === 0"
+                  [class.aging-bar--yellow]="i === 1"
+                  [class.aging-bar--orange]="i === 2"
+                  [class.aging-bar--red]="i === 3"
+                  [style.width]="bucket.pct + '%'"></span>
+              </span>
+              <span class="aging-amount">{{ bucket.display }}</span>
+            </div>
+          }
         </div>
       </div>
     </aside>

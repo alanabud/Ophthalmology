@@ -129,4 +129,14 @@
     [open]="newPatientOpen()"
     (closed)="newPatientOpen.set(false)"
   />
+
+  <app-new-appointment-modal
+    [open]="newAppointmentOpen()"
+    (closed)="newAppointmentOpen.set(false)"
+  />
+
+  <app-new-claim-modal
+    [open]="newClaimOpen()"
+    (closed)="newClaimOpen.set(false)"
+  />
 </div>
