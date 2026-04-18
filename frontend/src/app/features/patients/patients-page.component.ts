@@ -1,28 +1,29 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 
 import { PatientRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
+import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-modal.component';
 import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
 @Component({
   selector: 'app-patients-page',
-  imports: [FormsModule, NewPatientModalComponent, StatusChipComponent],
+  imports: [FormsModule, NewPatientModalComponent, NewAppointmentModalComponent, StatusChipComponent],
   templateUrl: './patients-page.component.html',
   styleUrl: './patients-page.component.scss'
 })
 export class PatientsPageComponent {
   private readonly store = inject(EnterpriseStoreService);
-  private readonly router = inject(Router);
 
   protected readonly query = signal('');
   protected readonly statusFilter = signal('');
   protected readonly clinicFilter = signal('');
   protected readonly newPatientOpen = signal(false);
   protected readonly selectedPatientId = signal<string | null>(null);
-  protected readonly editingPatient = signal<import('../../core/models/enterprise.models').PatientRecord | null>(null);
+  protected readonly editingPatient = signal<PatientRecord | null>(null);
+  protected readonly scheduleModalOpen = signal(false);
+  protected readonly schedulePrefill = signal<{ name: string; mrn: string } | null>(null);
 
   protected readonly allPatients = this.store.patients;
   protected readonly clinics = this.store.clinicOptions;
@@ -77,7 +78,8 @@ export class PatientsPageComponent {
     this.newPatientOpen.set(true);
   }
 
-  protected schedulePatient(_patient: PatientRecord): void {
-    this.router.navigate(['/scheduling']);
+  protected schedulePatient(patient: PatientRecord): void {
+    this.schedulePrefill.set({ name: patient.fullName, mrn: patient.mrn });
+    this.scheduleModalOpen.set(true);
   }
 }

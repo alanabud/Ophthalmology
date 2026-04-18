@@ -1,195 +1,328 @@
-<section class="workspace-page">
-  <header class="page-header page-header--with-actions">
-    <div>
-      <p class="page-kicker">Scheduling command</p>
-      <h1>Lane-based scheduling with waitlist fit, conflict visibility, and AI recovery suggestions.</h1>
-      <p class="page-subtitle">
-        Designed for front desk, technicians, and surgical coordinators to manage the day without hiding the reasons behind delays.
-      </p>
+<section class="workspace-page sched-page">
+
+  <!-- ── Page header ─────────────────────────────────── -->
+  <header class="sched-header">
+    <div class="sched-header__left">
+      <p class="sched-eyebrow">Scheduling Command Center</p>
+      <h1 class="sched-title">Appointments &amp; Scheduling</h1>
+      <p class="sched-subtitle">Provider lane management, waitlist fit logic, and AI-powered recovery for same-day gaps and no-show risk.</p>
     </div>
-    <div class="page-header-actions">
-      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New appointment</button>
+    <div class="sched-header__right">
+      <button class="sched-btn sched-btn--primary" type="button" (click)="openCreate()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        New appointment
+      </button>
     </div>
   </header>
 
-  <section class="info-grid">
-    <article class="info-tile">
-      <strong>{{ scheduleLanes().length }}</strong>
-      <p>Provider lanes in scope</p>
+  <!-- ── KPI strip ───────────────────────────────────── -->
+  <div class="sched-kpi-strip">
+    <article class="sched-kpi">
+      <p class="sched-kpi__value">{{ totalScheduled() }}</p>
+      <p class="sched-kpi__label">Today's appointments</p>
     </article>
-    <article class="info-tile">
-      <strong>{{ waitlist().length }}</strong>
-      <p>Waitlist candidates ready to fit</p>
+    <article class="sched-kpi sched-kpi--accent">
+      <p class="sched-kpi__value">{{ confirmedCount() }}</p>
+      <p class="sched-kpi__label">Confirmed / checked-in</p>
     </article>
-    <article class="info-tile">
-      <strong>5</strong>
-      <p>AI no-show risks needing outreach</p>
+    <article class="sched-kpi sched-kpi--warning">
+      <p class="sched-kpi__value">{{ waitlistCount() }}</p>
+      <p class="sched-kpi__label">Waitlist candidates</p>
     </article>
-    <article class="info-tile">
-      <strong>3</strong>
-      <p>Same-day conflicts requiring intervention</p>
+    <article class="sched-kpi sched-kpi--critical">
+      <p class="sched-kpi__value">{{ noShowRisk }}</p>
+      <p class="sched-kpi__label">No-show risk flags</p>
     </article>
-  </section>
+    <article class="sched-kpi">
+      <p class="sched-kpi__value">{{ scheduleLanes().length }}</p>
+      <p class="sched-kpi__label">Active provider lanes</p>
+    </article>
+    <article class="sched-kpi">
+      <p class="sched-kpi__value">3</p>
+      <p class="sched-kpi__label">Same-day conflicts</p>
+    </article>
+  </div>
 
-  <article class="panel">
-    <div class="panel__header">
-      <div>
-        <p class="panel__eyebrow">Provider schedule lanes</p>
-        <h2>Clinic board</h2>
-      </div>
-      <app-status-chip [label]="scheduleLanes().length + ' providers'" tone="accent" />
+  <!-- ── View toggle + search ────────────────────────── -->
+  <div class="sched-toolbar">
+    <div class="sched-view-tabs">
+      <button class="sched-view-tab" type="button"
+        [class.sched-view-tab--active]="activeView() === 'board'"
+        (click)="setView('board')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/></svg>
+        Provider board
+      </button>
+      <button class="sched-view-tab" type="button"
+        [class.sched-view-tab--active]="activeView() === 'waitlist'"
+        (click)="setView('waitlist')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Waitlist
+        @if (waitlistCount() > 0) {
+          <span class="sched-view-tab__badge">{{ waitlistCount() }}</span>
+        }
+      </button>
     </div>
 
-    <div class="lane-stack">
-      @for (lane of scheduleLanes(); track lane.provider) {
-        <article class="lane-card">
-          <div class="lane-card__header">
-            <div>
-              <h3>{{ lane.provider }}</h3>
-              <p>{{ lane.specialty }} • {{ lane.utilization }} utilized • {{ lane.lag }}</p>
-            </div>
-            <app-status-chip [label]="lane.blocks.length + ' appointments'" tone="info" />
-          </div>
+    @if (activeView() === 'waitlist') {
+      <div class="sched-search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="text" [(ngModel)]="searchQuery" placeholder="Search patient or visit request…" />
+      </div>
+    }
+  </div>
 
-          <div class="lane-card__blocks">
-            @for (block of lane.blocks; track block.time + block.patient) {
-              <div class="lane-block" [class.lane-block--critical]="block.tone === 'critical'" [class.lane-block--warning]="block.tone === 'warning'" [class.lane-block--accent]="block.tone === 'accent'" [class.lane-block--success]="block.tone === 'success'">
+  <!-- ── Main content ─────────────────────────────────── -->
+  @if (activeView() === 'board') {
+
+    <!-- Provider Board view -->
+    <div class="sched-board-grid">
+
+      <!-- Lane cards -->
+      <div class="sched-lanes">
+        @for (lane of scheduleLanes(); track lane.provider) {
+          <article class="sched-lane-card">
+            <div class="sched-lane-card__header">
+              <div class="sched-lane-card__provider">
+                <div class="sched-lane-card__avatar">{{ lane.provider[0] }}</div>
                 <div>
-                  <strong>{{ block.time }} • {{ block.patient }}</strong>
-                  <p>{{ block.visitType }} • {{ block.lane }}</p>
+                  <h3 class="sched-lane-card__name">{{ lane.provider }}</h3>
+                  <p class="sched-lane-card__meta">{{ lane.specialty }} · {{ lane.utilization }} utilization · {{ lane.lag }}</p>
                 </div>
-                <app-status-chip [label]="block.status" [tone]="block.tone" />
               </div>
-            }
-          </div>
-        </article>
-      }
-    </div>
-  </article>
-
-  <section class="dual-grid">
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">Waitlist and fill logic</p>
-          <h2>Best-fit openings</h2>
-        </div>
-      </div>
-      <table class="dense-table">
-        <thead>
-          <tr>
-            <th>Patient</th>
-            <th>Request</th>
-            <th>Preferred window</th>
-            <th>Fit score</th>
-            <th class="th-actions"></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (entry of waitlist(); track entry.patient) {
-            <tr>
-              <td>{{ entry.patient }}</td>
-              <td>{{ entry.request }}</td>
-              <td>{{ entry.preferredWindow }}</td>
-              <td><app-status-chip [label]="entry.fitScore" [tone]="entry.tone" /></td>
-              <td class="td-actions">
-                <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewEntry(entry)">View</button>
-                  <button class="row-action-btn" type="button" (click)="openBook(entry)">Book</button>
-                  <button class="row-action-more" type="button" title="More actions">···</button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </article>
-
-    <article class="panel">
-      <div class="panel__header">
-        <div>
-          <p class="panel__eyebrow">AI schedule optimization</p>
-          <h2>Recommendations</h2>
-        </div>
-      </div>
-      <div class="panel-list">
-        @for (insight of aiInsights(); track insight.id) {
-          <article class="list-surface">
-            <div class="dense-header">
-              <strong>{{ insight.title }}</strong>
-              <app-status-chip [label]="insight.confidence" [tone]="insight.tone" />
+              <app-status-chip [label]="lane.blocks.length + ' appts'" tone="accent" />
             </div>
-            <p>{{ insight.recommendation }}</p>
+
+            <div class="sched-lane-card__blocks">
+              @for (block of lane.blocks; track block.time + block.patient) {
+                <div class="sched-block"
+                  [class.sched-block--critical]="block.tone === 'critical'"
+                  [class.sched-block--warning]="block.tone === 'warning'"
+                  [class.sched-block--accent]="block.tone === 'accent'"
+                  [class.sched-block--success]="block.tone === 'success'">
+                  <div class="sched-block__time-col">
+                    <span class="sched-block__time">{{ block.time }}</span>
+                    <span class="sched-block__dur">{{ block.duration }}</span>
+                  </div>
+                  <div class="sched-block__info">
+                    <strong class="sched-block__patient">{{ block.patient }}</strong>
+                    <span class="sched-block__type">{{ block.visitType }}</span>
+                  </div>
+                  <app-status-chip [label]="block.status" [tone]="block.tone" />
+                </div>
+              } @empty {
+                <div class="sched-block sched-block--empty">
+                  <span>No appointments scheduled</span>
+                  <button type="button" class="sched-add-slot-btn" (click)="openCreate()">+ Add slot</button>
+                </div>
+              }
+            </div>
           </article>
         }
       </div>
-    </article>
-  </section>
+
+      <!-- Right: AI optimization + alerts -->
+      <aside class="sched-board-aside">
+        <div class="sched-aside-section">
+          <div class="sched-aside-section__header">
+            <p class="sched-aside-eyebrow">AI-powered</p>
+            <h2 class="sched-aside-title">Schedule Optimization</h2>
+          </div>
+          <div class="sched-ai-list">
+            @for (insight of aiInsights(); track insight.id) {
+              <article class="sched-ai-card">
+                <div class="sched-ai-card__header">
+                  <strong>{{ insight.title }}</strong>
+                  <app-status-chip [label]="insight.confidence" [tone]="insight.tone" />
+                </div>
+                <p>{{ insight.recommendation }}</p>
+              </article>
+            }
+          </div>
+        </div>
+
+        <div class="sched-aside-section">
+          <h2 class="sched-aside-title">Quick Waitlist</h2>
+          <div class="sched-quick-waitlist">
+            @for (entry of waitlist().slice(0, 4); track entry.patient) {
+              <div class="sched-quick-entry">
+                <div class="sched-quick-entry__left">
+                  <span class="sched-quick-name">{{ entry.patient }}</span>
+                  <span class="sched-quick-req">{{ entry.request }}</span>
+                </div>
+                <button class="sched-book-btn" type="button" (click)="openBookFromWaitlist(entry)">Book</button>
+              </div>
+            }
+            @if (waitlist().length > 4) {
+              <button class="sched-view-all-btn" type="button" (click)="setView('waitlist')">
+                View all {{ waitlist().length }} waitlist candidates →
+              </button>
+            }
+          </div>
+        </div>
+      </aside>
+    </div>
+
+  } @else {
+
+    <!-- Waitlist view -->
+    <div class="sched-waitlist-wrap">
+      <div class="sched-waitlist-panel">
+        <div class="sched-waitlist-panel__header">
+          <div>
+            <p class="sched-waitlist-eyebrow">Best-fit scheduling</p>
+            <h2 class="sched-waitlist-title">Waitlist & Fill Logic</h2>
+          </div>
+          <div class="sched-waitlist-panel__actions">
+            <span class="sched-waitlist-count">{{ filteredWaitlist().length }} of {{ waitlist().length }}</span>
+            <button class="sched-btn sched-btn--secondary" type="button" (click)="openCreate()">+ Add to waitlist</button>
+          </div>
+        </div>
+
+        <div class="sched-waitlist-table-wrap">
+          <table class="sched-waitlist-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Visit request</th>
+                <th>Preferred window</th>
+                <th>Laterality</th>
+                <th>Insurance</th>
+                <th>Eligibility</th>
+                <th>Fit score</th>
+                <th class="th-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of filteredWaitlist(); track entry.patient) {
+                <tr class="sched-waitlist-row" (click)="viewEntry(entry)">
+                  <td>
+                    <div class="wl-patient-cell">
+                      <span class="wl-patient-name">{{ entry.patient }}</span>
+                      @if (entry.mrn) { <span class="wl-patient-meta">MRN {{ entry.mrn }}</span> }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="wl-request-cell">
+                      <span>{{ entry.request }}</span>
+                      @if (entry.visitType) { <span class="wl-meta">{{ entry.visitType }}</span> }
+                    </div>
+                  </td>
+                  <td class="wl-window-cell">{{ entry.preferredWindow }}</td>
+                  <td>
+                    @if (entry.laterality) {
+                      <span class="wl-laterality-badge">{{ entry.laterality }}</span>
+                    } @else { <span class="wl-dash">—</span> }
+                  </td>
+                  <td class="wl-insurance-cell">{{ entry.insurance || '—' }}</td>
+                  <td>
+                    @if (entry.eligibilityStatus) {
+                      <app-status-chip
+                        [label]="entry.eligibilityStatus"
+                        [tone]="entry.eligibilityStatus.includes('active') ? 'accent' : entry.eligibilityStatus.includes('inactive') || entry.eligibilityStatus.includes('Expired') ? 'critical' : 'warning'" />
+                    } @else { <span class="wl-dash">—</span> }
+                  </td>
+                  <td><app-status-chip [label]="entry.fitScore" [tone]="entry.tone" /></td>
+                  <td class="td-actions" (click)="$event.stopPropagation()">
+                    <div class="wl-row-actions">
+                      <button class="wl-action-btn wl-action-btn--primary" type="button" (click)="openBookFromWaitlist(entry)">Book</button>
+                      <button class="wl-action-btn" type="button" (click)="viewEntry(entry)">View</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="8" class="sched-empty">
+                    <div class="sched-empty__inner">
+                      <div class="sched-empty__icon">📋</div>
+                      <strong>No waitlist entries match your search</strong>
+                      <p>Try a different patient name, or add a new appointment.</p>
+                      <button class="sched-btn sched-btn--secondary" type="button" (click)="openCreate()">+ New appointment</button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  } <!-- end view switch -->
+
 </section>
 
-<!-- View modal -->
-<app-modal [open]="viewOpen()" title="Waitlist entry" (closed)="closeView()">
-  @if (selectedEntry()) {
-    <div class="rec-kv-list">
-      <div class="rec-kv-row"><span>Patient</span><strong>{{ selectedEntry()!.patient }}</strong></div>
-      <div class="rec-kv-row"><span>Request</span><strong>{{ selectedEntry()!.request }}</strong></div>
-      <div class="rec-kv-row"><span>Preferred window</span><strong>{{ selectedEntry()!.preferredWindow }}</strong></div>
-      <div class="rec-kv-row"><span>Fit score</span><strong>{{ selectedEntry()!.fitScore }}</strong></div>
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn" type="button" (click)="openBook(selectedEntry()!); closeView()">Book this patient</button>
-      <button class="rec-btn rec-btn--primary" type="button" (click)="closeView()">Close</button>
-    </div>
-  }
-</app-modal>
+<!-- ── Waitlist detail drawer ──────────────────────────── -->
+@if (viewOpen() && selectedEntry()) {
+  <div class="sched-drawer-backdrop" (click)="$event.target === $event.currentTarget && closeView()">
+    <div class="sched-drawer">
+      <div class="sched-drawer__header">
+        <div>
+          <p class="sched-drawer__label">Waitlist entry</p>
+          <h2 class="sched-drawer__patient">{{ selectedEntry()!.patient }}</h2>
+        </div>
+        <div class="sched-drawer__header-right">
+          <app-status-chip [label]="selectedEntry()!.fitScore" [tone]="selectedEntry()!.tone" />
+          <button class="sched-drawer__close" type="button" (click)="closeView()">✕</button>
+        </div>
+      </div>
+      <div class="sched-drawer__body">
+        <div class="sched-kv-section">
+          <h3 class="sched-kv-title">Appointment Request</h3>
+          <div class="sched-kv-grid">
+            <div class="sched-kv-row"><span>Visit request</span><strong>{{ selectedEntry()!.request }}</strong></div>
+            <div class="sched-kv-row"><span>Preferred window</span><strong>{{ selectedEntry()!.preferredWindow }}</strong></div>
+            @if (selectedEntry()!.visitType) {
+              <div class="sched-kv-row"><span>Visit type</span><strong>{{ selectedEntry()!.visitType }}</strong></div>
+            }
+            @if (selectedEntry()!.laterality) {
+              <div class="sched-kv-row"><span>Laterality</span><strong>{{ selectedEntry()!.laterality }}</strong></div>
+            }
+            @if (selectedEntry()!.priority) {
+              <div class="sched-kv-row"><span>Priority</span><strong>{{ selectedEntry()!.priority }}</strong></div>
+            }
+          </div>
+        </div>
 
-<!-- Book modal -->
-<app-modal [open]="bookOpen()" [title]="'Book — ' + (selectedEntry()?.patient ?? '')" (closed)="closeBook()">
-  @if (selectedEntry()) {
-    <div class="rec-form">
-      <p class="rec-form-hint">Booking <strong>{{ selectedEntry()!.patient }}</strong> for <strong>{{ selectedEntry()!.request }}</strong></p>
-      <div class="rec-form-grid">
-        <div class="rec-form-field">
-          <label class="rec-form-label">Provider *</label>
-          <input class="rec-form-input" type="text" [(ngModel)]="fBookProvider" placeholder="Provider name" />
-        </div>
-        <div class="rec-form-field">
-          <label class="rec-form-label">Date *</label>
-          <input class="rec-form-input" type="date" [(ngModel)]="fBookDate" />
-        </div>
-        <div class="rec-form-field">
-          <label class="rec-form-label">Time</label>
-          <input class="rec-form-input" type="time" [(ngModel)]="fBookTime" />
-        </div>
-      </div>
-      <div class="rec-form-actions">
-        <button class="rec-btn" type="button" (click)="closeBook()">Cancel</button>
-        <button class="rec-btn rec-btn--primary" type="button" (click)="confirmBook()" [disabled]="!fBookDate || !fBookProvider">Confirm booking</button>
-      </div>
-    </div>
-  }
-</app-modal>
+        @if (selectedEntry()!.mrn || selectedEntry()!.phone || selectedEntry()!.insurance) {
+          <div class="sched-kv-section">
+            <h3 class="sched-kv-title">Patient Details</h3>
+            <div class="sched-kv-grid">
+              @if (selectedEntry()!.mrn) {
+                <div class="sched-kv-row"><span>MRN</span><strong>{{ selectedEntry()!.mrn }}</strong></div>
+              }
+              @if (selectedEntry()!.phone) {
+                <div class="sched-kv-row"><span>Phone</span><strong>{{ selectedEntry()!.phone }}</strong></div>
+              }
+              @if (selectedEntry()!.insurance) {
+                <div class="sched-kv-row"><span>Insurance</span><strong>{{ selectedEntry()!.insurance }}</strong></div>
+              }
+              @if (selectedEntry()!.eligibilityStatus) {
+                <div class="sched-kv-row"><span>Eligibility</span><strong>{{ selectedEntry()!.eligibilityStatus }}</strong></div>
+              }
+            </div>
+          </div>
+        }
 
-<!-- Create modal -->
-<app-modal [open]="createOpen()" title="New appointment" (closed)="closeCreate()">
-  <div class="rec-form">
-    <div class="rec-form-grid">
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Patient name *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Full name" />
+        @if (selectedEntry()!.notes) {
+          <div class="sched-kv-section">
+            <h3 class="sched-kv-title">Notes</h3>
+            <p class="sched-drawer__notes">{{ selectedEntry()!.notes }}</p>
+          </div>
+        }
       </div>
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Visit request</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fRequest" placeholder="e.g. Routine eye exam" />
+      <div class="sched-drawer__footer">
+        <button class="sched-btn sched-btn--secondary" type="button" (click)="closeView()">Close</button>
+        <button class="sched-btn sched-btn--primary" type="button" (click)="openBookFromWaitlist(selectedEntry()!)">
+          Book this appointment →
+        </button>
       </div>
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Preferred window</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPreferredWindow" placeholder="e.g. Weekday mornings" />
-      </div>
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn" type="button" (click)="closeCreate()">Cancel</button>
-      <button class="rec-btn rec-btn--primary" type="button" (click)="saveEntry()" [disabled]="!fPatient.trim()">Add to waitlist</button>
     </div>
   </div>
-</app-modal>
+}
+
+<!-- ── New appointment modal ───────────────────────────── -->
+<app-new-appointment-modal
+  [open]="apptModalOpen()"
+  [waitlistEntry]="prefillEntry()"
+  (closed)="apptModalOpen.set(false)"
+/>

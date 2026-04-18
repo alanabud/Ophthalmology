@@ -1,0 +1,687 @@
+@if (open()) {
+  <div class="nam-backdrop" (click)="$event.target === $event.currentTarget && cancel()">
+    <div class="nam-panel" role="dialog" aria-label="Appointment scheduling">
+
+      <!-- ── Header ──────────────────────────────────── -->
+      <div class="nam-header">
+        <div class="nam-header__left">
+          <span class="nam-breadcrumb">Scheduling · Appointment Booking</span>
+          <span class="nam-tab-indicator">Tab {{ currentTab() }} of 6</span>
+          @if (isEditMode()) {
+            <span class="nam-mode-badge">Edit mode</span>
+          }
+        </div>
+        <button class="nam-close" type="button" (click)="cancel()" aria-label="Close">✕</button>
+      </div>
+
+      <!-- ── Title row ────────────────────────────────── -->
+      <div class="nam-title-row">
+        <div class="nam-title-row__left">
+          <h1 class="nam-title">{{ isEditMode() ? 'Edit appointment' : 'New appointment' }}</h1>
+          @if (apptStatus) {
+            <span class="nam-status-pill nam-status-pill--{{ statusTone }}">{{ apptStatus }}</span>
+          }
+        </div>
+        @if (!submitted()) {
+          <div class="nam-title-row__meta">
+            <span class="nam-meta-item"><span class="nam-meta-label">Type</span>{{ appointmentType }}</span>
+            <span class="nam-meta-item"><span class="nam-meta-label">DOS</span>{{ apptDate || '—' }}</span>
+            <span class="nam-meta-item"><span class="nam-meta-label">Provider</span>{{ provider || '—' }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- ── Body ─────────────────────────────────────── -->
+      <div class="nam-body">
+
+        <!-- Sidebar -->
+        <nav class="nam-sidebar">
+          @for (tab of tabs; track tab.num) {
+            <button
+              type="button"
+              class="nam-tab-btn"
+              [class.nam-tab-btn--active]="currentTab() === tab.num"
+              (click)="goTo(tab.num)"
+            >
+              <span class="nam-tab-num">0{{ tab.num }}</span>
+              <span class="nam-tab-name">{{ tab.label }}</span>
+            </button>
+          }
+
+          <!-- Checklist progress -->
+          @if (!submitted()) {
+            <div class="nam-checklist-progress">
+              <div class="nam-checklist-progress__label">Pre-visit checklist</div>
+              <div class="nam-checklist-progress__bar">
+                <div class="nam-checklist-progress__fill" [style.width.%]="checklistPercent"></div>
+              </div>
+              <div class="nam-checklist-progress__pct">{{ checklistPercent }}%</div>
+            </div>
+          }
+        </nav>
+
+        <!-- Content -->
+        <div class="nam-content">
+
+          @if (submitted()) {
+            <div class="nam-success">
+              <div class="nam-success__icon">✓</div>
+              <strong>{{ isEditMode() ? 'Appointment updated' : 'Appointment scheduled' }}</strong>
+              <p>{{ patientSearch }} has been booked for {{ apptDate }}{{ startTime ? ' at ' + startTime : '' }}.</p>
+              <button class="nam-success__close" type="button" (click)="cancel()">Close</button>
+            </div>
+
+          } @else {
+
+            @switch (currentTab()) {
+
+              <!-- ══ Tab 1: Appointment Overview ════════ -->
+              @case (1) {
+                <div class="nam-form">
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Appointment Type & Status</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Appointment type *</span>
+                        <select [(ngModel)]="appointmentType" name="apptType">
+                          <option>Office visit</option>
+                          <option>New patient exam</option>
+                          <option>Follow-up</option>
+                          <option>Post-operative</option>
+                          <option>Procedure visit</option>
+                          <option>Injection appointment</option>
+                          <option>Contact lens fitting</option>
+                          <option>Optical consultation</option>
+                          <option>Pre-operative evaluation</option>
+                          <option>Urgent / same-day</option>
+                          <option>Telehealth</option>
+                          <option>Surgical case</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Visit category</span>
+                        <select [(ngModel)]="visitCategory" name="visitCat">
+                          <option value="">— select —</option>
+                          <option>Routine eye exam</option>
+                          <option>Medical visit</option>
+                          <option>Cataract evaluation</option>
+                          <option>Post-op (cataract)</option>
+                          <option>Retina — medical</option>
+                          <option>Retina — injection</option>
+                          <option>Glaucoma management</option>
+                          <option>Cornea / external disease</option>
+                          <option>Oculoplastics</option>
+                          <option>Pediatric / strabismus</option>
+                          <option>Low vision</option>
+                          <option>Contact lens</option>
+                          <option>Optical / refraction</option>
+                          <option>Emergency / urgent</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Status</span>
+                        <select [(ngModel)]="apptStatus" name="apptStatus">
+                          <option>Waitlisted</option>
+                          <option>Scheduled</option>
+                          <option>Confirmed</option>
+                          <option>Checked-in</option>
+                          <option>In progress</option>
+                          <option>Completed</option>
+                          <option>Cancelled</option>
+                          <option>No-show</option>
+                          <option>Rescheduled</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Priority</span>
+                        <select [(ngModel)]="priority" name="priority">
+                          <option>Routine</option>
+                          <option>Normal</option>
+                          <option>High</option>
+                          <option>Urgent</option>
+                          <option>Stat</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Specialty</span>
+                        <input type="text" [(ngModel)]="specialty" name="specialty" placeholder="e.g. Retina, Cataract, Cornea" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Date, Time & Duration</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Date *</span>
+                        <input type="date" [(ngModel)]="apptDate" name="apptDate" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Start time</span>
+                        <input type="time" [(ngModel)]="startTime" name="startTime" />
+                      </label>
+                      <label class="nam-field">
+                        <span>End time</span>
+                        <input type="time" [(ngModel)]="endTime" name="endTime" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Duration (minutes)</span>
+                        <select [(ngModel)]="duration" name="duration">
+                          <option>10</option>
+                          <option>15</option>
+                          <option>20</option>
+                          <option>30</option>
+                          <option>45</option>
+                          <option>60</option>
+                          <option>90</option>
+                          <option>120</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Provider & Room Assignment</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Rendering provider *</span>
+                        <input type="text" [(ngModel)]="provider" name="provider" placeholder="Provider name" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Secondary / co-provider</span>
+                        <input type="text" [(ngModel)]="secondaryProvider" name="secProvider" placeholder="Provider name" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Technician</span>
+                        <input type="text" [(ngModel)]="technicianName" name="tech" placeholder="Technician name" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Provider lane</span>
+                        <input type="text" [(ngModel)]="lane" name="lane" placeholder="e.g. Lane A, Retina lane" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Room</span>
+                        <input type="text" [(ngModel)]="room" name="room" placeholder="e.g. Room 3, Surgical suite" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Equipment needed</span>
+                        <input type="text" [(ngModel)]="equipment" name="equipment" placeholder="e.g. OCT, Fundus camera" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Communication</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="confirmationSent" name="confirmSent" />
+                        <span>Confirmation sent to patient</span>
+                      </label>
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="reminderSent" name="reminderSent" />
+                        <span>Reminder sent to patient</span>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 2: Patient ══════════════════════ -->
+              @case (2) {
+                <div class="nam-form">
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Patient Lookup</h2>
+                    <div class="nam-grid-2">
+                      <label class="nam-field nam-field--full">
+                        <span>Patient search *</span>
+                        <input type="text" [(ngModel)]="patientSearch" name="ptSearch"
+                          placeholder="Search by name, MRN, or date of birth" />
+                      </label>
+                      <label class="nam-field">
+                        <span>MRN</span>
+                        <input type="text" [(ngModel)]="mrn" name="mrn" placeholder="Medical record number" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Date of birth</span>
+                        <input type="date" [(ngModel)]="dob" name="dob" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Phone</span>
+                        <input type="tel" [(ngModel)]="phone" name="phone" placeholder="(000) 000-0000" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Email</span>
+                        <input type="email" [(ngModel)]="email" name="email" placeholder="patient@email.com" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Accessibility & Logistics</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Preferred language</span>
+                        <select [(ngModel)]="preferredLanguage" name="lang">
+                          <option>English</option>
+                          <option>Spanish</option>
+                          <option>Portuguese</option>
+                          <option>French</option>
+                          <option>Haitian Creole</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="interpreterNeeded" name="interp" />
+                        <span>Interpreter needed</span>
+                      </label>
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="transportationNeeded" name="transport" />
+                        <span>Transportation assistance needed</span>
+                      </label>
+                      <label class="nam-field nam-field--full">
+                        <span>Accessibility needs</span>
+                        <input type="text" [(ngModel)]="accessibilityNeeds" name="access" placeholder="Wheelchair, vision aid, etc." />
+                      </label>
+                      <label class="nam-field">
+                        <span>Escort / companion name</span>
+                        <input type="text" [(ngModel)]="escortName" name="escort" placeholder="Name of companion" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 3: Clinical Context ════════════ -->
+              @case (3) {
+                <div class="nam-form">
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Visit Reason & Chief Complaint</h2>
+                    <div class="nam-grid-2">
+                      <label class="nam-field">
+                        <span>Visit reason</span>
+                        <input type="text" [(ngModel)]="visitReason" name="visitReason"
+                          placeholder="e.g. Blurry vision, follow-up cataract surgery" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Eye laterality</span>
+                        <select [(ngModel)]="laterality" name="laterality">
+                          <option value="">— select —</option>
+                          <option>OD — Right eye</option>
+                          <option>OS — Left eye</option>
+                          <option>OU — Both eyes</option>
+                          <option>Not applicable</option>
+                        </select>
+                      </label>
+                      <label class="nam-field nam-field--full">
+                        <span>Chief complaint</span>
+                        <textarea [(ngModel)]="chiefComplaint" name="cc" rows="3"
+                          placeholder="Patient-stated symptoms and concerns in their own words"></textarea>
+                      </label>
+                      <label class="nam-field">
+                        <span>Diagnosis hint / ICD suggestion</span>
+                        <input type="text" [(ngModel)]="diagnosisHint" name="dxHint" placeholder="e.g. H26.9, AMD" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Urgency reason</span>
+                        <input type="text" [(ngModel)]="urgencyReason" name="urgency" placeholder="Clinical urgency if priority is Urgent/Stat" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Provider Relationships</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Referring provider</span>
+                        <input type="text" [(ngModel)]="referringProvider" name="refProv" placeholder="Name or NPI" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Ordering provider</span>
+                        <input type="text" [(ngModel)]="orderingProvider" name="ordProv" placeholder="Name or NPI" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Previous visit reference</span>
+                        <input type="text" [(ngModel)]="previousVisitRef" name="prevVisit" placeholder="Encounter or appointment ID" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Linked encounter</span>
+                        <input type="text" [(ngModel)]="linkedEncounterId" name="encLink" placeholder="ENC-XXXXXX" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Linked surgical case</span>
+                        <input type="text" [(ngModel)]="linkedSurgeryId" name="surgLink" placeholder="SRG-XXXXXX" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Recall & Follow-up</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Recall type</span>
+                        <select [(ngModel)]="recallType" name="recallType">
+                          <option value="">— none —</option>
+                          <option>Annual eye exam</option>
+                          <option>Glaucoma follow-up</option>
+                          <option>Retina follow-up</option>
+                          <option>Post-op check</option>
+                          <option>Contact lens annual</option>
+                          <option>Injection interval</option>
+                          <option>Custom</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Recall interval</span>
+                        <select [(ngModel)]="recallInterval" name="recallInterval">
+                          <option value="">— none —</option>
+                          <option>1 week</option>
+                          <option>2 weeks</option>
+                          <option>1 month</option>
+                          <option>6 weeks</option>
+                          <option>3 months</option>
+                          <option>4 months</option>
+                          <option>6 months</option>
+                          <option>1 year</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Clinical Requirements</h2>
+                    <div class="nam-check-cluster nam-check-cluster--2col">
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="dilationRequired" name="dilation" /><span>Dilation required</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="imagingRequired" name="imaging" /><span>Imaging required (OCT, fundus, VF)</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="drugAdminRequired" name="drugAdmin" /><span>Drug administration (injection)</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="vitalsRequired" name="vitals" /><span>Vitals required</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="labsRequired" name="labs" /><span>Labs required</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="preOpRequired" name="preOp" /><span>Pre-op workup required</span></label>
+                    </div>
+                    @if (preOpRequired) {
+                      <label class="nam-field nam-field--full" style="margin-top:0.8rem">
+                        <span>Pre-op notes</span>
+                        <textarea [(ngModel)]="preOpNotes" name="preOpNotes" rows="2"
+                          placeholder="Pre-operative requirements and instructions"></textarea>
+                      </label>
+                    }
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 4: Insurance / Auth ════════════ -->
+              @case (4) {
+                <div class="nam-form">
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Insurance Coverage</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Primary payer</span>
+                        <input type="text" [(ngModel)]="primaryPayer" name="priPayer" placeholder="e.g. Medicare, Aetna" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Secondary payer</span>
+                        <input type="text" [(ngModel)]="secondaryPayer" name="secPayer" placeholder="Secondary payer" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Financial class</span>
+                        <select [(ngModel)]="financialClass" name="finClass">
+                          <option value="">— select —</option>
+                          <option>Medicare</option>
+                          <option>Medicaid</option>
+                          <option>Commercial</option>
+                          <option>Self-pay</option>
+                          <option>Workers comp</option>
+                          <option>Tricare</option>
+                          <option>Veterans Affairs</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Member ID</span>
+                        <input type="text" [(ngModel)]="memberId" name="memberId" placeholder="Member ID" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Group number</span>
+                        <input type="text" [(ngModel)]="groupNumber" name="groupNum" placeholder="Group number" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Eligibility Verification</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Eligibility status</span>
+                        <select [(ngModel)]="eligibilityStatus" name="eligStatus">
+                          <option value="">— not checked —</option>
+                          <option>Verified — active</option>
+                          <option>Verified — inactive</option>
+                          <option>Pending verification</option>
+                          <option>Unable to verify</option>
+                          <option>Expired</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Verified date</span>
+                        <input type="date" [(ngModel)]="eligibilityVerifiedDate" name="eligDate" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Verified by</span>
+                        <input type="text" [(ngModel)]="eligibilityVerifiedBy" name="eligBy" placeholder="Staff name" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Authorization & Referral</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="authRequired" name="authReq" />
+                        <span>Authorization required</span>
+                      </label>
+                      <label class="nam-field">
+                        <span>Auth status</span>
+                        <select [(ngModel)]="preAuthStatus" name="preAuth">
+                          <option value="">— select —</option>
+                          <option>Approved</option>
+                          <option>Pending</option>
+                          <option>Denied</option>
+                          <option>Not required</option>
+                          <option>Pending — urgent</option>
+                        </select>
+                      </label>
+                      <label class="nam-field">
+                        <span>Auth number</span>
+                        <input type="text" [(ngModel)]="authNumber" name="authNum" placeholder="Authorization number" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Auth valid from</span>
+                        <input type="date" [(ngModel)]="authValidFrom" name="authFrom" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Auth valid to</span>
+                        <input type="date" [(ngModel)]="authValidTo" name="authTo" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Visits remaining</span>
+                        <input type="text" [(ngModel)]="authVisitsRemaining" name="authVisits" placeholder="# visits" />
+                      </label>
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="referralRequired" name="refReq" />
+                        <span>Referral required</span>
+                      </label>
+                      <label class="nam-field">
+                        <span>Referral number</span>
+                        <input type="text" [(ngModel)]="referralNumber" name="refNum" placeholder="Referral number" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Referral expiry</span>
+                        <input type="date" [(ngModel)]="referralExpiry" name="refExp" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Copay & Collection</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-checkbox-row nam-field">
+                        <input type="checkbox" [(ngModel)]="copayCollected" name="copayCol" />
+                        <span>Copay collected</span>
+                      </label>
+                      <label class="nam-field">
+                        <span>Copay amount</span>
+                        <input type="text" [(ngModel)]="copayAmount" name="copayAmt" placeholder="$0.00" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 5: Pre-Visit Checklist ═════════ -->
+              @case (5) {
+                <div class="nam-form">
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">
+                      Patient Readiness Checklist
+                      <span class="nam-section__badge"
+                        [class.nam-section__badge--good]="checklistPercent >= 80"
+                        [class.nam-section__badge--warn]="checklistPercent >= 40 && checklistPercent < 80"
+                        [class.nam-section__badge--poor]="checklistPercent < 40">
+                        {{ checklistPercent }}% complete
+                      </span>
+                    </h2>
+                    <div class="nam-check-cluster nam-check-cluster--2col">
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="consentSigned" name="consent" /><span>Consent form signed</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="hipaaAcknowledged" name="hipaa" /><span>HIPAA acknowledged</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="idVerified" name="idVerif" /><span>Photo ID verified</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="insuranceCardCopied" name="insCard" /><span>Insurance card copied</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="medicalHistoryReviewed" name="medHx" /><span>Medical history reviewed</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="medicationsReviewed" name="meds" /><span>Medication list reviewed</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="allergiesReviewed" name="allergy" /><span>Allergies confirmed</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="vitalsRequired" name="vitalsReq" /><span>Vitals ordered</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="patientCheckedIn" name="checkedIn" /><span>Patient checked in</span></label>
+                      <label class="nam-checkbox-row"><input type="checkbox" [(ngModel)]="roomed" name="roomed" /><span>Patient roomed</span></label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Arrival & Wait Tracking</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Patient arrival time</span>
+                        <input type="time" [(ngModel)]="patientArrivalTime" name="arrival" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Wait time (minutes)</span>
+                        <input type="text" [(ngModel)]="waitTimeMinutes" name="waitTime" placeholder="0" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Special Preparation</h2>
+                    <label class="nam-field nam-field--full">
+                      <span>Special prep instructions</span>
+                      <textarea [(ngModel)]="specialPrep" name="specialPrep" rows="3"
+                        placeholder="e.g. NPO after midnight, discontinue blood thinners, dilating drops 1 hour before"></textarea>
+                    </label>
+                  </section>
+                </div>
+              }
+
+              <!-- ══ Tab 6: Notes / Audit ═══════════════ -->
+              @case (6) {
+                <div class="nam-form">
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Internal Notes</h2>
+                    <label class="nam-field nam-field--full">
+                      <span>Scheduling / clinical notes</span>
+                      <textarea [(ngModel)]="internalNotes" name="notes" rows="4"
+                        placeholder="Staff-only notes — do not share with patient"></textarea>
+                    </label>
+                  </section>
+
+                  @if (apptStatus === 'Cancelled') {
+                    <section class="nam-section">
+                      <h2 class="nam-section__title">Cancellation Details</h2>
+                      <label class="nam-field nam-field--full">
+                        <span>Cancellation reason</span>
+                        <select [(ngModel)]="cancelReason" name="cancelReason">
+                          <option value="">— select —</option>
+                          <option>Patient requested</option>
+                          <option>Provider unavailable</option>
+                          <option>Facility closure</option>
+                          <option>Insurance issue</option>
+                          <option>Duplicate booking</option>
+                          <option>Clinical hold</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                    </section>
+                  }
+
+                  @if (apptStatus === 'No-show') {
+                    <section class="nam-section">
+                      <h2 class="nam-section__title">No-Show Details</h2>
+                      <label class="nam-field nam-field--full">
+                        <span>No-show reason / outreach notes</span>
+                        <textarea [(ngModel)]="noShowReason" name="noShowReason" rows="2"
+                          placeholder="Attempts to reach patient, reason if known"></textarea>
+                      </label>
+                    </section>
+                  }
+
+                  <section class="nam-section">
+                    <h2 class="nam-section__title">Scheduling Record</h2>
+                    <div class="nam-grid-3">
+                      <label class="nam-field">
+                        <span>Scheduled by</span>
+                        <input type="text" [(ngModel)]="scheduledBy" name="scheduledBy" placeholder="Staff name" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Confirmed by</span>
+                        <input type="text" [(ngModel)]="confirmedBy" name="confirmedBy" placeholder="Staff name" />
+                      </label>
+                      <label class="nam-field">
+                        <span>Confirmed on</span>
+                        <input type="date" [(ngModel)]="confirmedOn" name="confirmedOn" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+              }
+
+            } <!-- end switch -->
+
+            <!-- ── In-content navigation ──────────────── -->
+            <div class="nam-tab-nav">
+              <button type="button" class="nam-nav-btn" (click)="prev()" [disabled]="currentTab() === 1">← Previous</button>
+              <span class="nam-tab-nav__label">{{ currentTabLabel }}</span>
+              <button type="button" class="nam-nav-btn nam-nav-btn--next" (click)="next()" [disabled]="currentTab() === 6">Next →</button>
+            </div>
+
+          } <!-- end not submitted -->
+        </div><!-- /nam-content -->
+      </div><!-- /nam-body -->
+
+      <!-- ── Footer ──────────────────────────────────── -->
+      @if (!submitted()) {
+        <div class="nam-footer">
+          <button type="button" class="nam-btn nam-btn--ghost" (click)="cancel()">Cancel</button>
+          <div class="nam-footer__right">
+            <button
+              type="button"
+              class="nam-btn nam-btn--primary"
+              (click)="submit()"
+              [disabled]="!canSubmit || isSubmitting()"
+            >
+              @if (isSubmitting()) { Saving… }
+              @else if (isEditMode()) { Save changes }
+              @else { Schedule appointment }
+            </button>
+          </div>
+        </div>
+      }
+
+    </div><!-- /nam-panel -->
+  </div><!-- /nam-backdrop -->
+}

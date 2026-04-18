@@ -228,6 +228,89 @@ export interface WaitlistRecord {
   preferredWindow: string;
   fitScore: string;
   tone: SurfaceTone;
+  /* Extended optional fields */
+  mrn?: string;
+  dob?: string;
+  phone?: string;
+  insurance?: string;
+  referringProvider?: string;
+  waitlistDate?: string;
+  priority?: string;
+  laterality?: string;
+  visitType?: string;
+  chiefComplaint?: string;
+  authStatus?: string;
+  eligibilityStatus?: string;
+  addedBy?: string;
+  notes?: string;
+}
+
+export interface AppointmentRecord {
+  id: string;
+  clinicId: string;
+  /* Overview */
+  appointmentType: string;
+  visitCategory: string;
+  status: string;
+  tone: SurfaceTone;
+  priority: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  provider: string;
+  secondaryProvider: string;
+  room: string;
+  lane: string;
+  specialty: string;
+  /* Patient */
+  patient: string;
+  mrn: string;
+  dob: string;
+  phone: string;
+  email: string;
+  /* Clinical */
+  laterality: string;
+  visitReason: string;
+  chiefComplaint: string;
+  referringProvider: string;
+  recallType: string;
+  recallInterval: string;
+  linkedEncounterId: string;
+  preOpNotes: string;
+  /* Insurance */
+  primaryPayer: string;
+  memberId: string;
+  eligibilityStatus: string;
+  eligibilityVerifiedDate: string;
+  authRequired: boolean;
+  authNumber: string;
+  authValidFrom: string;
+  authValidTo: string;
+  referralNumber: string;
+  copayCollected: boolean;
+  copayAmount: string;
+  /* Pre-visit checklist */
+  consentSigned: boolean;
+  hipaaAcknowledged: boolean;
+  idVerified: boolean;
+  insuranceCardCopied: boolean;
+  medicalHistoryReviewed: boolean;
+  medicationsReviewed: boolean;
+  allergiesReviewed: boolean;
+  specialPrep: string;
+  patientArrivalTime: string;
+  /* Audit */
+  createdBy: string;
+  createdOn: string;
+  confirmedBy: string;
+  confirmedOn: string;
+  cancelReason: string;
+  noShowReason: string;
+  internalNotes: string;
+  /* Source prefill tracking */
+  sourcePatientId?: string;
+  sourceWaitlistId?: string;
 }
 
 export interface EncounterValue {

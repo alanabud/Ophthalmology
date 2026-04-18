@@ -233,3 +233,10 @@
   [patientToEdit]="editingPatient()"
   (closed)="newPatientOpen.set(false); editingPatient.set(null)"
 />
+
+<!-- Schedule appointment from patient context -->
+<app-new-appointment-modal
+  [open]="scheduleModalOpen()"
+  [prefillPatient]="schedulePrefill()"
+  (closed)="scheduleModalOpen.set(false); schedulePrefill.set(null)"
+/>
