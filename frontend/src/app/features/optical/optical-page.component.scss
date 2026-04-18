@@ -1,1 +1,96 @@
-:host { display: block; }
+.opt-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.opt-stat {
+  flex: 1 1 140px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  &__val { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); line-height: 1; }
+  &__lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  &--ready .opt-stat__val { color: #16a34a; }
+  &--delay .opt-stat__val { color: #d97706; }
+  &--progress .opt-stat__val { color: #2563eb; }
+}
+
+.opt-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.opt-search {
+  flex: 1 1 280px;
+  height: 36px;
+  padding: 0 0.875rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  &:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+}
+
+.opt-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.opt-table-wrap { overflow-x: auto; }
+.opt-table { min-width: 1200px; }
+
+.opt-order-id { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); }
+.opt-mono { font-family: monospace; font-size: 0.78rem; }
+.opt-lens { font-size: 0.82rem; max-width: 160px; }
+.opt-frame { font-size: 0.82rem; }
+.opt-rx { font-size: 0.78rem; white-space: nowrap; }
+.opt-lab { font-size: 0.8rem; color: var(--text-secondary); }
+.opt-pickup { font-size: 0.82rem; white-space: nowrap; }
+.opt-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.opt-rx-grid {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+
+.opt-rx-input {
+  text-align: center;
+}
+
+.opt-rx-header {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line-subtle);
+  padding-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.rec-form-section-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin: 1.25rem 0 0.75rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--line-subtle);
+  &:first-child { margin-top: 0; }
+}
