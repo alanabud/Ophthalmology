@@ -110,9 +110,9 @@
 }
 
 .nav-item--active {
-  background: var(--accent-primary-soft);
-  border-color: var(--accent-primary-border);
-  color: var(--accent-primary);
+  background: rgba(29, 78, 216, 0.08);
+  border-color: rgba(29, 78, 216, 0.20);
+  color: #1D4ED8;
 }
 
 .nav-item--active::before {
@@ -142,9 +142,9 @@
 }
 
 .nav-item--active .nav-item__icon {
-  background: var(--accent-primary-soft);
-  border-color: var(--accent-primary-border);
-  color: var(--accent-primary);
+  background: #1D4ED8;
+  border-color: #1D4ED8;
+  color: #ffffff;
 }
 
 .nav-item__icon--accent {
@@ -271,7 +271,7 @@
   align-items: center;
   gap: 1rem;
   padding: 0 1.35rem;
-  min-height: 54px;
+  min-height: 52px;
   border-bottom: 1px solid var(--line-subtle);
   background: #ffffff;
 }

@@ -3,7 +3,6 @@ import { computed, Component, inject, signal } from '@angular/core';
 import { DailyBriefingSignal, LiveBoardCard, OperationsMatrixRow, SurfaceTone } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { EnterpriseSelectOption } from '../../shared/ui/enterprise-select.component';
-import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
 type MatrixScope = 'focus' | 'attention' | 'all';
 type QueueScope = 'priority' | 'critical' | 'all';
@@ -46,7 +45,7 @@ function rowNeedsAttention(row: OperationsMatrixRow): boolean {
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [StatusChipComponent],
+  imports: [],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss'
 })

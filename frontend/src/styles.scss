@@ -4,7 +4,7 @@
   --font-body: 'Aptos', 'Segoe UI Variable Text', 'Bahnschrift', sans-serif;
 
   /* Backgrounds */
-  --bg-app: #f4f6fa;
+  --bg-app: #F5F6F8;
   --bg-shell: #ffffff;
   --bg-panel: #ffffff;
   --bg-panel-strong: #ffffff;
@@ -13,7 +13,7 @@
   --surface-control-strong: #f3f4f6;
   --surface-control-hover: #f0f2f5;
   --surface-dropdown: #ffffff;
-  --surface-dropdown-selected: #e0e7ff;
+  --surface-dropdown-selected: #DBEAFE;
 
   /* Borders */
   --line-subtle: rgba(0, 0, 0, 0.08);
@@ -27,14 +27,14 @@
   --text-placeholder: #9ca3af;
   --text-dark-strong: #111827;
 
-  /* Primary accent — indigo */
-  --accent-primary: #4f46e5;
-  --accent-primary-soft: rgba(79, 70, 229, 0.10);
-  --accent-primary-border: rgba(79, 70, 229, 0.22);
+  /* Primary accent — cobalt blue */
+  --accent-primary: #1D4ED8;
+  --accent-primary-soft: rgba(29, 78, 216, 0.08);
+  --accent-primary-border: rgba(29, 78, 216, 0.20);
 
   /* Keep teal alias for components using it */
-  --accent-teal: #4f46e5;
-  --accent-teal-soft: rgba(79, 70, 229, 0.10);
+  --accent-teal: #1D4ED8;
+  --accent-teal-soft: rgba(29, 78, 216, 0.08);
 
   /* Semantic */
   --accent-gold: #d97706;
@@ -290,9 +290,9 @@ h4 {
 }
 
 .status-chip--accent {
-  color: #3730a3;
-  border-color: rgba(79, 70, 229, 0.22);
-  background: var(--accent-primary-soft);
+  color: #1E3A8A;
+  border-color: rgba(29, 78, 216, 0.20);
+  background: rgba(29, 78, 216, 0.08);
 }
 
 .status-chip--success {
