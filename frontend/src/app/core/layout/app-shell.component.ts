@@ -1,4 +1,3 @@
-import { NgClass } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
@@ -13,13 +12,26 @@ import { EnterpriseStoreService } from '../services/enterprise-store.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [EnterpriseSelectComponent, NewAppointmentModalComponent, NewClaimModalComponent, NewPatientModalComponent, NgClass, QuickCreateModalComponent, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [EnterpriseSelectComponent, NewAppointmentModalComponent, NewClaimModalComponent, NewPatientModalComponent, QuickCreateModalComponent, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss'
 })
 export class AppShellComponent {
   private readonly store = inject(EnterpriseStoreService);
   private readonly authState = inject(AuthStateService);
+
+  // ── Sidebar collapse state ─────────────────────────────────────────────────
+  readonly sidebarCollapsed = signal<boolean>(
+    localStorage.getItem('sidebar-collapsed') === 'true'
+  );
+
+  protected toggleSidebar(): void {
+    this.sidebarCollapsed.update(v => {
+      const next = !v;
+      localStorage.setItem('sidebar-collapsed', String(next));
+      return next;
+    });
+  }
 
   // Kick off Firestore seed + sync the moment the shell loads (non-blocking).
   // The app renders immediately with local data; Firestore data replaces it
