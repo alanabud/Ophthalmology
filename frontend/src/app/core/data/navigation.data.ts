@@ -14,6 +14,15 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
         tone: 'accent'
       },
       {
+        label: "Today's Clinic",
+        route: '/today',
+        icon: '⚕',
+        summary: 'Patient flow board, imaging queue, surgery & injection readiness',
+        counter: '',
+        children: ['Patient flow', 'Imaging queue', 'Surgery readiness', 'Injection safety'],
+        tone: 'success'
+      },
+      {
         label: 'Patients',
         route: '/patients',
         icon: 'PT',

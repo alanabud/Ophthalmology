@@ -15,15 +15,21 @@ import { CLAIMS } from '../data/billing.data';
 import { COMPLIANCE_EVENTS } from '../data/compliance.data';
 import { ANALYTICS_POINTS, PROVIDER_PRODUCTIVITY, ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
+import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLOW, SURGICAL_READINESS } from '../data/clinic-today.data';
 import {
+  AiBriefingItem,
   ClaimRecord,
+  CockpitImagingItem,
   ImagingStudy,
+  InjectionSafetyRecord,
   InventoryRecord,
   OpticalOrder,
+  PatientFlowRecord,
   PatientRecord,
   ProviderContext,
   RoleMatrixItem,
   SurgeryCase,
+  SurgicalReadinessCase,
   WaitlistRecord,
 } from '../models/enterprise.models';
 
@@ -128,6 +134,20 @@ export class EnterpriseStoreService {
   // ── Billing ────────────────────────────────────────────────────────────────
   private readonly claimsBase = signal<ClaimRecord[]>([...CLAIMS]);
   readonly claims = computed(() => this.claimsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+
+  // ── Doctor Cockpit ─────────────────────────────────────────────────────────
+  private readonly patientFlowBase = signal<PatientFlowRecord[]>([...PATIENT_FLOW]);
+  readonly patientFlow = computed(() => this.patientFlowBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  readonly cockpitImagingQueue = signal<CockpitImagingItem[]>([...COCKPIT_IMAGING_QUEUE]);
+  readonly surgicalReadiness = signal<SurgicalReadinessCase[]>([...SURGICAL_READINESS]);
+  readonly injectionSafety = signal<InjectionSafetyRecord[]>([...INJECTION_SAFETY]);
+  readonly aiDailyBriefing = signal<AiBriefingItem[]>([...AI_DAILY_BRIEFING]);
+
+  updatePatientFlowStation(id: string, station: PatientFlowRecord['station']): void {
+    this.patientFlowBase.update((list) =>
+      list.map((p) => (p.id === id ? { ...p, station } : p))
+    );
+  }
 
   // ── Compliance ─────────────────────────────────────────────────────────────
   readonly complianceEvents = computed(() => COMPLIANCE_EVENTS.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));

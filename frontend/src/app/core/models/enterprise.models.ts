@@ -697,3 +697,102 @@ export interface ProviderProductivity {
   tone: SurfaceTone;
 }
 
+// ── Doctor Cockpit / Today's Clinic ──────────────────────────────────────────
+export type FlowStation =
+  | 'checked-in' | 'tech-workup' | 'imaging'
+  | 'dilating' | 'ready' | 'with-doctor' | 'checkout';
+
+export interface ReadinessItem {
+  label: string;
+  done: boolean;
+  required: boolean;
+}
+
+export interface PatientFlowRecord {
+  id: string;
+  clinicId: string;
+  mrn: string;
+  name: string;
+  age: number;
+  visitType: string;
+  visitCategory: 'cataract' | 'retina' | 'glaucoma' | 'comprehensive' | 'post-op' | 'lasik' | 'optical' | 'injection';
+  laterality?: 'OD' | 'OS' | 'OU';
+  station: FlowStation;
+  provider: string;
+  scheduledTime: string;
+  arrivedAt: string;
+  waitMinutes: number;
+  tone: SurfaceTone;
+  readinessItems: ReadinessItem[];
+  nextAction: string;
+  aiFlag?: string;
+  insurance?: string;
+  injectionMedication?: string;
+  authStatus?: 'valid' | 'expired' | 'pending';
+  authExpiry?: string;
+  lateralityConfirmed?: boolean;
+  octComplete?: boolean;
+  consentCurrent?: boolean;
+  biometryComplete?: boolean;
+  lensSelected?: boolean;
+  consentSigned?: boolean;
+  clearanceReceived?: boolean;
+  iolOrdered?: boolean;
+}
+
+export interface CockpitImagingItem {
+  id: string;
+  clinicId: string;
+  patientName: string;
+  mrn: string;
+  modality: string;
+  status: 'pending' | 'in-progress' | 'complete' | 'overdue';
+  tone: SurfaceTone;
+  waitMinutes: number;
+  room: string;
+  priority: 'stat' | 'routine' | 'overdue';
+}
+
+export interface SurgicalReadinessCase {
+  id: string;
+  clinicId: string;
+  patientName: string;
+  mrn: string;
+  procedure: string;
+  surgeryDate: string;
+  provider: string;
+  biometryComplete: boolean;
+  lensSelected: boolean;
+  consentSigned: boolean;
+  clearanceReceived: boolean;
+  iolOrdered: boolean;
+  ascPacketComplete: boolean;
+  insuranceAuth: boolean;
+  postOpScheduled: boolean;
+  blockers: string[];
+  tone: SurfaceTone;
+}
+
+export interface InjectionSafetyRecord {
+  id: string;
+  clinicId: string;
+  patientName: string;
+  mrn: string;
+  medication: string;
+  laterality: 'OD' | 'OS' | 'OU';
+  authStatus: 'valid' | 'expired' | 'pending';
+  authExpiry?: string;
+  octComplete: boolean;
+  lateralityConfirmed: boolean;
+  consentCurrent: boolean;
+  medicationVerified: boolean;
+  lotCaptured: boolean;
+  tone: SurfaceTone;
+  blockers: string[];
+}
+
+export interface AiBriefingItem {
+  type: 'critical' | 'warning' | 'info' | 'success';
+  text: string;
+}
+

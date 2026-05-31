@@ -1,0 +1,556 @@
+<section class="today-page workspace-page">
+
+  <!-- ── Header ───────────────────────────────────────────────────────────── -->
+  <header class="today-header">
+    <div class="today-header__left">
+      <p class="today-breadcrumb">Doctor View · Today</p>
+      <h1 class="today-title">Today's Clinic Cockpit</h1>
+      <span class="today-date">{{ todayDate }}</span>
+    </div>
+    <div class="today-header__right">
+      <select class="today-clinic-select"
+        [ngModel]="clinicFilter()"
+        (ngModelChange)="clinicFilter.set($event)">
+        <option value="">All clinics</option>
+        @for (clinic of clinics(); track clinic.id) {
+          @if (clinic.id !== 'network') {
+            <option [value]="clinic.id">{{ clinic.name }}</option>
+          }
+        }
+      </select>
+      <div class="today-role-chips">
+        <span class="role-chip role-chip--active">Doctor</span>
+        <span class="role-chip">Clinic Manager</span>
+        <span class="role-chip">Enterprise</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Summary rail ─────────────────────────────────────────────────────── -->
+  <div class="today-summary">
+    <div class="ts-stat">
+      <strong class="ts-num">{{ totalScheduled() }}</strong>
+      <span class="ts-label">Scheduled today</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat">
+      <strong class="ts-num">{{ inClinicCount() }}</strong>
+      <span class="ts-label">In clinic now</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat ts-stat--success">
+      <strong class="ts-num">{{ readyCount() }}</strong>
+      <span class="ts-label">Ready for doctor</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat">
+      <strong class="ts-num">{{ avgWait() }} min</strong>
+      <span class="ts-label">Avg wait time</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat ts-stat--warning">
+      <strong class="ts-num">{{ imagingPendingCount() }}</strong>
+      <span class="ts-label">Imaging pending</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat ts-stat--critical">
+      <strong class="ts-num">{{ criticalCount() }}</strong>
+      <span class="ts-label">Critical blockers</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat ts-stat--inject">
+      <strong class="ts-num">{{ injectionFlagCount() }}</strong>
+      <span class="ts-label">Injection safety flags</span>
+    </div>
+    <div class="ts-divider"></div>
+    <div class="ts-stat ts-stat--surgery">
+      <strong class="ts-num">{{ surgeryBlockerCount() }}</strong>
+      <span class="ts-label">Surgery blockers</span>
+    </div>
+  </div>
+
+  <!-- ── AI Daily Briefing ─────────────────────────────────────────────────── -->
+  <div class="today-ai-briefing">
+    <div class="ai-briefing__header" (click)="toggleBriefing()">
+      <span class="ai-briefing__icon">✦</span>
+      <span class="ai-briefing__label">AI Clinical Briefing</span>
+      <span class="ai-briefing__sub">Acuity Eye Network · {{ todayDate }}</span>
+      <span class="ai-briefing__toggle">{{ briefingCollapsed() ? '▸' : '▾' }}</span>
+    </div>
+    @if (!briefingCollapsed()) {
+      <div class="ai-briefing__items">
+        @for (item of aiBriefing(); track item.text) {
+          <div class="ai-item ai-item--{{ item.type }}">
+            <span class="ai-item__bullet">
+              @if (item.type === 'critical') { ⛔ }
+              @else if (item.type === 'warning') { ⚠ }
+              @else if (item.type === 'info') { ℹ }
+              @else { ✓ }
+            </span>
+            <span>{{ item.text }}</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ── Patient Flow Board ─────────────────────────────────────────────────── -->
+  <div class="flow-board-wrap">
+    <div class="flow-board">
+      @for (station of stations; track station.id) {
+        <div class="flow-col">
+          <div class="flow-col__header" [class]="'flow-col__header--' + station.id">
+            <span class="flow-col__icon">{{ station.icon }}</span>
+            <span class="flow-col__name">{{ station.label }}</span>
+            <span class="flow-col__badge">{{ patientsByStation()[station.id]?.length ?? 0 }}</span>
+          </div>
+
+          <div class="flow-col__cards">
+            @for (patient of patientsByStation()[station.id]; track patient.id) {
+              <div
+                class="patient-card patient-card--{{ patient.tone }}"
+                (click)="openPatient(patient)"
+                [title]="patient.name + ' — click to open'"
+              >
+                <!-- Card header -->
+                <div class="pc-header">
+                  <div class="pc-header__left">
+                    <span class="pc-name">{{ patient.name }}</span>
+                    @if (patient.tone === 'critical') {
+                      <span class="pc-alert pc-alert--critical">!</span>
+                    } @else if (patient.tone === 'warning') {
+                      <span class="pc-alert pc-alert--warning">⚠</span>
+                    }
+                  </div>
+                  <span class="pc-wait">{{ patient.waitMinutes }}m</span>
+                </div>
+
+                <!-- Visit info -->
+                <div class="pc-visit">
+                  {{ patient.age }}yo · {{ patient.visitType }}
+                  @if (patient.laterality) {
+                    <span class="pc-lat">{{ patient.laterality }}</span>
+                  }
+                </div>
+
+                <!-- Readiness bar -->
+                @if (patient.readinessItems.length) {
+                  <div class="pc-readiness-bar">
+                    <div
+                      class="pc-readiness-bar__fill pc-readiness-bar__fill--{{ patient.tone }}"
+                      [style.width.%]="readinessScore(patient)"
+                    ></div>
+                  </div>
+                  @if (readinessMissingCount(patient) > 0) {
+                    <div class="pc-missing">
+                      ⚠ {{ readinessMissingCount(patient) }} item{{ readinessMissingCount(patient) > 1 ? 's' : '' }} needed
+                    </div>
+                  }
+                }
+
+                <!-- Injection badge -->
+                @if (patient.visitCategory === 'injection' && patient.authStatus === 'expired') {
+                  <div class="pc-inject-block">AUTH EXPIRED</div>
+                }
+
+                <!-- Next action -->
+                <div class="pc-action">→ {{ patient.nextAction }}</div>
+              </div>
+            }
+            @empty {
+              <div class="flow-col__empty">No patients</div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ── Secondary panels ──────────────────────────────────────────────────── -->
+  <div class="today-panels">
+
+    <!-- Imaging Queue -->
+    <div class="side-panel">
+      <div class="sp-header sp-header--imaging">
+        <span class="sp-icon">◎</span>
+        <span class="sp-title">Imaging Queue</span>
+        <span class="sp-count">{{ filteredImagingQueue().length }}</span>
+      </div>
+      <div class="sp-body">
+        @for (item of filteredImagingQueue(); track item.id) {
+          <div class="iq-row iq-row--{{ item.tone }}">
+            <div class="iq-row__top">
+              <span class="iq-patient">{{ item.patientName }}</span>
+              <span class="iq-priority iq-priority--{{ item.priority }}">{{ item.priority }}</span>
+            </div>
+            <div class="iq-modality">{{ item.modality }}</div>
+            <div class="iq-meta">
+              <span>{{ item.room }}</span>
+              <span class="iq-wait">{{ item.waitMinutes }} min</span>
+              <span class="iq-status iq-status--{{ item.status }}">{{ item.status }}</span>
+            </div>
+          </div>
+        }
+        @empty {
+          <p class="sp-empty">No imaging pending for selected clinic.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Surgery Readiness -->
+    <div class="side-panel">
+      <div class="sp-header sp-header--surgery">
+        <span class="sp-icon">✦</span>
+        <span class="sp-title">Surgery Readiness</span>
+        <span class="sp-count">{{ filteredSurgicalCases().length }}</span>
+      </div>
+      <div class="sp-body">
+        @for (sc of filteredSurgicalCases(); track sc.id) {
+          <div class="sr-card sr-card--{{ sc.tone }}">
+            <div class="sr-card__top">
+              <span class="sr-patient">{{ sc.patientName }}</span>
+              <span class="sr-date">{{ sc.surgeryDate }}</span>
+            </div>
+            <div class="sr-procedure">{{ sc.procedure }}</div>
+            <div class="sr-progress">
+              <div class="sr-progress__bar">
+                <div
+                  class="sr-progress__fill sr-progress__fill--{{ sc.tone }}"
+                  [style.width.%]="surgicalReadinessScore(sc)"
+                ></div>
+              </div>
+              <span class="sr-pct">{{ surgicalReadinessScore(sc) }}%</span>
+            </div>
+            <div class="sr-checklist">
+              <span [class.ok]="sc.biometryComplete">{{ sc.biometryComplete ? '✓' : '○' }} Biometry</span>
+              <span [class.ok]="sc.lensSelected">{{ sc.lensSelected ? '✓' : '○' }} Lens selected</span>
+              <span [class.ok]="sc.consentSigned">{{ sc.consentSigned ? '✓' : '○' }} Consent</span>
+              <span [class.ok]="sc.clearanceReceived">{{ sc.clearanceReceived ? '✓' : '○' }} Clearance</span>
+              <span [class.ok]="sc.iolOrdered">{{ sc.iolOrdered ? '✓' : '○' }} IOL ordered</span>
+              <span [class.ok]="sc.ascPacketComplete">{{ sc.ascPacketComplete ? '✓' : '○' }} ASC packet</span>
+            </div>
+            @if (sc.blockers.length) {
+              <div class="sr-blockers">
+                @for (b of sc.blockers; track b) {
+                  <div class="sr-blocker">⚠ {{ b }}</div>
+                }
+              </div>
+            }
+          </div>
+        }
+        @empty {
+          <p class="sp-empty">No surgical cases for selected clinic.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Injection Safety Queue -->
+    <div class="side-panel side-panel--inject">
+      <div class="sp-header sp-header--inject">
+        <span class="sp-icon">⊕</span>
+        <span class="sp-title">Injection Safety</span>
+        <span class="sp-count sp-count--{{ injectionFlagCount() > 0 ? 'critical' : 'neutral' }}">
+          {{ filteredInjectionSafety().length }}
+        </span>
+      </div>
+      <div class="sp-body">
+        @for (inj of filteredInjectionSafety(); track inj.id) {
+          <div class="is-card is-card--{{ inj.tone }}">
+            <div class="is-card__top">
+              <span class="is-patient">{{ inj.patientName }}</span>
+              <span class="is-lat">{{ inj.laterality }}</span>
+              <span class="is-auth is-auth--{{ inj.authStatus }}">Auth {{ inj.authStatus }}</span>
+            </div>
+            <div class="is-med">{{ inj.medication }}</div>
+            <div class="is-checklist">
+              <span [class.ok]="inj.octComplete">{{ inj.octComplete ? '✓' : '⚠' }} OCT</span>
+              <span [class.ok]="inj.lateralityConfirmed">{{ inj.lateralityConfirmed ? '✓' : '⚠' }} Laterality</span>
+              <span [class.ok]="inj.consentCurrent">{{ inj.consentCurrent ? '✓' : '⚠' }} Consent</span>
+              <span [class.ok]="inj.medicationVerified">{{ inj.medicationVerified ? '✓' : '⚠' }} Med verified</span>
+              <span [class.ok]="inj.lotCaptured">{{ inj.lotCaptured ? '✓' : '⚠' }} Lot #</span>
+            </div>
+            @for (b of inj.blockers; track b) {
+              <div class="is-blocker is-blocker--{{ inj.tone }}">{{ b }}</div>
+            }
+          </div>
+        }
+        @empty {
+          <p class="sp-empty">No injection patients for selected clinic.</p>
+        }
+      </div>
+    </div>
+
+  </div><!-- /today-panels -->
+
+</section>
+
+<!-- ── Patient Workflow Modal ─────────────────────────────────────────────── -->
+@if (patientModalOpen() && selectedPatient()) {
+  <div class="pwm-backdrop" (click)="closeModal()">
+    <div class="pwm-panel" (click)="$event.stopPropagation()">
+
+      <!-- Modal header -->
+      <div class="pwm-header">
+        <div class="pwm-header__patient">
+          <div class="pwm-avatar pwm-avatar--{{ selectedPatient()!.tone }}">
+            {{ selectedPatient()!.name.charAt(0) }}
+          </div>
+          <div class="pwm-header__info">
+            <h2 class="pwm-name">{{ selectedPatient()!.name }}</h2>
+            <p class="pwm-meta">
+              {{ selectedPatient()!.age }}yo · {{ selectedPatient()!.mrn }}
+              · {{ selectedPatient()!.visitType }}
+              @if (selectedPatient()!.laterality) { · <strong>{{ selectedPatient()!.laterality }}</strong> }
+              · Scheduled {{ selectedPatient()!.scheduledTime }}
+              · Arrived {{ selectedPatient()!.arrivedAt }}
+            </p>
+          </div>
+        </div>
+        <div class="pwm-header__right">
+          <span class="pwm-station-chip pwm-station-chip--{{ selectedPatient()!.tone }}">
+            {{ selectedPatient()!.station | titlecase }}
+          </span>
+          <button class="pwm-close" type="button" (click)="closeModal()">✕</button>
+        </div>
+      </div>
+
+      <!-- Patient journey timeline -->
+      <div class="pwm-timeline">
+        @for (s of stations; track s.id; let last = $last) {
+          <div
+            class="pwm-step"
+            [class.pwm-step--done]="isStationPast(selectedPatient()!.station, s.id)"
+            [class.pwm-step--active]="selectedPatient()!.station === s.id"
+          >
+            <div class="pwm-step__dot"></div>
+            <span class="pwm-step__label">{{ s.label }}</span>
+          </div>
+          @if (!last) {
+            <div class="pwm-step__connector" [class.done]="isStationPast(selectedPatient()!.station, s.id) || selectedPatient()!.station === s.id"></div>
+          }
+        }
+      </div>
+
+      <!-- AI flag banner -->
+      @if (selectedPatient()!.aiFlag) {
+        <div class="pwm-ai-flag">
+          <span class="pwm-ai-flag__icon">✦</span>
+          {{ selectedPatient()!.aiFlag }}
+        </div>
+      }
+
+      <!-- Tabs -->
+      <div class="pwm-tabs">
+        @for (tab of tabKeys; track tab) {
+          <button
+            class="pwm-tab"
+            type="button"
+            [class.pwm-tab--active]="activeTab() === tab"
+            (click)="activeTab.set(tab)"
+          >
+            {{ tabLabels[tab] }}
+          </button>
+        }
+      </div>
+
+      <!-- Tab content -->
+      <div class="pwm-body">
+
+        <!-- OVERVIEW -->
+        @if (activeTab() === 'overview') {
+          <div class="pwm-overview">
+            <div class="pwm-two-col">
+              <div>
+                <h3 class="pwm-section-title">Readiness checklist</h3>
+                <div class="pwm-readiness">
+                  @for (item of selectedPatient()!.readinessItems; track item.label) {
+                    <div class="pwm-ri" [class.pwm-ri--done]="item.done" [class.pwm-ri--missing]="!item.done && item.required">
+                      <span class="pwm-ri__icon">{{ item.done ? '✓' : item.required ? '⚠' : '○' }}</span>
+                      <span class="pwm-ri__label">{{ item.label }}</span>
+                      <span class="pwm-ri__tag">{{ item.required ? 'Required' : 'Optional' }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="pwm-readiness-score">
+                  Readiness {{ readinessScore(selectedPatient()!) }}%
+                  <div class="pwm-rs-bar">
+                    <div class="pwm-rs-fill" [style.width.%]="readinessScore(selectedPatient()!)"></div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 class="pwm-section-title">Patient details</h3>
+                <div class="pwm-kv">
+                  <span>Provider</span><strong>{{ selectedPatient()!.provider }}</strong>
+                  <span>Insurance</span><strong>{{ selectedPatient()!.insurance ?? '—' }}</strong>
+                  <span>Visit type</span><strong>{{ selectedPatient()!.visitType }}</strong>
+                  <span>Category</span><strong>{{ selectedPatient()!.visitCategory | titlecase }}</strong>
+                  @if (selectedPatient()!.laterality) {
+                    <span>Laterality</span><strong>{{ selectedPatient()!.laterality }}</strong>
+                  }
+                  <span>Wait time</span><strong>{{ selectedPatient()!.waitMinutes }} min</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="pwm-next-action">
+              <span class="pwm-next-action__label">Next action</span>
+              <span class="pwm-next-action__text">→ {{ selectedPatient()!.nextAction }}</span>
+            </div>
+
+            @if (selectedPatient()!.station !== 'checkout') {
+              <button class="pwm-advance-btn" type="button" (click)="advanceStation(selectedPatient()!)">
+                Advance to next station →
+              </button>
+            }
+          </div>
+        }
+
+        <!-- WORKUP -->
+        @if (activeTab() === 'workup') {
+          <div class="pwm-placeholder">
+            <div class="pwm-placeholder__icon">⊞</div>
+            <p>Tech workup notes and vital measurements for {{ selectedPatient()!.name }}.</p>
+            <ul>
+              <li>Visual acuity · IOP · CCT · Pupil size</li>
+              <li>Chief complaint and history</li>
+              <li>Dilation status and agent used</li>
+              <li>Tech notes and pre-exam prep</li>
+            </ul>
+          </div>
+        }
+
+        <!-- IMAGING -->
+        @if (activeTab() === 'imaging') {
+          <div class="pwm-placeholder">
+            <div class="pwm-placeholder__icon">◎</div>
+            <p>Imaging results and pending orders for {{ selectedPatient()!.name }}.</p>
+            @if (selectedPatient()!.visitCategory === 'injection') {
+              <div class="pwm-imaging-warn">
+                OCT Macula must be reviewed by physician before any injection proceeds.
+                @if (!selectedPatient()!.octComplete) {
+                  <strong> OCT not yet completed.</strong>
+                }
+              </div>
+            }
+            <ul>
+              <li>OCT Macula · Nerve Fiber Layer</li>
+              <li>Fundus photography · Wide-field</li>
+              <li>Visual field · Biometry · Topography</li>
+            </ul>
+          </div>
+        }
+
+        <!-- PLAN -->
+        @if (activeTab() === 'plan') {
+          <div class="pwm-placeholder">
+            <div class="pwm-placeholder__icon">◈</div>
+            <p>Treatment plan, diagnoses, and clinical notes for today's encounter.</p>
+            <ul>
+              <li>ICD-10 diagnosis codes</li>
+              <li>Assessment and plan</li>
+              <li>Medication changes</li>
+              <li>Return visit instructions</li>
+            </ul>
+          </div>
+        }
+
+        <!-- SURGERY / PROCEDURE -->
+        @if (activeTab() === 'surgery') {
+          @if (selectedPatient()!.visitCategory === 'cataract' || selectedPatient()!.visitCategory === 'injection') {
+            @if (selectedPatient()!.visitCategory === 'cataract') {
+              <div class="pwm-surgery">
+                <h3 class="pwm-section-title">Surgical Readiness</h3>
+                <div class="pwm-surgery-checks">
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.biometryComplete">
+                    <span>{{ selectedPatient()!.biometryComplete ? '✓' : '○' }}</span>
+                    Biometry complete
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.lensSelected">
+                    <span>{{ selectedPatient()!.lensSelected ? '✓' : '○' }}</span>
+                    IOL / lens selected
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.consentSigned">
+                    <span>{{ selectedPatient()!.consentSigned ? '✓' : '○' }}</span>
+                    Surgical consent signed
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.clearanceReceived">
+                    <span>{{ selectedPatient()!.clearanceReceived ? '✓' : '○' }}</span>
+                    Medical clearance received
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.iolOrdered">
+                    <span>{{ selectedPatient()!.iolOrdered ? '✓' : '○' }}</span>
+                    IOL ordered from vendor
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="pwm-surgery">
+                <h3 class="pwm-section-title">Injection Protocol Checklist</h3>
+                <div class="pwm-surgery-checks">
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.authStatus === 'valid'" [class.critical]="selectedPatient()!.authStatus === 'expired'">
+                    <span>{{ selectedPatient()!.authStatus === 'valid' ? '✓' : '⛔' }}</span>
+                    Prior authorization — {{ selectedPatient()!.authStatus }}
+                    @if (selectedPatient()!.authExpiry) { (expires {{ selectedPatient()!.authExpiry }}) }
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.octComplete">
+                    <span>{{ selectedPatient()!.octComplete ? '✓' : '○' }}</span>
+                    OCT Macula reviewed
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.lateralityConfirmed">
+                    <span>{{ selectedPatient()!.lateralityConfirmed ? '✓' : '○' }}</span>
+                    Laterality confirmed verbally
+                  </div>
+                  <div class="pwm-check" [class.ok]="selectedPatient()!.consentCurrent">
+                    <span>{{ selectedPatient()!.consentCurrent ? '✓' : '○' }}</span>
+                    Consent current
+                  </div>
+                  @if (selectedPatient()!.injectionMedication) {
+                    <div class="pwm-check">
+                      <span>○</span>
+                      Medication: {{ selectedPatient()!.injectionMedication }}
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          } @else {
+            <div class="pwm-placeholder">
+              <div class="pwm-placeholder__icon">✦</div>
+              <p>No surgical or procedure data for this visit type.</p>
+            </div>
+          }
+        }
+
+        <!-- BILLING READINESS -->
+        @if (activeTab() === 'billing') {
+          <div class="pwm-placeholder">
+            <div class="pwm-placeholder__icon">$</div>
+            <p>Insurance eligibility, authorization status, and billing readiness.</p>
+            <div class="pwm-kv">
+              <span>Insurance</span><strong>{{ selectedPatient()!.insurance ?? '—' }}</strong>
+              @if (selectedPatient()!.authStatus) {
+                <span>Auth status</span>
+                <strong class="auth-badge auth-badge--{{ selectedPatient()!.authStatus }}">
+                  {{ selectedPatient()!.authStatus | titlecase }}
+                </strong>
+              }
+              @if (selectedPatient()!.authExpiry) {
+                <span>Auth expiry</span><strong>{{ selectedPatient()!.authExpiry }}</strong>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- NOTES -->
+        @if (activeTab() === 'notes') {
+          <div class="pwm-placeholder">
+            <div class="pwm-placeholder__icon">✏</div>
+            <p>Clinical notes, care coordinator messages, and preferences for {{ selectedPatient()!.name }}.</p>
+          </div>
+        }
+
+      </div><!-- /pwm-body -->
+    </div><!-- /pwm-panel -->
+  </div><!-- /pwm-backdrop -->
+}

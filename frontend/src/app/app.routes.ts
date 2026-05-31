@@ -34,6 +34,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'today',
+        loadComponent: () =>
+          import('./features/clinic-today/clinic-today-page.component').then(
+            (module) => module.ClinicTodayPageComponent
+          )
+      },
+      {
         path: 'patients',
         loadComponent: () =>
           import('./features/patients/patients-page.component').then(
