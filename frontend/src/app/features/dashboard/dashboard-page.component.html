@@ -1,146 +1,327 @@
 <section class="workspace-page dashboard-page">
 
-  <!-- ── Hero: title + 4 KPI summary cards ────────────────── -->
-  <header class="dash-hero">
-    <div class="dash-hero__title">
-      <p class="dash-hero__eyebrow">Enterprise Operations</p>
-      <h1 class="dash-hero__h1">Network Command Center</h1>
-      <p class="dash-hero__sub">{{ dashboardSubtitle() }}</p>
+  <!-- ════════════════════════════════════════════════════════
+       HERO HEADER
+  ════════════════════════════════════════════════════════ -->
+  <header class="cdx-hero">
+    <div class="cdx-hero__left">
+      <p class="cdx-hero__greeting">{{ greeting }}</p>
+      <h1 class="cdx-hero__clinic">
+        @if (currentClinic().id === 'network') {
+          Acuity Eye Network
+        } @else {
+          {{ currentClinic().name }}
+        }
+      </h1>
+      <p class="cdx-hero__date">{{ currentDate }}</p>
     </div>
-    <div class="dash-kpi-row">
-      @for (kpi of matrixSummaries(); track kpi.label) {
-        <div class="dash-kpi" [class]="'dash-kpi--' + kpi.tone">
-          <span class="dash-kpi__label">{{ kpi.label }}</span>
-          <strong class="dash-kpi__value">{{ kpi.value }}</strong>
-          <span class="dash-kpi__detail">{{ kpi.detail }}</span>
-        </div>
-      }
+
+    <div class="cdx-hero__actions">
+      <button class="cdx-qa cdx-qa--primary" type="button">
+        <span>+</span> New Patient
+      </button>
+      <button class="cdx-qa" type="button">
+        <span>+</span> Appointment
+      </button>
+      <button class="cdx-qa" type="button">
+        Start Exam
+      </button>
+      <button class="cdx-qa" type="button">
+        Surgery Case
+      </button>
     </div>
   </header>
 
-  <!-- ── Critical alerts strip ─────────────────────────────── -->
-  @if (topEscalations().length) {
-    <div class="dash-alerts-strip">
-      @for (alert of notifications().slice(0, 4); track alert.id) {
-        <div class="dash-alert" [class]="'dash-alert--' + alert.tone">
-          <span class="dash-alert__clinic">{{ alert.clinic }}</span>
-          <span class="dash-alert__title">{{ alert.title }}</span>
-          <span class="dash-alert__count">{{ alert.count }}</span>
-        </div>
-      }
-    </div>
-  }
+  <!-- ════════════════════════════════════════════════════════
+       KPI STRIP
+  ════════════════════════════════════════════════════════ -->
+  <div class="cdx-kpi-strip">
 
-  <!-- ── Network Health Matrix ──────────────────────────────── -->
-  <section class="dash-section">
-    <div class="dash-section__hd">
-      <div>
-        <h2 class="dash-section__title">Clinic Network Health</h2>
-        <p class="dash-section__sub">Throughput · Imaging · ASC readiness · Claims risk · Staffing</p>
+    <div class="cdx-kpi cdx-kpi--blue">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ todayApptCount() }}</strong>
+      <span class="cdx-kpi__label">Today's Appointments</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--teal">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M5 20c0-4 3.1-7 7-7s7 3 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ checkedInCount() }}</strong>
+      <span class="cdx-kpi__label">Checked In</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--amber">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ waitingCount() }}</strong>
+      <span class="cdx-kpi__label">Waiting Room</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--green">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="4" fill="currentColor"/>
+          <path d="M2 12C2 12 5 5 12 5s10 7 10 7-3 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ inExamCount() }}</strong>
+      <span class="cdx-kpi__label">In Doctor Exam</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--purple">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ surgeriesCount() }}</strong>
+      <span class="cdx-kpi__label">Surgeries This Week</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--red">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ clinicalAlertCount() }}</strong>
+      <span class="cdx-kpi__label">Clinical Alerts</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--indigo">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 5a7 7 0 1 0 0 14A7 7 0 0 0 12 5z" stroke="currentColor" stroke-width="1.8"/>
+          <circle cx="12" cy="12" r="1" fill="currentColor"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ opticalPendingCount() }}</strong>
+      <span class="cdx-kpi__label">Optical Orders</span>
+    </div>
+
+    <div class="cdx-kpi cdx-kpi--slate">
+      <div class="cdx-kpi__icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+      </div>
+      <strong class="cdx-kpi__val">{{ claimsPendingCount() }}</strong>
+      <span class="cdx-kpi__label">Claims Pending</span>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       PATIENT FLOW + CLINICAL ALERTS
+  ════════════════════════════════════════════════════════ -->
+  <div class="cdx-mid-grid">
+
+    <!-- Patient Flow Board -->
+    <div class="cdx-card cdx-flow-card">
+      <div class="cdx-card__hd">
+        <h2 class="cdx-card__title">Patient Flow</h2>
+        <span class="cdx-card__sub">Today's clinic movement across all stages</span>
+      </div>
+
+      <div class="cdx-flow-stages">
+        @for (stage of flowBoard(); track stage.id; let last = $last) {
+          <div class="flow-stage">
+            <div class="flow-stage__hd flow-stage__hd--{{ stage.color }}">
+              <span class="flow-stage__label">{{ stage.label }}</span>
+              <span class="flow-stage__count flow-stage__count--{{ stage.color }}">{{ stage.count }}</span>
+            </div>
+            <div class="flow-stage__patients">
+              @for (p of stage.patients; track p.name) {
+                <div class="flow-chip flow-chip--{{ p.tone }}">
+                  <span class="flow-chip__avatar">{{ p.name.charAt(0) }}</span>
+                  <div class="flow-chip__info">
+                    <strong>{{ p.name }}</strong>
+                    <span>{{ p.visitType }}</span>
+                    <span class="flow-chip__wait">{{ p.wait }} min</span>
+                  </div>
+                </div>
+              }
+              @if (stage.patients.length === 0 && stage.count === 0) {
+                <p class="flow-stage__empty">No patients</p>
+              }
+              @if (stage.count > stage.patients.length && stage.patients.length > 0) {
+                <p class="flow-stage__more">+{{ stage.count - stage.patients.length }} more</p>
+              }
+            </div>
+          </div>
+          @if (!last) {
+            <div class="flow-arrow">→</div>
+          }
+        }
       </div>
     </div>
 
-    <div class="matrix-surface">
-      <table class="matrix-table">
+    <!-- Clinical Alerts -->
+    <div class="cdx-card cdx-alerts-card">
+      <div class="cdx-card__hd">
+        <h2 class="cdx-card__title">Clinical Alerts</h2>
+        <span class="cdx-badge cdx-badge--red">{{ clinicalAlerts().length }}</span>
+      </div>
+
+      <div class="cdx-alerts-list">
+        @for (alert of clinicalAlerts(); track alert.title) {
+          <div class="ca-item ca-item--{{ alert.severity }}">
+            <span class="ca-item__dot ca-item__dot--{{ alert.severity }}"></span>
+            <div class="ca-item__body">
+              <div class="ca-item__top">
+                <strong class="ca-item__title">{{ alert.title }}</strong>
+                @if (alert.count && alert.count > 1) {
+                  <span class="ca-item__count ca-count--{{ alert.severity }}">{{ alert.count }}</span>
+                }
+              </div>
+              <p class="ca-item__detail">{{ alert.detail }}</p>
+            </div>
+          </div>
+        }
+        @empty {
+          <div class="cdx-empty">
+            <span class="cdx-empty__icon">✓</span>
+            <p>No clinical alerts — clinic is running smoothly</p>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       TODAY'S APPOINTMENTS
+  ════════════════════════════════════════════════════════ -->
+  <div class="cdx-card">
+    <div class="cdx-card__hd">
+      <h2 class="cdx-card__title">Today's Appointments</h2>
+      <span class="cdx-card__sub">{{ todayApptCount() }} scheduled across all providers</span>
+    </div>
+
+    <div class="cdx-appt-wrap">
+      <table class="cdx-appt-table">
         <thead>
           <tr>
-            <th class="mc-clinic">Clinic</th>
-            <th class="mc-num">Wait</th>
-            <th class="mc-num">Utilization</th>
-            <th class="mc-num">Imaging</th>
-            <th class="mc-num">ASC</th>
-            <th class="mc-num">Claims</th>
-            <th class="mc-num">Staff</th>
-            <th class="mc-action">Recommended action</th>
+            <th>Time</th>
+            <th>Patient</th>
+            <th>Visit Type</th>
+            <th>Provider</th>
+            <th>Room</th>
+            <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (row of filteredOperationsMatrix(); track row.clinicId) {
-            <tr class="mrow" [class.mrow--focused]="currentClinic().id === row.clinicId">
-              <td class="mc-clinic">
-                <strong class="mc-clinic__name">{{ row.clinic }}</strong>
-                <span class="mc-clinic__note">{{ row.note }}</span>
+          @for (appt of todayAppointments(); track appt.patient + appt.time) {
+            <tr class="cdx-appt-row">
+              <td class="appt-time">{{ appt.time }}</td>
+              <td class="appt-patient">
+                <div class="appt-patient__avatar">{{ appt.patient.charAt(0) }}</div>
+                <strong>{{ appt.patient }}</strong>
               </td>
-              <td><span class="mval" [class]="'mdot mdot--' + row.waitTone">{{ row.waitTime }}</span></td>
-              <td><span class="mval" [class]="'mdot mdot--' + row.utilizationTone">{{ row.utilization }}</span></td>
-              <td><span class="mval" [class]="'mdot mdot--' + row.imagingTone">{{ row.imagingBacklog }}</span></td>
-              <td><span class="mval" [class]="'mdot mdot--' + row.ascTone">{{ row.ascReadiness }}</span></td>
-              <td><span class="mval" [class]="'mdot mdot--' + row.claimsTone">{{ row.claimsRisk }}</span></td>
-              <td><span class="mval" [class]="'mdot mdot--' + row.staffTone">{{ row.staffLoad }}</span></td>
-              <td class="mc-action">
-                <span class="maction">{{ row.recommendedAction }}</span>
-                <span class="maction-scope">{{ currentClinic().id === row.clinicId ? 'Focused clinic' : 'Regional' }}</span>
+              <td class="appt-visit">{{ appt.visitType }}</td>
+              <td class="appt-provider">{{ appt.provider }}</td>
+              <td class="appt-room">{{ appt.lane }}</td>
+              <td class="appt-status">
+                <span class="appt-chip appt-chip--{{ appt.tone }}">{{ appt.status }}</span>
+              </td>
+              <td class="appt-action">
+                <button class="appt-btn" type="button">View</button>
               </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
-  </section>
+  </div>
 
-  <!-- ── Active Work Queues ─────────────────────────────────── -->
-  <section class="dash-section">
-    <div class="dash-section__hd">
-      <h2 class="dash-section__title">Active Work Queues</h2>
-      <p class="dash-section__sub">Real-time operational exceptions requiring attention</p>
-    </div>
+  <!-- ════════════════════════════════════════════════════════
+       BOTTOM: SURGERY + OPTICAL + AI
+  ════════════════════════════════════════════════════════ -->
+  <div class="cdx-bottom-grid">
 
-    <div class="queue-grid">
-
-      <!-- Intervention queue -->
-      <article class="qcard qcard--primary">
-        <div class="qcard__hd">
-          <span class="qcard__dot qcard__dot--warning"></span>
-          <strong class="qcard__title">Intervention queue</strong>
-          <span class="qcard__badge">{{ filteredActionQueue().length }}</span>
-        </div>
-        <div class="qcard__body">
-          @for (action of filteredActionQueue().slice(0, 4); track action.id) {
-            <div class="qi qi--{{ action.tone }}">
-              <div class="qi__main">
-                <strong class="qi__title">{{ action.title }}</strong>
-                <span class="qi__meta">{{ action.workflow }} · {{ action.owner }} · {{ action.clinic }}</span>
-                <span class="qi__step">{{ action.nextStep }}</span>
-              </div>
-              <div class="qi__aside">
-                <span class="qi__due qi__due--{{ action.tone }}">{{ action.due }}</span>
-                <span class="qi__count">{{ action.count }}</span>
-              </div>
+    <!-- Surgery Pipeline -->
+    <div class="cdx-card">
+      <div class="cdx-card__hd">
+        <h2 class="cdx-card__title">Surgery Pipeline</h2>
+        <span class="cdx-card__sub">Cataract & procedure readiness</span>
+      </div>
+      <div class="cdx-surgery-list">
+        @for (stage of surgeryPipeline(); track stage.label) {
+          <div class="sx-stage">
+            <div class="sx-stage__left">
+              <span class="sx-stage__icon">{{ stage.icon }}</span>
+              <span class="sx-stage__label">{{ stage.label }}</span>
             </div>
-          }
-        </div>
-      </article>
-
-      <!-- Support boards (live appointments, billing) -->
-      @for (board of supportBoards().slice(0, 2); track board.id) {
-        <article class="qcard">
-          <div class="qcard__hd">
-            <span class="qcard__dot qcard__dot--{{ board.tone }}"></span>
-            <strong class="qcard__title">{{ board.title }}</strong>
-            <span class="qcard__badge">{{ board.rows.length }}</span>
+            <div class="sx-stage__right">
+              <span class="sx-stage__bar-wrap">
+                <span class="sx-stage__bar sx-stage__bar--{{ stage.tone }}"
+                  [style.width.%]="Math.min(100, stage.count * 8)"></span>
+              </span>
+              <strong class="sx-stage__count sx-count--{{ stage.tone }}">{{ stage.count }}</strong>
+            </div>
           </div>
-          <div class="qcard__body">
-            @for (row of board.rows; track row.label) {
-              <div class="qi qi--{{ row.tone }}">
-                <div class="qi__main">
-                  <strong class="qi__title">{{ row.label }}</strong>
-                  <span class="qi__meta">{{ row.supporting }}</span>
-                  @if (row.tags && row.tags.length) {
-                    <div class="qi__tags">
-                      @for (tag of row.tags; track tag) {
-                        <span class="qtag">{{ tag }}</span>
-                      }
-                    </div>
-                  }
-                </div>
-                <span class="qi__value qi__value--{{ row.tone }}">{{ row.value }}</span>
-              </div>
-            }
-          </div>
-        </article>
-      }
-
+        }
+      </div>
     </div>
-  </section>
+
+    <!-- Optical / Revenue Snapshot -->
+    <div class="cdx-card">
+      <div class="cdx-card__hd">
+        <h2 class="cdx-card__title">Optical &amp; Billing</h2>
+        <span class="cdx-card__sub">Today's snapshot</span>
+      </div>
+      <div class="cdx-optical-grid">
+        <div class="opt-tile opt-tile--blue">
+          <strong>{{ opticalSnapshot().inProgress }}</strong>
+          <span>Orders in progress</span>
+        </div>
+        <div class="opt-tile opt-tile--green">
+          <strong>{{ opticalReadyCount() }}</strong>
+          <span>Ready for pickup</span>
+        </div>
+        <div class="opt-tile opt-tile--amber">
+          <strong>{{ opticalSnapshot().claimsPending }}</strong>
+          <span>Claims pending</span>
+        </div>
+        <div class="opt-tile opt-tile--slate">
+          <strong>{{ opticalSnapshot().revenueToday }}</strong>
+          <span>Revenue today</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Clinical Recommendations -->
+    <div class="cdx-card cdx-ai-card">
+      <div class="cdx-card__hd">
+        <div class="cdx-ai-badge">✦ AI</div>
+        <h2 class="cdx-card__title">Clinical Briefing</h2>
+      </div>
+      <div class="cdx-ai-list">
+        @for (rec of aiRecs(); track rec.text) {
+          <div class="ai-rec ai-rec--{{ rec.type }}">
+            <span class="ai-rec__dot ai-rec__dot--{{ rec.type }}"></span>
+            <p>{{ rec.text }}</p>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
 
 </section>
