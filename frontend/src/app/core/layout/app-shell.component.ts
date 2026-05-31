@@ -21,6 +21,16 @@ export class AppShellComponent {
   private readonly store = inject(EnterpriseStoreService);
   private readonly authState = inject(AuthStateService);
 
+  // Kick off Firestore seed + sync the moment the shell loads (non-blocking).
+  // The app renders immediately with local data; Firestore data replaces it
+  // in the background when ready.
+  constructor() {
+    void this.store.initFirestore();
+  }
+
+  protected readonly firestoreReady = this.store.firestoreReady;
+  protected readonly firestoreError = this.store.firestoreError;
+
   protected readonly navigationSections = this.store.navigationSections;
   protected readonly clinicOptions = this.store.clinicOptions;
   protected readonly providerOptions = this.store.providerOptions;

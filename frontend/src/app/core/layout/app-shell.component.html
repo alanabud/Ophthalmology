@@ -94,6 +94,21 @@
           <span class="topbar__sandbox-badge">SANDBOX</span>
         }
 
+        <!-- Firestore connection status pill -->
+        @if (firestoreReady()) {
+          <span class="topbar__db-badge topbar__db-badge--ok" title="Connected to Firebase Firestore">
+            <span class="topbar__db-dot"></span> Firestore
+          </span>
+        } @else if (firestoreError()) {
+          <span class="topbar__db-badge topbar__db-badge--err" title="Firestore unavailable — using local data">
+            <span class="topbar__db-dot"></span> Local
+          </span>
+        } @else {
+          <span class="topbar__db-badge topbar__db-badge--loading" title="Connecting to Firestore…">
+            <span class="topbar__db-dot topbar__db-dot--pulse"></span> Syncing…
+          </span>
+        }
+
         <button class="topbar__quick-create" type="button" (click)="openQuickCreate()">+ Quick create</button>
 
         <button class="topbar__alerts" type="button" [class.topbar__alerts--active]="openAlertCount() > 0">

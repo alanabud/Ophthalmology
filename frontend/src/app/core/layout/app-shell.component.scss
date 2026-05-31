@@ -358,6 +358,38 @@
   white-space: nowrap;
 }
 
+/* Firestore status pill */
+.topbar__db-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.18rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: default;
+
+  &--ok      { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+  &--err     { background: #FEF9C3; color: #92400E; border: 1px solid #FCD34D; }
+  &--loading { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+}
+.topbar__db-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+
+  &--pulse { animation: db-pulse 1.4s ease-in-out infinite; }
+}
+@keyframes db-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
 .topbar__quick-create {
   display: inline-flex;
   align-items: center;

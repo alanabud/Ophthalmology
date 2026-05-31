@@ -1,4 +1,4 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 
 import { TokenPairResponse } from '../models/auth.models';
 import { ACTION_QUEUE, AI_BRIEF_ACTIONS, AI_BRIEF_SIGNALS, AI_INSIGHTS, COMMAND_SIGNALS, DAILY_BRIEFINGS, EXECUTIVE_METRICS, LIVE_BOARDS, OPERATIONS_MATRIX } from '../data/command-center.data';
@@ -16,6 +16,7 @@ import { COMPLIANCE_EVENTS } from '../data/compliance.data';
 import { ANALYTICS_POINTS, PROVIDER_PRODUCTIVITY, ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
 import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLOW, SURGICAL_READINESS } from '../data/clinic-today.data';
+import { FirestoreService } from './firestore.service';
 import {
   AiBriefingItem,
   ClaimRecord,
@@ -37,8 +38,21 @@ function clinicMatches(clinicId: string, activeClinicId: string): boolean {
   return activeClinicId === 'network' || clinicId === activeClinicId;
 }
 
+/** Derive a safe Firestore document ID from any string (strip illegal chars). */
+function toDocId(raw: string): string {
+  return raw.replace(/[\/\.#$\[\]]/g, '-').slice(0, 60);
+}
+
 @Injectable({ providedIn: 'root' })
 export class EnterpriseStoreService {
+  private readonly fs = inject(FirestoreService);
+
+  // ── Firestore status ───────────────────────────────────────────────────────
+  /** true once the initial Firestore seed+load cycle completes */
+  readonly firestoreReady   = signal(false);
+  /** non-null when Firestore is unavailable; app continues with local data */
+  readonly firestoreError   = signal<string | null>(null);
+
   readonly organizationName = 'Acuity Eye Network';
   readonly environmentLabel = 'Sandbox';
   readonly navigationSections = signal(NAVIGATION_SECTIONS);
@@ -187,50 +201,65 @@ export class EnterpriseStoreService {
   // ── Scheduling CRUD ────────────────────────────────────────────────────────
   createWaitlistEntry(entry: WaitlistRecord): void {
     this.waitlistBase.update((list) => [...list, entry]);
+    this.fs.upsert('waitlist', toDocId(`${entry.clinicId}-${entry.patient}`), entry).catch(console.warn);
   }
 
   // ── Billing CRUD ───────────────────────────────────────────────────────────
   createClaim(claim: ClaimRecord): void {
     this.claimsBase.update((list) => [...list, claim]);
+    this.fs.upsert('claims', toDocId(claim.claim), claim).catch(console.warn);
   }
   updateClaim(updated: ClaimRecord): void {
     this.claimsBase.update((list) => list.map((c) => (c.claim === updated.claim ? updated : c)));
+    this.fs.upsert('claims', toDocId(updated.claim), updated).catch(console.warn);
   }
   submitClaim(claimId: string): void {
     this.claimsBase.update((list) =>
       list.map((c) => (c.claim === claimId ? { ...c, status: 'Submitted', tone: 'info' as const } : c))
     );
+    const submitted = this.claimsBase().find(c => c.claim === claimId);
+    if (submitted) this.fs.upsert('claims', toDocId(claimId), submitted).catch(console.warn);
   }
 
   // ── Imaging CRUD ───────────────────────────────────────────────────────────
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
+    this.fs.upsert('imagingStudies', toDocId(study.studyId), study).catch(console.warn);
   }
   updateImagingStudy(updated: ImagingStudy): void {
     this.imagingStudiesBase.update((list) =>
       list.map((s) => (s.studyId === updated.studyId ? updated : s))
     );
+    this.fs.upsert('imagingStudies', toDocId(updated.studyId), updated).catch(console.warn);
   }
 
   // ── Surgery CRUD ───────────────────────────────────────────────────────────
   createSurgeryCase(surgeryCase: SurgeryCase): void {
     this.surgeryCasesBase.update((list) => [...list, surgeryCase]);
+    const key = toDocId(surgeryCase.caseId ?? `${surgeryCase.clinicId}-${surgeryCase.patient}`);
+    this.fs.upsert('surgeryCases', key, surgeryCase).catch(console.warn);
   }
 
   // ── Optical CRUD ───────────────────────────────────────────────────────────
   createOpticalOrder(order: OpticalOrder): void {
     this.opticalOrdersBase.update((list) => [...list, order]);
+    this.fs.upsert('opticalOrders', toDocId(order.order), order).catch(console.warn);
   }
   updateOpticalOrder(updated: OpticalOrder): void {
     this.opticalOrdersBase.update((list) => list.map((o) => (o.order === updated.order ? updated : o)));
+    this.fs.upsert('opticalOrders', toDocId(updated.order), updated).catch(console.warn);
   }
 
   // ── Inventory CRUD ─────────────────────────────────────────────────────────
   createInventoryItem(item: InventoryRecord): void {
     this.inventoryBase.update((list) => [...list, item]);
+    const key = toDocId(item.sku ?? item.item);
+    this.fs.upsert('inventory', key, item).catch(console.warn);
   }
   updateInventoryItem(updated: InventoryRecord): void {
     this.inventoryBase.update((list) => list.map((i) => (i.item === updated.item ? updated : i)));
+    const key = toDocId(updated.sku ?? updated.item);
+    this.fs.upsert('inventory', key, updated).catch(console.warn);
   }
 
   // ── Role / Access CRUD ─────────────────────────────────────────────────────
@@ -239,6 +268,98 @@ export class EnterpriseStoreService {
   }
   updateRole(updated: RoleMatrixItem): void {
     this.roleMatrix.update((list) => list.map((r) => (r.role === updated.role ? updated : r)));
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ── Firestore sync ────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Called once at service creation.  Runs asynchronously so the app renders
+   * immediately with local (hardcoded) data while Firestore initialises.
+   *
+   * Flow:
+   *  1. Seed all collections if they are empty (first run).
+   *  2. Load Firestore data into every signal (replaces hardcoded fallback).
+   *  3. Attach a real-time listener to `patientFlow` and `patients` so that
+   *     changes made in one browser tab (or by another user) propagate live.
+   */
+  async initFirestore(): Promise<void> {
+    try {
+      await this.seedAllCollections();
+      await this.loadAllCollections();
+      this.attachRealtimeListeners();
+      this.firestoreReady.set(true);
+      console.info('[Store] Firestore sync complete ✓');
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      this.firestoreError.set(msg);
+      console.warn('[Store] Firestore unavailable — using local data.', msg);
+    }
+  }
+
+  private async seedAllCollections(): Promise<void> {
+    await Promise.all([
+      this.fs.seedIfEmpty('patients',          [...PATIENTS],          p  => p.id),
+      this.fs.seedIfEmpty('claims',            [...CLAIMS],            c  => toDocId(c.claim)),
+      this.fs.seedIfEmpty('inventory',         [...INVENTORY],         i  => toDocId(i.sku ?? i.item)),
+      this.fs.seedIfEmpty('imagingStudies',    [...IMAGING_STUDIES],   s  => toDocId(s.studyId)),
+      this.fs.seedIfEmpty('surgeryCases',      [...SURGERY_CASES],     sc => toDocId(sc.caseId ?? `${sc.clinicId}-${sc.patient}`)),
+      this.fs.seedIfEmpty('opticalOrders',     [...OPTICAL_ORDERS],    o  => toDocId(o.order)),
+      this.fs.seedIfEmpty('patientFlow',       [...PATIENT_FLOW],      p  => p.id),
+      this.fs.seedIfEmpty('surgicalReadiness', [...SURGICAL_READINESS],sr => sr.id),
+      this.fs.seedIfEmpty('injectionSafety',   [...INJECTION_SAFETY],  inj => inj.id),
+    ]);
+  }
+
+  private async loadAllCollections(): Promise<void> {
+    const [
+      patients, claims, inventory, imagingStudies,
+      surgeryCases, opticalOrders,
+      patientFlow, surgicalReadiness, injectionSafety,
+    ] = await Promise.all([
+      this.fs.getAll<PatientRecord>('patients'),
+      this.fs.getAll<ClaimRecord>('claims'),
+      this.fs.getAll<InventoryRecord>('inventory'),
+      this.fs.getAll<ImagingStudy>('imagingStudies'),
+      this.fs.getAll<SurgeryCase>('surgeryCases'),
+      this.fs.getAll<OpticalOrder>('opticalOrders'),
+      this.fs.getAll<PatientFlowRecord>('patientFlow'),
+      this.fs.getAll<SurgicalReadinessCase>('surgicalReadiness'),
+      this.fs.getAll<InjectionSafetyRecord>('injectionSafety'),
+    ]);
+
+    if (patients.length)         this.patientsBase.set(patients);
+    if (claims.length)           this.claimsBase.set(claims);
+    if (inventory.length)        this.inventoryBase.set(inventory);
+    if (imagingStudies.length)   this.imagingStudiesBase.set(imagingStudies);
+    if (surgeryCases.length)     this.surgeryCasesBase.set(surgeryCases);
+    if (opticalOrders.length)    this.opticalOrdersBase.set(opticalOrders);
+    if (patientFlow.length)      this.patientFlowBase.set(patientFlow);
+    if (surgicalReadiness.length) this.surgicalReadiness.set(surgicalReadiness);
+    if (injectionSafety.length)   this.injectionSafety.set(injectionSafety);
+  }
+
+  private attachRealtimeListeners(): void {
+    // Real-time patient flow: changes appear instantly across all browser tabs
+    this.fs.subscribe<PatientFlowRecord>('patientFlow', docs => {
+      if (docs.length) this.patientFlowBase.set(docs);
+    });
+
+    // Real-time patient list: new/updated patients sync across sessions
+    this.fs.subscribe<PatientRecord>('patients', docs => {
+      if (docs.length) this.patientsBase.set(docs);
+    });
+
+    // Real-time claims: submissions visible immediately
+    this.fs.subscribe<ClaimRecord>('claims', docs => {
+      if (docs.length) this.claimsBase.set(docs);
+    });
+
+    // Real-time inventory: reorder confirmations propagate instantly
+    this.fs.subscribe<InventoryRecord>('inventory', docs => {
+      if (docs.length) this.inventoryBase.set(docs);
+    });
   }
 
   // ── Auth preview ───────────────────────────────────────────────────────────

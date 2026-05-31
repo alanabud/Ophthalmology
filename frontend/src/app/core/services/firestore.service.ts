@@ -1,0 +1,115 @@
+/**
+ * FirestoreService
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Thin, typed wrapper around the Firebase Firestore modular SDK (v9+).
+ * All methods are fire-and-forget or return Promises so callers decide
+ * whether to await or run in the background.
+ *
+ * Error handling: every public method catches Firestore errors and re-throws
+ * them so the caller can decide whether to swallow or surface them.
+ */
+
+import { Injectable } from '@angular/core';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  DocumentData,
+  getDocs,
+  limit,
+  onSnapshot,
+  query,
+  setDoc,
+  writeBatch,
+} from 'firebase/firestore';
+
+import { firebaseDb } from '../config/firebase.config';
+
+/** Function that extracts a stable string document-ID from a data record. */
+export type DocIdFn<T> = (item: T) => string;
+
+@Injectable({ providedIn: 'root' })
+export class FirestoreService {
+  private readonly db = firebaseDb;
+
+  // ── Seeding ────────────────────────────────────────────────────────────────
+
+  /**
+   * Seeds `collectionName` with `items` only if the collection is currently
+   * empty. Idempotent — safe to call on every app startup.
+   */
+  async seedIfEmpty<T extends DocumentData>(
+    collectionName: string,
+    items: T[],
+    getDocId: DocIdFn<T>
+  ): Promise<void> {
+    const colRef = collection(this.db, collectionName);
+    const probe  = await getDocs(query(colRef, limit(1)));
+    if (!probe.empty) return; // Already has data
+
+    // Firestore batches cap at 500 operations
+    const BATCH_CAP = 499;
+    for (let offset = 0; offset < items.length; offset += BATCH_CAP) {
+      const batch = writeBatch(this.db);
+      const slice = items.slice(offset, offset + BATCH_CAP);
+      for (const item of slice) {
+        batch.set(doc(colRef, getDocId(item)), item);
+      }
+      await batch.commit();
+    }
+  }
+
+  // ── Reads ──────────────────────────────────────────────────────────────────
+
+  /** Fetch every document in a collection as typed objects. */
+  async getAll<T>(collectionName: string): Promise<T[]> {
+    const snapshot = await getDocs(collection(this.db, collectionName));
+    return snapshot.docs.map(d => d.data() as T);
+  }
+
+  // ── Writes ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Create or fully overwrite a document.
+   * Use `upsert` when the document may or may not already exist.
+   */
+  async upsert<T extends DocumentData>(
+    collectionName: string,
+    docId: string,
+    data: T
+  ): Promise<void> {
+    await setDoc(doc(this.db, collectionName, docId), data, { merge: true });
+  }
+
+  /** Delete a document by ID. */
+  async remove(collectionName: string, docId: string): Promise<void> {
+    await deleteDoc(doc(this.db, collectionName, docId));
+  }
+
+  // ── Real-time ──────────────────────────────────────────────────────────────
+
+  /**
+   * Attach a real-time snapshot listener to an entire collection.
+   * Returns an unsubscribe function — store it and call it on cleanup.
+   *
+   * @example
+   *   const unsub = this.fs.subscribe<PatientFlowRecord>('patientFlow', docs => {
+   *     this.patientFlowBase.set(docs);
+   *   });
+   */
+  subscribe<T>(
+    collectionName: string,
+    onData: (items: T[]) => void,
+    onError?: (err: Error) => void
+  ): () => void {
+    return onSnapshot(
+      collection(this.db, collectionName),
+      snapshot => onData(snapshot.docs.map(d => d.data() as T)),
+      err => {
+        const msg = `[Firestore] listener error on "${collectionName}": ${err.message}`;
+        console.warn(msg);
+        onError?.(err);
+      }
+    );
+  }
+}
