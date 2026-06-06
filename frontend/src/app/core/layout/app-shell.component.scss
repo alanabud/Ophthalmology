@@ -497,6 +497,12 @@
   height: 38px;
   background: #FAFAFA;
   border-top: 1px solid transparent;
+  // Never let filters overlap: if space runs out, scroll horizontally
+  // instead of wrapping/squeezing.
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;            // Firefox
+  &::-webkit-scrollbar { display: none; } // WebKit
 }
 
 .topbar__ctx-role {
@@ -522,6 +528,7 @@
   gap: 6px;
   margin-right: 12px;
   font-size: 11px;
+  flex-shrink: 0;
 
   span {
     font-size: 10px;
@@ -540,6 +547,13 @@
     border: 1px solid var(--line-subtle);
     background: #fff;
   }
+}
+
+// Give the clinic / provider selects a stable, readable width so the
+// label never truncates to "Acuity…" or overflows the 38px context bar.
+.topbar__ctx-item--select app-enterprise-select {
+  display: block;
+  width: 184px;
 }
 
 .topbar__sandbox-pill {
@@ -570,8 +584,16 @@
   .tb-user__info { display: none; }
 }
 
+@media (max-width: 1200px) {
+  // Reclaim space in the context bar — the role label is also shown
+  // in the user chip, so it is safe to drop first.
+  .topbar__ctx-role,
+  .topbar__ctx-sep { display: none; }
+}
+
 @media (max-width: 1100px) {
   .topbar__search-wrap { max-width: 280px; }
+  .topbar__ctx-item--select app-enterprise-select { width: 150px; }
 }
 
 @media (max-width: 900px) {

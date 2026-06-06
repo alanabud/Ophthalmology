@@ -30,6 +30,18 @@
     box-shadow 130ms ease;
 }
 
+// Compact mode — single-line trigger for dense bars (e.g. topbar context row)
+.enterprise-select--compact .enterprise-select__trigger {
+  min-height: 28px;
+  padding: 0.2rem 0.55rem;
+  gap: 0.4rem;
+}
+
+.enterprise-select--compact .enterprise-select__copy strong {
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
 .enterprise-select__trigger:hover,
 .enterprise-select--open .enterprise-select__trigger {
   border-color: var(--line-strong);

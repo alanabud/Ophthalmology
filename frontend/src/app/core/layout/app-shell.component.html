@@ -162,20 +162,22 @@
         </span>
         <div class="topbar__ctx-sep"></div>
 
-        <label class="topbar__ctx-item">
+        <label class="topbar__ctx-item topbar__ctx-item--select">
           <span>Clinic</span>
           <app-enterprise-select
             ariaLabel="Clinic selector"
+            [compact]="true"
             [options]="clinicSelectOptions()"
             [value]="currentClinic().id"
             (valueChange)="setActiveClinic($event)"
           />
         </label>
 
-        <label class="topbar__ctx-item">
+        <label class="topbar__ctx-item topbar__ctx-item--select">
           <span>Provider</span>
           <app-enterprise-select
             ariaLabel="Provider selector"
+            [compact]="true"
             [options]="providerSelectOptions()"
             [value]="currentProvider().id"
             (valueChange)="setActiveProvider($event)"
