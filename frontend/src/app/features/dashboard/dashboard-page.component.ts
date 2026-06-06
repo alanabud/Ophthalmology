@@ -283,6 +283,43 @@ export class DashboardPageComponent {
     this.store.aiDailyBriefing()
   );
 
+  // ── Alert groups ─────────────────────────────────────────────────────────
+  protected readonly criticalAlerts = computed(() =>
+    this.clinicalAlerts().filter(a => a.severity === 'critical')
+  );
+  protected readonly warningAlerts = computed(() =>
+    this.clinicalAlerts().filter(a => a.severity === 'warning')
+  );
+  protected readonly infoAlerts = computed(() =>
+    this.clinicalAlerts().filter(a => a.severity === 'info')
+  );
+
+  // ── Provider capacity ─────────────────────────────────────────────────────
+  protected readonly providerCapacity = computed(() =>
+    this.store.scheduleLanes().slice(0, 5).map(lane => {
+      const cap = 20;
+      const n   = lane.blocks.length;
+      const pct = Math.min(100, Math.round((n / cap) * 100));
+      return {
+        name: lane.provider, specialty: lane.specialty, n, cap, pct,
+        tone: pct >= 90 ? 'critical' as const : pct >= 75 ? 'warning' as const : 'ok' as const,
+      };
+    })
+  );
+
+  // ── Revenue snapshot ──────────────────────────────────────────────────────
+  protected readonly revenueSnapshot = computed(() => {
+    const cl      = this.store.claims();
+    const paid    = cl.filter(c => c.status === 'Paid').length;
+    const denied  = cl.filter(c => c.status === 'Denied' || c.status === 'Rejected').length;
+    const pending = cl.filter(c =>
+      c.status !== 'Paid' && c.status !== 'Voided' &&
+      c.status !== 'Denied' && c.status !== 'Rejected').length;
+    const total   = Math.max(paid + pending + denied, 1);
+    return { paid, pending, denied, total,
+      todayRev: '$18,240', mtdRev: '$127,480', collectRate: 94, goalPct: 68 };
+  });
+
   // Expose Math for template
   protected readonly Math = Math;
 
