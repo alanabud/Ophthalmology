@@ -3,53 +3,58 @@
   --font-display: 'Aptos Display', 'Segoe UI Variable Display', 'Trebuchet MS', sans-serif;
   --font-body: 'Aptos', 'Segoe UI Variable Text', 'Bahnschrift', sans-serif;
 
-  /* Backgrounds */
-  --bg-app: #F5F6F8;
+  /* Backgrounds — warm clinical white */
+  --bg-app: #F8FAF7;
   --bg-shell: #ffffff;
   --bg-panel: #ffffff;
   --bg-panel-strong: #ffffff;
   --bg-panel-soft: rgba(0, 0, 0, 0.025);
   --surface-control: #f9fafb;
   --surface-control-strong: #f3f4f6;
-  --surface-control-hover: #f0f2f5;
+  --surface-control-hover: #f0f4f2;
   --surface-dropdown: #ffffff;
-  --surface-dropdown-selected: #DBEAFE;
+  --surface-dropdown-selected: #CCFBF1;
 
   /* Borders */
-  --line-subtle: rgba(0, 0, 0, 0.08);
+  --line-subtle: #E5E7EB;
   --line-strong: rgba(0, 0, 0, 0.16);
 
   /* Text */
-  --text-primary: #111827;
+  --text-primary: #17202A;
   --text-secondary: #374151;
-  --text-muted: #6b7280;
+  --text-muted: #667085;
   --text-subtle: #9ca3af;
   --text-placeholder: #9ca3af;
-  --text-dark-strong: #111827;
+  --text-dark-strong: #17202A;
 
-  /* Primary accent — cobalt blue */
-  --accent-primary: #1D4ED8;
-  --accent-primary-soft: rgba(29, 78, 216, 0.08);
-  --accent-primary-border: rgba(29, 78, 216, 0.20);
+  /* Primary accent — deep clinical teal */
+  --accent-primary: #0F766E;
+  --accent-primary-soft: rgba(15, 118, 110, 0.08);
+  --accent-primary-border: rgba(15, 118, 110, 0.22);
 
-  /* Keep teal alias for components using it */
-  --accent-teal: #1D4ED8;
-  --accent-teal-soft: rgba(29, 78, 216, 0.08);
+  /* Secondary blue — controlled, not dominant */
+  --accent-blue: #2563EB;
+  --accent-blue-soft: rgba(37, 99, 235, 0.08);
+  --accent-blue-border: rgba(37, 99, 235, 0.20);
+
+  /* Teal alias — now actual teal (lighter, secondary) */
+  --accent-teal: #0D9488;
+  --accent-teal-soft: rgba(13, 148, 136, 0.08);
 
   /* Semantic */
   --accent-gold: #d97706;
-  --accent-gold-soft: rgba(217, 119, 6, 0.12);
+  --accent-gold-soft: rgba(217, 119, 6, 0.10);
   --accent-critical: #dc2626;
-  --accent-critical-soft: rgba(220, 38, 38, 0.10);
+  --accent-critical-soft: rgba(220, 38, 38, 0.08);
   --accent-positive: #16a34a;
-  --accent-positive-soft: rgba(22, 163, 74, 0.10);
+  --accent-positive-soft: rgba(22, 163, 74, 0.08);
   --accent-info: #2563eb;
-  --accent-info-soft: rgba(37, 99, 235, 0.10);
+  --accent-info-soft: rgba(37, 99, 235, 0.08);
 
   /* Effects */
-  --focus-ring: 0 0 0 1px rgba(79, 70, 229, 0.4), 0 0 0 4px rgba(79, 70, 229, 0.10);
-  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --focus-ring: 0 0 0 1px rgba(15, 118, 110, 0.4), 0 0 0 4px rgba(15, 118, 110, 0.10);
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
 
   /* Radii */
   --radius-xl: 20px;

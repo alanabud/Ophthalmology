@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { DailyBriefingSignal } from '../../core/models/enterprise.models';
@@ -7,6 +7,7 @@ import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-mo
 import { NewClaimModalComponent } from '../../shared/ui/new-claim-modal.component';
 import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 import { QuickCreateModalComponent } from '../../shared/ui/quick-create-modal.component';
+import { ActionService } from '../services/action.service';
 import { AuthStateService } from '../services/auth-state.service';
 import { EnterpriseStoreService } from '../services/enterprise-store.service';
 
@@ -36,6 +37,19 @@ export class AppShellComponent {
   // Kick off Firestore seed + sync the moment the shell loads (non-blocking).
   // The app renders immediately with local data; Firestore data replaces it
   // in the background when ready.
+  private readonly actionService = inject(ActionService);
+
+  // React to actions dispatched by any child page (e.g. dashboard buttons)
+  private readonly _actionEffect = effect(() => {
+    const t = this.actionService.trigger();
+    if (!t) return;
+    switch (t.action) {
+      case 'new-patient':    this.newPatientOpen.set(true);    break;
+      case 'new-appointment': this.newAppointmentOpen.set(true); break;
+      case 'new-claim':      this.newClaimOpen.set(true);      break;
+    }
+  });
+
   constructor() {
     void this.store.initFirestore();
   }

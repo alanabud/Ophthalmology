@@ -1,6 +1,8 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { ScheduleBlock, SurfaceTone } from '../../core/models/enterprise.models';
+import { ActionService } from '../../core/services/action.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 
 // ── Local interfaces for derived dashboard data ────────────────────────────
@@ -42,7 +44,9 @@ interface SurgeryStage {
   styleUrl:    './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
-  protected readonly store = inject(EnterpriseStoreService);
+  protected readonly store          = inject(EnterpriseStoreService);
+  private   readonly actionService  = inject(ActionService);
+  private   readonly router         = inject(Router);
 
   // ── Topbar passthrough (used by template) ───────────────────────────────
   protected readonly currentClinic   = this.store.currentClinic;
@@ -283,15 +287,56 @@ export class DashboardPageComponent {
     this.store.aiDailyBriefing()
   );
 
-  // ── Alert groups ─────────────────────────────────────────────────────────
+  // ── Alert dismiss state ───────────────────────────────────────────────────
+  protected readonly dismissedAlerts = signal<ReadonlySet<string>>(new Set());
+
+  protected dismissAlert(alert: ClinicalAlert): void {
+    this.dismissedAlerts.update(s => new Set([...s, alert.title]));
+  }
+
+  protected reviewAlert(alert: ClinicalAlert): void {
+    const t = alert.title.toLowerCase();
+    if (t.includes('authorization') || t.includes('injection') || t.includes('claim')) {
+      void this.router.navigate(['/billing']);
+    } else if (t.includes('imaging') || t.includes('visual field') || t.includes('oct')) {
+      void this.router.navigate(['/imaging']);
+    } else if (t.includes('surgery') || t.includes('pre-op')) {
+      void this.router.navigate(['/surgery']);
+    } else if (t.includes('follow-up') || t.includes('recall')) {
+      void this.router.navigate(['/patients']);
+    } else {
+      void this.router.navigate(['/encounters']);
+    }
+  }
+
+  // ── Action rail ───────────────────────────────────────────────────────────
+  protected doAction(action: string): void {
+    switch (action) {
+      case 'new-patient':     this.actionService.dispatch('new-patient');    break;
+      case 'new-appointment': this.actionService.dispatch('new-appointment'); break;
+      case 'create-claim':    this.actionService.dispatch('new-claim');       break;
+      case 'start-exam':      void this.router.navigate(['/encounters']);     break;
+      case 'surgery-case':    void this.router.navigate(['/surgery']);        break;
+      case 'collect-payment': void this.router.navigate(['/billing']);        break;
+      case 'order-imaging':   void this.router.navigate(['/imaging']);        break;
+    }
+  }
+
+  protected viewAppointment(): void { void this.router.navigate(['/scheduling']); }
+  protected viewPatient():     void { void this.router.navigate(['/patients']);   }
+
+  // ── Alert groups (visible = not yet dismissed) ────────────────────────────
+  protected readonly visibleAlerts = computed(() =>
+    this.clinicalAlerts().filter(a => !this.dismissedAlerts().has(a.title))
+  );
   protected readonly criticalAlerts = computed(() =>
-    this.clinicalAlerts().filter(a => a.severity === 'critical')
+    this.visibleAlerts().filter(a => a.severity === 'critical')
   );
   protected readonly warningAlerts = computed(() =>
-    this.clinicalAlerts().filter(a => a.severity === 'warning')
+    this.visibleAlerts().filter(a => a.severity === 'warning')
   );
   protected readonly infoAlerts = computed(() =>
-    this.clinicalAlerts().filter(a => a.severity === 'info')
+    this.visibleAlerts().filter(a => a.severity === 'info')
   );
 
   // ── Provider capacity ─────────────────────────────────────────────────────
@@ -326,5 +371,25 @@ export class DashboardPageComponent {
   // Computed for template (avoids arrow fn in binding)
   protected readonly opticalReadyCount = computed(() =>
     this.store.opticalOrders().filter(o => o.status === 'Ready').length
+  );
+
+  // Intel panel computed properties (template can't use arrow fns)
+  protected readonly imagingOverdueCount = computed(() =>
+    this.store.cockpitImagingQueue().filter(i => i.status === 'overdue').length
+  );
+  protected readonly imagingPendingCount = computed(() =>
+    this.store.cockpitImagingQueue().filter(i => i.status === 'pending').length
+  );
+  protected readonly imagingCompletedCount = computed(() =>
+    this.store.cockpitImagingQueue().filter(i => i.status === 'complete').length
+  );
+  protected readonly claimsDeniedCount = computed(() =>
+    this.store.claims().filter(c => c.status === 'Denied' || c.status === 'Rejected').length
+  );
+  protected readonly authExpiredCount = computed(() =>
+    this.store.injectionSafety().filter(i => i.authStatus === 'expired').length
+  );
+  protected readonly authPendingCount = computed(() =>
+    this.store.injectionSafety().filter(i => i.authStatus === 'pending').length
   );
 }

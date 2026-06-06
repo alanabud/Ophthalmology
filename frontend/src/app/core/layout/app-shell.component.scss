@@ -175,7 +175,7 @@
 
   // Active state: left accent bar + subtle background
   &--active {
-    background: rgba(29, 78, 216, 0.07);
+    background: var(--accent-primary-soft);
     color: var(--accent-primary);
     font-weight: 600;
 
@@ -233,8 +233,8 @@
   &--critical { background: #FEE2E2; color: #991B1B; }
   &--warning  { background: #FEF3C7; color: #92400E; }
   &--accent,
-  &--success  { background: #DBEAFE; color: #1E3A8A; }
-  &--info     { background: #DBEAFE; color: #1E3A8A; }
+  &--success  { background: #CCFBF1; color: #0F766E; }
+  &--info     { background: #DBEAFE; color: #1E40AF; }
   &--neutral  { background: var(--surface-control); color: var(--text-muted); }
 }
 
@@ -252,7 +252,7 @@
   &--warning  { background: #D97706; }
   &--accent,
   &--info,
-  &--success  { background: var(--accent-primary); }
+  &--success  { background: var(--accent-teal); }
   &--neutral  { display: none; }
 }
 
@@ -351,7 +351,7 @@
     outline: none;
     border-color: var(--accent-primary);
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(29,78,216,.1);
+    box-shadow: 0 0 0 3px rgba(15,118,110,.1);
   }
 
   &::placeholder { color: var(--text-subtle); }

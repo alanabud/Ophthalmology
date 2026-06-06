@@ -1,188 +1,180 @@
-<section class="cmd-page">
+<section class="cdx">
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       1. COMMAND HERO
-  ══════════════════════════════════════════════════════════════════════ -->
-  <header class="cmd-hero">
-    <div class="cmd-hero__iris" aria-hidden="true"></div>
-    <div class="cmd-hero__content">
-
-      <div class="cmd-hero__info">
-        <div class="cmd-hero__eyebrow">
-          <span class="live-dot"></span>
-          <span>Clinic Operational</span>
-          <span class="eyebrow-sep"></span>
-          <span>{{ currentDate }}</span>
-        </div>
-        <h1 class="cmd-hero__name">
+  <!-- ═══════════════════════════════════════════════════════════════════
+       COMMAND HEADER — clean white, teal accents, no heavy gradient
+  ═══════════════════════════════════════════════════════════════════ -->
+  <header class="cdx-hdr">
+    <div class="cdx-hdr__brand">
+      <div class="cdx-hdr__mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="4" fill="currentColor"/>
+          <path d="M2 12C2 12 5 5 12 5s10 7 10 7-3 7-10 7S2 12 2 12z"
+            stroke="currentColor" stroke-width="1.8" fill="none"/>
+        </svg>
+      </div>
+      <div class="cdx-hdr__info">
+        <h1 class="cdx-hdr__name">
           @if (currentClinic().id === 'network') { Acuity Eye Network }
           @else { {{ currentClinic().name }} }
         </h1>
-        <p class="cmd-hero__sub">{{ greeting }} &mdash; Enterprise Command View</p>
+        <div class="cdx-hdr__meta">
+          <span class="cdx-hdr__status">
+            <span class="live-dot"></span>
+            Operational
+          </span>
+          <span class="meta-sep">·</span>
+          <span>{{ currentDate }}</span>
+          <span class="meta-sep">·</span>
+          <span>{{ greeting }}</span>
+        </div>
       </div>
+    </div>
 
-      <div class="cmd-hero__ctas">
-        <button class="hero-btn hero-btn--primary" type="button">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-          </svg>
-          New Patient
-        </button>
-        <button class="hero-btn" type="button">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
-            <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Appointment
-        </button>
-        <button class="hero-btn" type="button">Start Exam</button>
-        <button class="hero-btn" type="button">Surgery Case</button>
-      </div>
-
+    <div class="cdx-hdr__actions">
+      <button class="cxa cxa--primary" type="button" (click)="doAction('new-patient')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        New Patient
+      </button>
+      <button class="cxa" type="button" (click)="doAction('new-appointment')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Appointment
+      </button>
+      <button class="cxa" type="button" (click)="doAction('start-exam')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+        </svg>
+        Start Exam
+      </button>
+      <button class="cxa" type="button" (click)="doAction('surgery-case')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        Surgery Case
+      </button>
+      <button class="cxa" type="button" (click)="doAction('create-claim')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+          <path d="M2 10h20" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        Create Claim
+      </button>
+      <button class="cxa" type="button" (click)="doAction('collect-payment')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 7v10M9 9h4.5a1.5 1.5 0 0 1 0 3H11a1.5 1.5 0 0 0 0 3H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        Collect Payment
+      </button>
     </div>
   </header>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       2. OPERATIONAL PULSE — 8 METRIC CARDS
-  ══════════════════════════════════════════════════════════════════════ -->
-  <div class="pulse-strip">
+  <!-- ═══════════════════════════════════════════════════════════════════
+       OPERATIONAL PULSE — 2 groups of 3 metric cards
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cdx-pulse">
 
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--blue">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--up">↑ 4%</span>
+    <div class="pulse-group">
+      <p class="pulse-group__label">Today's Flow</p>
+      <div class="pulse-group__cards">
+
+        <button class="pcard pcard--teal" type="button" (click)="doAction('new-appointment')">
+          <div class="pcard__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <strong class="pcard__val">{{ todayApptCount() }}</strong>
+          <span class="pcard__label">Schedule Load</span>
+          <span class="pcard__ctx">appointments today</span>
+        </button>
+
+        <button class="pcard pcard--blue" type="button" (click)="viewPatient()">
+          <div class="pcard__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M5 20c0-4 3.1-7 7-7s7 3 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <strong class="pcard__val">{{ checkedInCount() }}</strong>
+          <span class="pcard__label">Checked In</span>
+          <span class="pcard__ctx">in clinic now</span>
+        </button>
+
+        <button class="pcard pcard--amber" type="button" (click)="viewPatient()">
+          <div class="pcard__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <strong class="pcard__val">{{ waitingCount() }}</strong>
+          <span class="pcard__label">Waiting Room</span>
+          <span class="pcard__ctx">avg 14 min wait</span>
+        </button>
+
       </div>
-      <strong class="mc-val">{{ todayApptCount() }}</strong>
-      <span class="mc-label">Today's Appointments</span>
-      <span class="mc-ctx">vs yesterday</span>
     </div>
 
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--teal">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M5 20c0-4 3.1-7 7-7s7 3 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--neutral">on pace</span>
-      </div>
-      <strong class="mc-val">{{ checkedInCount() }}</strong>
-      <span class="mc-label">Checked In</span>
-      <span class="mc-ctx">in clinic now</span>
-    </div>
+    <div class="pulse-group">
+      <p class="pulse-group__label">Clinical Operations</p>
+      <div class="pulse-group__cards">
 
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--amber">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--neutral">avg 14 min</span>
-      </div>
-      <strong class="mc-val">{{ waitingCount() }}</strong>
-      <span class="mc-label">Waiting Room</span>
-      <span class="mc-ctx">average wait</span>
-    </div>
+        <button class="pcard pcard--green" type="button" (click)="doAction('start-exam')">
+          <div class="pcard__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="4" fill="currentColor"/>
+              <path d="M2 12C2 12 5 5 12 5s10 7 10 7-3 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+            </svg>
+          </div>
+          <strong class="pcard__val">{{ inExamCount() }}</strong>
+          <span class="pcard__label">In Doctor Exam</span>
+          <span class="pcard__ctx">with provider now</span>
+        </button>
 
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--green">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="4" fill="currentColor"/>
-            <path d="M2 12C2 12 5 5 12 5s10 7 10 7-3 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.8" fill="none"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--up">active now</span>
-      </div>
-      <strong class="mc-val">{{ inExamCount() }}</strong>
-      <span class="mc-label">In Doctor Exam</span>
-      <span class="mc-ctx">with provider</span>
-    </div>
+        <button class="pcard" type="button"
+          [class.pcard--red]="visibleAlerts().length > 0"
+          [class.pcard--clear]="visibleAlerts().length === 0">
+          <div class="pcard__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <strong class="pcard__val">{{ visibleAlerts().length }}</strong>
+          <span class="pcard__label">Clinical Alerts</span>
+          <span class="pcard__ctx">{{ visibleAlerts().length > 0 ? 'need review' : 'all clear' }}</span>
+        </button>
 
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--indigo">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--neutral">this week</span>
-      </div>
-      <strong class="mc-val">{{ surgeriesCount() }}</strong>
-      <span class="mc-label">Surgeries Scheduled</span>
-      <span class="mc-ctx">all procedures</span>
-    </div>
+        <button class="pcard pcard--slate" type="button" (click)="doAction('collect-payment')">
+          <div class="pcard__icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <strong class="pcard__val">{{ claimsPendingCount() }}</strong>
+          <span class="pcard__label">Revenue Blockers</span>
+          <span class="pcard__ctx">claims pending</span>
+        </button>
 
-    <div class="metric-card" [class.metric-card--alert]="clinicalAlertCount() > 0">
-      <div class="metric-card__top">
-        <span class="mc-icon"
-          [class.mc-icon--red]="clinicalAlertCount() > 0"
-          [class.mc-icon--green]="clinicalAlertCount() === 0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
-              stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span class="mc-trend"
-          [class.mc-trend--alert]="clinicalAlertCount() > 0"
-          [class.mc-trend--up]="clinicalAlertCount() === 0">
-          {{ clinicalAlertCount() > 0 ? 'needs review' : 'all clear' }}
-        </span>
       </div>
-      <strong class="mc-val">{{ clinicalAlertCount() }}</strong>
-      <span class="mc-label">Clinical Alerts</span>
-      <span class="mc-ctx">open items</span>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--slate">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M12 5a7 7 0 1 0 0 14A7 7 0 0 0 12 5z" stroke="currentColor" stroke-width="1.8"/>
-            <circle cx="12" cy="12" r="1" fill="currentColor"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--neutral">open orders</span>
-      </div>
-      <strong class="mc-val">{{ opticalPendingCount() }}</strong>
-      <span class="mc-label">Optical Orders</span>
-      <span class="mc-ctx">in progress</span>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-card__top">
-        <span class="mc-icon mc-icon--cobalt">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/>
-          </svg>
-        </span>
-        <span class="mc-trend mc-trend--neutral">under review</span>
-      </div>
-      <strong class="mc-val">{{ claimsPendingCount() }}</strong>
-      <span class="mc-label">Claims Pending</span>
-      <span class="mc-ctx">awaiting payer</span>
     </div>
 
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       3. PATIENT FLOW COCKPIT
-  ══════════════════════════════════════════════════════════════════════ -->
-  <div class="cockpit-wrap">
-    <div class="section-hd">
+  <!-- ═══════════════════════════════════════════════════════════════════
+       PATIENT JOURNEY BOARD — full width, 6-stage pipeline
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cdx-journey">
+    <div class="cdx-journey__hd">
       <div>
-        <h2 class="section-hd__title">Patient Flow Cockpit</h2>
-        <p class="section-hd__sub">Today's clinic movement — {{ checkedInCount() }} active patients</p>
+        <h2 class="cdx-journey__title">Patient Journey</h2>
+        <p class="cdx-journey__sub">Today's clinic flow — {{ checkedInCount() }} active patients across all stages</p>
       </div>
       <span class="live-badge">
         <span class="live-dot live-dot--sm"></span>
@@ -190,30 +182,34 @@
       </span>
     </div>
 
-    <div class="pipeline-grid">
+    <div class="journey-grid">
       @for (stage of flowBoard(); track stage.id; let idx = $index) {
-        <div class="ppl-col">
-          <div class="ppl-col__hd ppl-col__hd--{{ stage.color }}">
-            <span class="ppl-col__step">{{ idx + 1 }}</span>
-            <span class="ppl-col__name">{{ stage.label }}</span>
-            <span class="ppl-col__count ppl-col__count--{{ stage.color }}">{{ stage.count }}</span>
+        <div class="jcol">
+          <div class="jcol__hd jcol__hd--{{ stage.color }}">
+            <span class="jcol__step">{{ idx + 1 }}</span>
+            <span class="jcol__name">{{ stage.label }}</span>
+            <span class="jcol__count jcol__count--{{ stage.color }}">{{ stage.count }}</span>
           </div>
-          <div class="ppl-col__body">
+          <div class="jcol__body">
             @for (p of stage.patients; track p.name) {
-              <div class="ppl-card ppl-card--{{ p.tone }}">
-                <span class="ppl-card__av">{{ p.name.charAt(0) }}</span>
-                <div class="ppl-card__info">
+              <button class="jcard jcard--{{ p.tone }}" type="button" (click)="viewPatient()">
+                <span class="jcard__av">{{ p.name.charAt(0) }}</span>
+                <div class="jcard__info">
                   <strong>{{ p.name }}</strong>
                   <span>{{ p.visitType }}</span>
                 </div>
-                <span class="ppl-card__wait" [class.ppl-card__wait--long]="p.wait > 20">{{ p.wait }}m</span>
-              </div>
+                <span class="jcard__wait" [class.jcard__wait--long]="p.wait > 20">
+                  {{ p.wait }}m
+                </span>
+              </button>
             }
             @if (stage.patients.length === 0 && stage.count === 0) {
-              <div class="ppl-empty">No patients</div>
+              <div class="jcol__empty">No patients</div>
             }
             @if (stage.count > stage.patients.length && stage.patients.length > 0) {
-              <div class="ppl-more">+{{ stage.count - stage.patients.length }} more</div>
+              <button class="jcol__more" type="button" (click)="viewPatient()">
+                +{{ stage.count - stage.patients.length }} more
+              </button>
             }
           </div>
         </div>
@@ -221,52 +217,52 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════════════
-       4. CLINICAL ALERTS + PROVIDER CAPACITY
-  ══════════════════════════════════════════════════════════════════════ -->
-  <div class="dual-row">
+  <!-- ═══════════════════════════════════════════════════════════════════
+       LOWER SECTION — work queue (left) + intelligence panel (right)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cdx-lower">
 
-    <!-- Clinical Risk & Alerts -->
-    <div class="panel alerts-panel">
-      <div class="panel-hd">
-        <h2 class="panel-hd__title">Clinical Risk &amp; Alerts</h2>
-        @if (clinicalAlerts().length > 0) {
-          <span class="risk-count-pill">{{ clinicalAlerts().length }} active</span>
-        } @else {
-          <span class="all-clear-pill">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-              <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            All clear
-          </span>
-        }
-      </div>
+    <main class="cdx-lower__main">
 
-      <div class="alerts-body">
+      <!-- Clinical Work Queue -->
+      <div class="cdx-wq">
+        <div class="wq-hd">
+          <h2 class="wq-hd__title">Clinical Work Queue</h2>
+          @if (visibleAlerts().length > 0) {
+            <span class="wq-count">{{ visibleAlerts().length }} open</span>
+          } @else {
+            <span class="wq-clear">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              All clear
+            </span>
+          }
+        </div>
 
         @if (criticalAlerts().length > 0) {
-          <div class="alert-group">
-            <div class="alert-group__label alert-group__label--critical">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <div class="wq-group">
+            <div class="wq-glabel wq-glabel--critical">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5"/>
                 <path d="M12 8v4m0 4h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
               Critical
             </div>
             @for (alert of criticalAlerts(); track alert.title) {
-              <div class="alert-card alert-card--critical">
-                <div class="alert-card__body">
-                  <div class="alert-card__top">
-                    <strong class="alert-card__title">{{ alert.title }}</strong>
+              <div class="wq-item wq-item--critical">
+                <div class="wq-item__body">
+                  <div class="wq-item__top">
+                    <strong>{{ alert.title }}</strong>
                     @if (alert.count && alert.count > 1) {
-                      <span class="alert-card__badge alert-card__badge--critical">{{ alert.count }}</span>
+                      <span class="wq-badge wq-badge--critical">{{ alert.count }}</span>
                     }
                   </div>
-                  <p class="alert-card__detail">{{ alert.detail }}</p>
+                  <p>{{ alert.detail }}</p>
                 </div>
-                <div class="alert-card__actions">
-                  <button class="al-btn al-btn--primary" type="button">Review</button>
-                  <button class="al-btn" type="button">Dismiss</button>
+                <div class="wq-item__acts">
+                  <button class="wqa wqa--primary" type="button" (click)="reviewAlert(alert)">Review</button>
+                  <button class="wqa" type="button" (click)="dismissAlert(alert)">Dismiss</button>
                 </div>
               </div>
             }
@@ -274,27 +270,27 @@
         }
 
         @if (warningAlerts().length > 0) {
-          <div class="alert-group">
-            <div class="alert-group__label alert-group__label--warning">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+          <div class="wq-group">
+            <div class="wq-glabel wq-glabel--warning">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
                 <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
               Needs Action
             </div>
             @for (alert of warningAlerts(); track alert.title) {
-              <div class="alert-card alert-card--warning">
-                <div class="alert-card__body">
-                  <div class="alert-card__top">
-                    <strong class="alert-card__title">{{ alert.title }}</strong>
+              <div class="wq-item wq-item--warning">
+                <div class="wq-item__body">
+                  <div class="wq-item__top">
+                    <strong>{{ alert.title }}</strong>
                     @if (alert.count && alert.count > 1) {
-                      <span class="alert-card__badge alert-card__badge--warning">{{ alert.count }}</span>
+                      <span class="wq-badge wq-badge--warning">{{ alert.count }}</span>
                     }
                   </div>
-                  <p class="alert-card__detail">{{ alert.detail }}</p>
+                  <p>{{ alert.detail }}</p>
                 </div>
-                <div class="alert-card__actions">
-                  <button class="al-btn al-btn--primary" type="button">Review</button>
-                  <button class="al-btn" type="button">Dismiss</button>
+                <div class="wq-item__acts">
+                  <button class="wqa wqa--primary" type="button" (click)="reviewAlert(alert)">Review</button>
+                  <button class="wqa" type="button" (click)="dismissAlert(alert)">Dismiss</button>
                 </div>
               </div>
             }
@@ -302,300 +298,239 @@
         }
 
         @if (infoAlerts().length > 0) {
-          <div class="alert-group">
-            <div class="alert-group__label alert-group__label--info">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+          <div class="wq-group">
+            <div class="wq-glabel wq-glabel--info">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
                 <path d="M12 16v-4m0-4h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
               </svg>
               Informational
             </div>
             @for (alert of infoAlerts(); track alert.title) {
-              <div class="alert-card alert-card--info">
-                <div class="alert-card__body">
-                  <div class="alert-card__top">
-                    <strong class="alert-card__title">{{ alert.title }}</strong>
+              <div class="wq-item wq-item--info">
+                <div class="wq-item__body">
+                  <div class="wq-item__top">
+                    <strong>{{ alert.title }}</strong>
                     @if (alert.count && alert.count > 1) {
-                      <span class="alert-card__badge alert-card__badge--info">{{ alert.count }}</span>
+                      <span class="wq-badge wq-badge--info">{{ alert.count }}</span>
                     }
                   </div>
-                  <p class="alert-card__detail">{{ alert.detail }}</p>
+                  <p>{{ alert.detail }}</p>
                 </div>
-                <div class="alert-card__actions">
-                  <button class="al-btn" type="button">Review</button>
-                  <button class="al-btn" type="button">Dismiss</button>
+                <div class="wq-item__acts">
+                  <button class="wqa" type="button" (click)="reviewAlert(alert)">Review</button>
+                  <button class="wqa" type="button" (click)="dismissAlert(alert)">Dismiss</button>
                 </div>
               </div>
             }
           </div>
         }
 
-        @if (clinicalAlerts().length === 0) {
-          <div class="alerts-empty">
-            <div class="alerts-empty__icon">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        @if (visibleAlerts().length === 0) {
+          <div class="wq-empty">
+            <div class="wq-empty__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
-            <strong>No active alerts</strong>
-            <p>Clinic is running smoothly</p>
-          </div>
-        }
-
-      </div>
-    </div>
-
-    <!-- Provider Capacity -->
-    <div class="panel capacity-panel">
-      <div class="panel-hd">
-        <h2 class="panel-hd__title">Provider Capacity</h2>
-        <span class="panel-hd__sub">Today's schedule fill</span>
-      </div>
-
-      <div class="capacity-list">
-        @for (p of providerCapacity(); track p.name) {
-          <div class="cap-row">
-            <div class="cap-row__info">
-              <div class="cap-row__avatar">{{ p.name.charAt(0) }}</div>
-              <div class="cap-row__copy">
-                <strong>{{ p.name }}</strong>
-                <span>{{ p.specialty }}</span>
-              </div>
-            </div>
-            <div class="cap-row__meter">
-              <div class="cap-bar">
-                <div class="cap-bar__fill cap-bar__fill--{{ p.tone }}" [style.width.%]="p.pct"></div>
-              </div>
-              <div class="cap-row__stats">
-                <span class="cap-pct cap-pct--{{ p.tone }}">{{ p.pct }}%</span>
-                <span class="cap-count">{{ p.n }}/{{ p.cap }}</span>
-              </div>
-            </div>
+            <strong>No open items</strong>
+            <p>Clinic is running smoothly today</p>
           </div>
         }
       </div>
 
-      <!-- Room utilization mini -->
-      <div class="room-util">
-        <p class="room-util__hd">Room Utilization</p>
-        <div class="room-grid">
-          @for (r of [
-            {label:'Exam 1',pct:90,tone:'critical'},
-            {label:'Exam 2',pct:65,tone:'ok'},
-            {label:'Exam 3',pct:80,tone:'warning'},
-            {label:'Imaging',pct:55,tone:'ok'},
-            {label:'Laser',pct:30,tone:'ok'},
-            {label:'Procedure',pct:70,tone:'warning'}
-          ]; track r.label) {
-            <div class="room-tile room-tile--{{ r.tone }}">
-              <span class="room-tile__pct">{{ r.pct }}%</span>
-              <span class="room-tile__label">{{ r.label }}</span>
+      <!-- Today's Appointments -->
+      <div class="cdx-appts">
+        <div class="cdx-appts__hd">
+          <h2 class="cdx-appts__title">Today's Appointments</h2>
+          <span class="cdx-appts__sub">{{ todayApptCount() }} scheduled · all providers</span>
+        </div>
+        <div class="appts-scroll">
+          <table class="appts-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Patient</th>
+                <th>Visit Type</th>
+                <th>Provider</th>
+                <th>Room</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (appt of todayAppointments(); track appt.patient + appt.time) {
+                <tr>
+                  <td class="appt-time">{{ appt.time }}</td>
+                  <td class="appt-patient">
+                    <span class="appt-av">{{ appt.patient.charAt(0) }}</span>
+                    <strong>{{ appt.patient }}</strong>
+                  </td>
+                  <td>{{ appt.visitType }}</td>
+                  <td class="appt-sm">{{ appt.provider }}</td>
+                  <td class="appt-sm appt-muted">{{ appt.lane }}</td>
+                  <td>
+                    <span class="schip schip--{{ appt.tone }}">{{ appt.status }}</span>
+                  </td>
+                  <td>
+                    <button class="view-btn" type="button" (click)="viewAppointment()">View</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Intelligence Panel (sticky) -->
+    <aside class="cdx-intel">
+
+      <!-- Provider Capacity -->
+      <div class="intel-card">
+        <div class="intel-card__hd">
+          <h3>Provider Capacity</h3>
+          <span class="intel-card__sub">Today</span>
+        </div>
+        <div class="intel-providers">
+          @for (p of providerCapacity(); track p.name) {
+            <div class="iprov">
+              <div class="iprov__top">
+                <span class="iprov__name">{{ p.name }}</span>
+                <span class="iprov__pct iprov__pct--{{ p.tone }}">{{ p.pct }}%</span>
+              </div>
+              <div class="ibar">
+                <div class="ibar__fill ibar__fill--{{ p.tone }}" [style.width.%]="p.pct"></div>
+              </div>
+              <span class="iprov__count">{{ p.n }} / {{ p.cap }} patients</span>
             </div>
           }
         </div>
       </div>
-    </div>
 
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════════════
-       5. TODAY'S APPOINTMENTS + REVENUE SNAPSHOT
-  ══════════════════════════════════════════════════════════════════════ -->
-  <div class="appt-row">
-
-    <!-- Appointments table -->
-    <div class="panel appt-panel">
-      <div class="panel-hd">
-        <h2 class="panel-hd__title">Today's Appointments</h2>
-        <span class="panel-hd__sub">{{ todayApptCount() }} scheduled across all providers</span>
-      </div>
-      <div class="appt-scroll">
-        <table class="appt-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Patient</th>
-              <th>Visit Type</th>
-              <th>Provider</th>
-              <th>Room</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (appt of todayAppointments(); track appt.patient + appt.time) {
-              <tr class="appt-row-item">
-                <td class="appt-time">{{ appt.time }}</td>
-                <td class="appt-patient">
-                  <span class="appt-av">{{ appt.patient.charAt(0) }}</span>
-                  <strong>{{ appt.patient }}</strong>
-                </td>
-                <td class="appt-visit">{{ appt.visitType }}</td>
-                <td class="appt-provider">{{ appt.provider }}</td>
-                <td class="appt-room">{{ appt.lane }}</td>
-                <td class="appt-status">
-                  <span class="status-chip status-chip--{{ appt.tone }}">{{ appt.status }}</span>
-                </td>
-                <td><button class="view-btn" type="button">View</button></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Revenue Snapshot -->
-    <div class="panel revenue-panel">
-      <div class="panel-hd">
-        <h2 class="panel-hd__title">Revenue Snapshot</h2>
-        <span class="panel-hd__sub">Today</span>
-      </div>
-
-      <div class="rev-hero">
-        <strong class="rev-today">{{ revenueSnapshot().todayRev }}</strong>
-        <span class="rev-today-label">Today's collections</span>
-        <div class="rev-mtd">
-          <span class="rev-mtd-val">{{ revenueSnapshot().mtdRev }}</span>
-          <span class="rev-mtd-label">Month-to-date</span>
+      <!-- Imaging Queue -->
+      <div class="intel-card">
+        <div class="intel-card__hd">
+          <h3>Imaging Queue</h3>
+          <button class="intel-link" type="button" (click)="doAction('order-imaging')">Open →</button>
         </div>
-      </div>
-
-      <div class="rev-goal">
-        <div class="rev-goal-hd">
-          <span>Monthly Goal Progress</span>
-          <span class="rev-goal-pct">{{ revenueSnapshot().goalPct }}%</span>
-        </div>
-        <div class="rev-goal-bar">
-          <div class="rev-goal-bar__fill" [style.width.%]="revenueSnapshot().goalPct"></div>
-        </div>
-      </div>
-
-      <div class="claims-breakdown">
-        <p class="claims-breakdown__hd">Claims Breakdown</p>
-
-        <div class="claim-row claim-row--paid">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-            <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span class="claim-row__label">Paid</span>
-          <div class="claim-bar claim-bar--paid">
-            <div class="claim-bar__fill" [style.width.%]="(revenueSnapshot().paid / revenueSnapshot().total) * 100"></div>
+        <div class="intel-items">
+          <div class="iitem iitem--critical">
+            <span class="iitem__dot"></span>
+            <span class="iitem__label">{{ imagingOverdueCount() }} overdue studies</span>
           </div>
-          <span class="claim-row__count">{{ revenueSnapshot().paid }}</span>
-        </div>
-
-        <div class="claim-row claim-row--pending">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-            <path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <span class="claim-row__label">Pending</span>
-          <div class="claim-bar claim-bar--pending">
-            <div class="claim-bar__fill" [style.width.%]="(revenueSnapshot().pending / revenueSnapshot().total) * 100"></div>
+          <div class="iitem iitem--warning">
+            <span class="iitem__dot"></span>
+            <span class="iitem__label">{{ imagingPendingCount() }} pending review</span>
           </div>
-          <span class="claim-row__count">{{ revenueSnapshot().pending }}</span>
-        </div>
-
-        <div class="claim-row claim-row--denied">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-            <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <span class="claim-row__label">Denied</span>
-          <div class="claim-bar claim-bar--denied">
-            <div class="claim-bar__fill" [style.width.%]="(revenueSnapshot().denied / revenueSnapshot().total) * 100"></div>
+          <div class="iitem iitem--ok">
+            <span class="iitem__dot"></span>
+            <span class="iitem__label">{{ imagingCompletedCount() }} ready to report</span>
           </div>
-          <span class="claim-row__count">{{ revenueSnapshot().denied }}</span>
         </div>
       </div>
 
-      <div class="collect-rate">
-        <span class="collect-rate__label">Collection Rate</span>
-        <span class="collect-rate__val">{{ revenueSnapshot().collectRate }}%</span>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════════════
-       6. SURGERY PIPELINE + AI CLINICAL BRIEFING
-  ══════════════════════════════════════════════════════════════════════ -->
-  <div class="bottom-row">
-
-    <!-- Surgery Pipeline -->
-    <div class="panel surgery-panel">
-      <div class="panel-hd">
-        <h2 class="panel-hd__title">Surgery Readiness</h2>
-        <span class="panel-hd__sub">Cataract &amp; procedure pipeline</span>
-      </div>
-      <div class="surgery-list">
-        @for (stage of surgeryPipeline(); track stage.label) {
-          <div class="sx-row">
-            <div class="sx-row__left">
-              <span class="sx-icon">{{ stage.icon }}</span>
-              <span class="sx-label">{{ stage.label }}</span>
-            </div>
-            <div class="sx-row__right">
-              <div class="sx-bar-wrap">
-                <div class="sx-bar sx-bar--{{ stage.tone }}" [style.width.%]="Math.min(100, stage.count * 8)"></div>
-              </div>
-              <strong class="sx-count sx-count--{{ stage.tone }}">{{ stage.count }}</strong>
-            </div>
+      <!-- Revenue Health -->
+      <div class="intel-card">
+        <div class="intel-card__hd">
+          <h3>Revenue at Risk</h3>
+          <button class="intel-link" type="button" (click)="doAction('collect-payment')">Open →</button>
+        </div>
+        <div class="intel-rev">
+          <strong class="intel-rev__total">{{ claimsPendingCount() }}</strong>
+          <span class="intel-rev__label">pending claims</span>
+        </div>
+        <div class="intel-items">
+          <div class="iitem iitem--critical">
+            <span class="iitem__dot"></span>
+            <span class="iitem__label">{{ claimsDeniedCount() }} denied / rejected</span>
           </div>
-        }
+          <div class="iitem iitem--warning">
+            <span class="iitem__dot"></span>
+            <span class="iitem__label">{{ authExpiredCount() }} auth expired</span>
+          </div>
+          <div class="iitem iitem--warning">
+            <span class="iitem__dot"></span>
+            <span class="iitem__label">{{ authPendingCount() }} auth pending</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Optical snapshot mini -->
-      <div class="optical-snap">
-        <p class="optical-snap__hd">Optical &amp; Billing</p>
-        <div class="opt-tiles">
-          <div class="opt-tile opt-tile--blue">
-            <strong>{{ opticalSnapshot().inProgress }}</strong>
-            <span>In progress</span>
+      <!-- Surgery & Optical Snapshot -->
+      <div class="intel-card">
+        <div class="intel-card__hd">
+          <h3>Surgery &amp; Optical</h3>
+          <button class="intel-link" type="button" (click)="doAction('surgery-case')">Open →</button>
+        </div>
+        <div class="intel-snaps">
+          <div class="isnap">
+            <strong>{{ surgeriesCount() }}</strong>
+            <span>Cases this week</span>
           </div>
-          <div class="opt-tile opt-tile--green">
+          <div class="isnap">
+            <strong>{{ opticalPendingCount() }}</strong>
+            <span>Optical orders</span>
+          </div>
+          <div class="isnap">
             <strong>{{ opticalReadyCount() }}</strong>
             <span>Ready pickup</span>
           </div>
-          <div class="opt-tile opt-tile--amber">
-            <strong>{{ opticalSnapshot().claimsPending }}</strong>
-            <span>Claims pending</span>
-          </div>
-          <div class="opt-tile opt-tile--slate">
+          <div class="isnap isnap--revenue">
             <strong>{{ opticalSnapshot().revenueToday }}</strong>
             <span>Optical revenue</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- AI Clinical Briefing -->
-    <div class="panel ai-panel">
-      <div class="panel-hd">
-        <div class="ai-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              fill="currentColor"/>
-          </svg>
-          AI
+      <!-- AI Clinical Briefing -->
+      <div class="intel-card intel-card--ai">
+        <div class="intel-card__hd">
+          <div class="ai-badge">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/>
+            </svg>
+            AI
+          </div>
+          <h3>Clinical Briefing</h3>
         </div>
-        <h2 class="panel-hd__title">Clinical Briefing</h2>
+        <div class="ai-recs">
+          @for (rec of aiRecs().slice(0, 3); track rec.text) {
+            <div class="ai-rec ai-rec--{{ rec.type }}">
+              <span class="ai-rec__dot ai-rec__dot--{{ rec.type }}"></span>
+              <p>{{ rec.text }}</p>
+            </div>
+          }
+        </div>
       </div>
-      <div class="ai-list">
-        @for (rec of aiRecs(); track rec.text) {
-          <div class="ai-item ai-item--{{ rec.type }}">
-            <span class="ai-dot ai-dot--{{ rec.type }}"></span>
-            <p>{{ rec.text }}</p>
-          </div>
-        }
-        @empty {
-          <div class="alerts-empty">
-            <p>No recommendations at this time</p>
+
+    </aside>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       BOTTOM — Surgery Pipeline
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cdx-bottom">
+    <div class="cdx-surgery">
+      <div class="cdx-surgery__hd">
+        <h2>Surgery Readiness</h2>
+        <span>Cataract &amp; procedure pipeline</span>
+        <button class="intel-link" type="button" (click)="doAction('surgery-case')">Open Surgery →</button>
+      </div>
+      <div class="sx-list">
+        @for (stage of surgeryPipeline(); track stage.label) {
+          <div class="sx-row">
+            <span class="sx-icon">{{ stage.icon }}</span>
+            <span class="sx-label">{{ stage.label }}</span>
+            <div class="sx-bar-wrap">
+              <div class="sx-bar sx-bar--{{ stage.tone }}" [style.width.%]="Math.min(100, stage.count * 8)"></div>
+            </div>
+            <strong class="sx-val sx-val--{{ stage.tone }}">{{ stage.count }}</strong>
           </div>
         }
       </div>
     </div>
-
   </div>
 
 </section>
