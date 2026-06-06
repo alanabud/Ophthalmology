@@ -392,4 +392,77 @@ export class DashboardPageComponent {
   protected readonly authPendingCount = computed(() =>
     this.store.injectionSafety().filter(i => i.authStatus === 'pending').length
   );
+
+  // ── Command hero: live capacity + throughput ──────────────────────────────
+
+  /** Time-of-day progress across an 8a–6p clinic day (live, always sensible). */
+  protected readonly dayProgressPct = (() => {
+    const now = new Date();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const start = 8 * 60, end = 18 * 60;
+    return Math.max(0, Math.min(100, Math.round(((mins - start) / (end - start)) * 100)));
+  })();
+
+  /** Patients seen (checked out) vs total scheduled — true throughput. */
+  protected readonly seenCount = computed(() =>
+    this.store.patientFlow().filter(p => p.station === 'checkout').length
+  );
+
+  protected readonly throughputPct = computed(() => {
+    const total = this.todayApptCount();
+    return total ? Math.round((this.seenCount() / total) * 100) : 0;
+  });
+
+  /** Average wait across active patients, with a risk tone. */
+  protected readonly avgWaitMinutes = computed(() => {
+    const pf = this.store.patientFlow();
+    if (!pf.length) return 0;
+    return Math.round(pf.reduce((s, p) => s + p.waitMinutes, 0) / pf.length);
+  });
+
+  protected readonly waitRisk = computed((): 'ok' | 'warning' | 'critical' => {
+    const w = this.avgWaitMinutes();
+    return w >= 25 ? 'critical' : w >= 15 ? 'warning' : 'ok';
+  });
+
+  /** Stroke offset for the SVG capacity ring (r = 54 → circumference ≈ 339.3). */
+  protected readonly ringCircumference = 2 * Math.PI * 54;
+  protected readonly ringOffset = computed(() =>
+    this.ringCircumference * (1 - this.dayProgressPct / 100)
+  );
+
+  /** Compact hero signal rows (no boxes — inline ticker). */
+  protected readonly heroSignals = computed(() => [
+    {
+      key: 'arrived', label: 'Arrived', value: `${this.checkedInCount()}`,
+      sub: `of ${this.todayApptCount()} scheduled`, tone: 'teal' as const, icon: 'user',
+    },
+    {
+      key: 'wait', label: 'Avg Wait', value: `${this.avgWaitMinutes()}m`,
+      sub: this.waitRisk() === 'ok' ? 'within target' : 'above target', tone: this.waitRisk(), icon: 'clock',
+    },
+    {
+      key: 'exam', label: 'In Exam', value: `${this.inExamCount()}`,
+      sub: 'with provider now', tone: 'blue' as const, icon: 'eye',
+    },
+    {
+      key: 'alerts', label: 'Open Alerts', value: `${this.visibleAlerts().length}`,
+      sub: this.visibleAlerts().length ? 'need review' : 'all clear',
+      tone: (this.visibleAlerts().length ? 'critical' : 'ok') as 'critical' | 'ok', icon: 'alert',
+    },
+    {
+      key: 'revenue', label: 'Revenue Risk', value: `${this.claimsPendingCount()}`,
+      sub: 'claims pending', tone: 'amber' as const, icon: 'card',
+    },
+  ]);
+
+  /** Action rail definition — single source so every button is wired. */
+  protected readonly quickActions = [
+    { id: 'new-patient',     label: 'New Patient',  primary: true  },
+    { id: 'new-appointment', label: 'Appointment',  primary: false },
+    { id: 'start-exam',      label: 'Start Exam',   primary: false },
+    { id: 'surgery-case',    label: 'Surgery Case', primary: false },
+    { id: 'create-claim',    label: 'Create Claim', primary: false },
+    { id: 'collect-payment', label: 'Collect',      primary: false },
+  ];
 }
