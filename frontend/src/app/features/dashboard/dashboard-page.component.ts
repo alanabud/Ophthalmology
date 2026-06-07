@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { FlowStation, PatientFlowRecord, ScheduleBlock, SurfaceTone } from '../../core/models/enterprise.models';
+import { FlowStation, PatientClinicalRecord, PatientFlowRecord, ScheduleBlock, SurfaceTone } from '../../core/models/enterprise.models';
 import { ActionService } from '../../core/services/action.service';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
@@ -636,8 +636,8 @@ export class DashboardPageComponent {
 
   // ── Patient drawer (slide-over) ───────────────────────────────────────────
   protected readonly selectedPatient = signal<PatientFlowRecord | null>(null);
-  protected openPatient(p: PatientFlowRecord): void { this.selectedPatient.set(p); }
-  protected closePatient(): void { this.selectedPatient.set(null); }
+  protected openPatient(p: PatientFlowRecord): void { this.selectedPatient.set(p); this.clinicalEditing.set(false); this.clinicalDraft.set(null); }
+  protected closePatient(): void { this.selectedPatient.set(null); this.clinicalEditing.set(false); this.clinicalDraft.set(null); }
 
   // Clinical board order — matches boardStations so skip/advance logic and the
   // visual columns agree.
@@ -898,28 +898,45 @@ export class DashboardPageComponent {
     };
   }
 
-  /** Clinical risk flags — derived from real + computed encounter data. */
+  /** Clinical risk flags — now driven by persisted EMR data where present. */
   protected riskFlags(p: PatientFlowRecord): { label: string; tone: 'critical' | 'warning' | 'info' }[] {
-    const c = this.clinicalProfile(p);
     const flags: { label: string; tone: 'critical' | 'warning' | 'info' }[] = [];
     if (p.urgent) flags.push({ label: 'Flagged urgent', tone: 'critical' });
-    const maxIop = Math.max(c.iopOD, c.iopOS);
-    if (maxIop > 21) flags.push({ label: `Elevated IOP ${maxIop} mmHg`, tone: 'critical' });
-    const worseVa = c.worseEye === 'OD' ? c.vaOD : c.vaOS;
-    if (Number(worseVa.split('/')[1]) >= 50) flags.push({ label: `Reduced acuity ${worseVa} ${c.worseEye}`, tone: 'warning' });
-    if (p.visitCategory === 'post-op') flags.push({ label: 'Post-operative — monitor', tone: 'info' });
-    if (p.visitCategory === 'glaucoma') flags.push({ label: 'Glaucoma monitoring', tone: 'warning' });
-    if (/diabet/i.test(p.visitType)) flags.push({ label: 'Diabetic eye exam', tone: 'warning' });
 
-    // Reflect imaging module status: resolved studies clear the flag.
+    const cr = this.store.clinicalRecords()[p.id];
+    if (cr) {
+      const iopMax = Math.max(cr.iop?.od ?? 0, cr.iop?.os ?? 0);
+      if (iopMax > 21) flags.push({ label: `Elevated IOP ${iopMax} mmHg`, tone: 'critical' });
+
+      const worst = this.worstVa(cr);
+      if (worst && Number(worst.va.split('/')[1]) >= 50)
+        flags.push({ label: `Reduced acuity ${worst.va} ${worst.eye}`, tone: 'warning' });
+
+      if ((cr.allergies ?? []).some(a => a.substance && a.substance.toUpperCase() !== 'NKDA'))
+        flags.push({ label: `Allergy: ${cr.allergies[0].substance}`, tone: 'warning' });
+
+      const text = [
+        ...(cr.diagnosis ?? []).map(d => `${d.icd10 ?? ''} ${d.description ?? ''}`),
+        ...(cr.ocularHistory ?? []), ...(cr.systemicHistory ?? []),
+      ].join(' ').toLowerCase();
+      if (/glaucoma|h40/.test(text)) flags.push({ label: 'Glaucoma monitoring', tone: 'warning' });
+      if (/diabet|e11|retinopathy/.test(text)) flags.push({ label: 'Diabetic eye risk', tone: 'warning' });
+
+      const missing = this.missingClinical(cr);
+      if (missing.length) flags.push({ label: `Incomplete chart — ${missing.join(', ')}`, tone: 'info' });
+    } else {
+      flags.push({ label: 'Not charted — clinical data missing', tone: 'info' });
+    }
+
+    // Reflect imaging module status.
     const imgStatus = this.store.imagingWork()[p.id]?.status;
     const imgResolved = imgStatus === 'Interpreted' || imgStatus === 'Ready for review';
-    if (!imgResolved && c.pendingTests.some(t => /imag|biometr|topograph|oct|field/i.test(t)))
+    if (!imgResolved && p.readinessItems.some(r => r.required && !r.done && /imag|biometr|topograph|oct|field/i.test(r.label)))
       flags.push({ label: 'Imaging / testing incomplete', tone: 'warning' });
     else if (imgStatus === 'Repeat requested')
       flags.push({ label: 'Imaging repeat requested', tone: 'warning' });
 
-    // Reflect billing module status: auth received / submitted clears the blocker.
+    // Reflect billing module status.
     const clmStatus = this.store.claimWork()[p.id]?.status;
     const clmResolved = clmStatus === 'Submitted' || clmStatus === 'Auth received' || clmStatus === 'Ready';
     if (!clmResolved) {
@@ -927,6 +944,153 @@ export class DashboardPageComponent {
       else if (p.authStatus === 'pending') flags.push({ label: 'Prior auth pending', tone: 'warning' });
     }
     return flags;
+  }
+
+  // ── EMR clinical record: read + edit ────────────────────────────────────────
+  protected clinicalFor(p: PatientFlowRecord): PatientClinicalRecord | null {
+    return this.store.clinicalRecords()[p.id] ?? null;
+  }
+
+  private worstVa(cr: PatientClinicalRecord): { va: string; eye: string } | null {
+    const od = cr.visualAcuity?.od, os = cr.visualAcuity?.os;
+    const denom = (v?: string) => (v && v.includes('/') ? Number(v.split('/')[1]) : -1);
+    if (!od && !os) return null;
+    return denom(od) >= denom(os) ? { va: od!, eye: 'OD' } : { va: os!, eye: 'OS' };
+  }
+
+  protected missingClinical(cr: PatientClinicalRecord): string[] {
+    const m: string[] = [];
+    if (!cr.chiefComplaint) m.push('complaint');
+    if (!cr.visualAcuity?.od && !cr.visualAcuity?.os) m.push('VA');
+    if (cr.iop?.od == null && cr.iop?.os == null) m.push('IOP');
+    if (!(cr.diagnosis ?? []).some(d => d.icd10)) m.push('diagnosis');
+    if (!cr.assessmentPlan) m.push('plan');
+    return m;
+  }
+
+  /** Compact status chips shown on the EMR summary header. */
+  protected clinicalBadges(p: PatientFlowRecord): { label: string; tone: 'ok' | 'warning' | 'critical' | 'info' }[] {
+    const cr = this.clinicalFor(p);
+    if (!cr) return [{ label: 'Needs charting', tone: 'info' }];
+    const b: { label: string; tone: 'ok' | 'warning' | 'critical' | 'info' }[] = [];
+    const iopMax = Math.max(cr.iop?.od ?? 0, cr.iop?.os ?? 0);
+    if (iopMax > 21) b.push({ label: 'IOP elevated', tone: 'critical' });
+    if ((cr.allergies ?? []).some(a => a.substance && a.substance.toUpperCase() !== 'NKDA')) b.push({ label: 'Allergy alert', tone: 'warning' });
+    if (!(cr.diagnosis ?? []).some(d => d.icd10)) b.push({ label: 'Needs diagnosis', tone: 'warning' });
+    if (this.missingClinical(cr).length === 0) b.push({ label: 'Chart complete', tone: 'ok' });
+    return b.length ? b : [{ label: 'Charted', tone: 'ok' }];
+  }
+
+  protected readonly examFields: { key: keyof PatientClinicalRecord['examFindings']; label: string }[] = [
+    { key: 'lidsLashes', label: 'Lids / lashes' }, { key: 'conjunctiva', label: 'Conjunctiva' },
+    { key: 'cornea', label: 'Cornea' }, { key: 'anteriorChamber', label: 'Ant. chamber' },
+    { key: 'iris', label: 'Iris' }, { key: 'lens', label: 'Lens' },
+    { key: 'vitreous', label: 'Vitreous' }, { key: 'opticNerve', label: 'Optic nerve' },
+    { key: 'macula', label: 'Macula' }, { key: 'retina', label: 'Retina' },
+    { key: 'vessels', label: 'Vessels' }, { key: 'periphery', label: 'Periphery' },
+  ];
+
+  // Edit state
+  protected readonly clinicalEditing = signal(false);
+  protected readonly clinicalDraft = signal<PatientClinicalRecord | null>(null);
+
+  private blankClinical(p: PatientFlowRecord): PatientClinicalRecord {
+    return {
+      patientId: p.id, mrn: p.mrn, encounterId: `${p.id}-enc`,
+      visitDate: new Date().toLocaleDateString('en-US'),
+      chiefComplaint: '', visualAcuity: {}, iop: {}, allergies: [], medications: [],
+      ocularHistory: [], systemicHistory: [], examFindings: {}, diagnosis: [{}], assessmentPlan: '',
+    };
+  }
+
+  protected startEditClinical(p: PatientFlowRecord): void {
+    const existing = this.clinicalFor(p);
+    const base = existing ? structuredClone(existing) : this.blankClinical(p);
+    if (!base.diagnosis?.length) base.diagnosis = [{}];
+    this.clinicalDraft.set(base);
+    this.clinicalEditing.set(true);
+  }
+  protected cancelEditClinical(): void {
+    this.clinicalEditing.set(false);
+    this.clinicalDraft.set(null);
+  }
+  protected saveClinical(p: PatientFlowRecord): void {
+    const d = this.clinicalDraft();
+    if (!d) return;
+    const prev = this.clinicalFor(p);
+    const changed = this.changedSections(prev, d);
+    // strip an empty diagnosis row
+    d.diagnosis = (d.diagnosis ?? []).filter(x => x.icd10 || x.description);
+    this.store.saveClinicalRecord(d, changed.length ? changed : ['clinical']);
+    this.clinicalEditing.set(false);
+    this.clinicalDraft.set(null);
+  }
+
+  private changedSections(prev: PatientClinicalRecord | null, next: PatientClinicalRecord): string[] {
+    const s: string[] = [];
+    const j = (v: unknown) => JSON.stringify(v ?? null);
+    if (j(prev?.chiefComplaint) !== j(next.chiefComplaint)) s.push('chief complaint');
+    if (j(prev?.visualAcuity) !== j(next.visualAcuity)) s.push('visual acuity');
+    if (j(prev?.iop) !== j(next.iop)) s.push('IOP');
+    if (j(prev?.allergies) !== j(next.allergies)) s.push('allergies');
+    if (j(prev?.medications) !== j(next.medications)) s.push('medications');
+    if (j(prev?.ocularHistory) !== j(next.ocularHistory)) s.push('ocular history');
+    if (j(prev?.systemicHistory) !== j(next.systemicHistory)) s.push('systemic history');
+    if (j(prev?.examFindings) !== j(next.examFindings)) s.push('exam');
+    if (j(prev?.diagnosis) !== j(next.diagnosis)) s.push('diagnosis');
+    if (j(prev?.assessmentPlan) !== j(next.assessmentPlan)) s.push('assessment/plan');
+    return s;
+  }
+
+  protected readonly clinicalDirty = computed(() => {
+    const d = this.clinicalDraft();
+    if (!d) return false;
+    const prev = this.store.clinicalRecords()[d.patientId] ?? null;
+    return this.changedSections(prev, d).length > 0;
+  });
+
+  // ── Draft patch helpers ─────────────────────────────────────────────────────
+  private patch(mut: (d: PatientClinicalRecord) => void): void {
+    const d = this.clinicalDraft();
+    if (!d) return;
+    const copy = structuredClone(d);
+    mut(copy);
+    this.clinicalDraft.set(copy);
+  }
+  protected patchField(key: 'chiefComplaint' | 'assessmentPlan', v: string): void { this.patch(d => { d[key] = v; }); }
+  protected patchVa(key: keyof PatientClinicalRecord['visualAcuity'], v: string): void { this.patch(d => { d.visualAcuity = { ...d.visualAcuity, [key]: v }; }); }
+  protected patchIop(eye: 'od' | 'os', v: string): void { this.patch(d => { d.iop = { ...d.iop, [eye]: v === '' ? undefined : Number(v) }; }); }
+  protected patchIopMethod(v: string): void { this.patch(d => { d.iop = { ...d.iop, method: (v || undefined) as never }; }); }
+  protected patchExam(key: keyof PatientClinicalRecord['examFindings'], v: string): void { this.patch(d => { d.examFindings = { ...d.examFindings, [key]: v }; }); }
+  protected patchDx(key: 'icd10' | 'description' | 'eye', v: string): void {
+    this.patch(d => { const arr = d.diagnosis?.length ? [...d.diagnosis] : [{}]; arr[0] = { ...arr[0], [key]: v }; d.diagnosis = arr; });
+  }
+  protected patchAllergies(v: string): void { this.patch(d => { d.allergies = this.splitList(v).map(substance => ({ substance })); }); }
+  protected patchMeds(v: string): void { this.patch(d => { d.medications = this.splitList(v).map(name => ({ name })); }); }
+  protected patchOcular(v: string): void { this.patch(d => { d.ocularHistory = this.splitList(v); }); }
+  protected patchSystemic(v: string): void { this.patch(d => { d.systemicHistory = this.splitList(v); }); }
+  private splitList(v: string): string[] { return v.split(',').map(s => s.trim()).filter(Boolean); }
+
+  // Display joiners
+  protected allergyText(cr: PatientClinicalRecord | null): string { return (cr?.allergies ?? []).map(a => a.substance).join(', '); }
+  protected medsText(cr: PatientClinicalRecord | null): string { return (cr?.medications ?? []).map(m => m.name).join(', '); }
+  protected primaryDx(cr: PatientClinicalRecord | null): string {
+    const d = (cr?.diagnosis ?? []).find(x => x.icd10 || x.description);
+    return d ? `${d.icd10 ?? ''}${d.icd10 && d.description ? ' — ' : ''}${d.description ?? ''}` : '';
+  }
+
+  // ── Unified patient history (clinical + flow + imaging + billing) ───────────
+  protected unifiedHistory(p: PatientFlowRecord): { kind: 'clinical' | 'flow' | 'imaging' | 'billing'; at: string; label: string; detail?: string }[] {
+    const out: { kind: 'clinical' | 'flow' | 'imaging' | 'billing'; at: string; label: string; detail?: string }[] = [];
+    for (const m of this.store.flowHistory()[p.id] ?? [])
+      out.push({ kind: 'flow', at: m.at, label: `${this.stationLabelFor(m.from)} → ${this.stationLabelFor(m.to)}`, detail: m.skipped ? `skipped · ${m.reason ?? ''}` : undefined });
+    for (const a of this.store.imagingWork()[p.id]?.audit ?? [])
+      out.push({ kind: 'imaging', at: a.at, label: a.action, detail: a.detail });
+    for (const a of this.store.claimWork()[p.id]?.audit ?? [])
+      out.push({ kind: 'billing', at: a.at, label: a.action, detail: a.detail });
+    for (const a of this.store.clinicalAudit()[p.id] ?? [])
+      out.push({ kind: 'clinical', at: a.createdAt, label: 'Clinical update', detail: a.changedSections.join(', ') });
+    return out;
   }
 
   // ── Note composer ──────────────────────────────────────────────────────────

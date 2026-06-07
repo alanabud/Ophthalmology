@@ -1441,6 +1441,111 @@
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// EMR CLINICAL RECORD (view + edit)
+// ═══════════════════════════════════════════════════════════════════════════
+
+.emr {
+  background: var(--cc-bg);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  &__title { display: flex; flex-direction: column; gap: 6px; }
+  &__badges { display: flex; flex-wrap: wrap; gap: 5px; }
+
+  &__edit {
+    font-size: 11.5px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--cc-teal), var(--cc-teal-2));
+    border: none; border-radius: 8px; padding: 6px 13px; cursor: pointer; flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(15,118,110,0.25);
+    &:hover { background: #0c655e; }
+  }
+
+  &__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  &__empty {
+    text-align: center; padding: 14px 8px;
+    p { font-size: 12.5px; font-weight: 600; color: var(--cc-ink-2); margin: 0 0 3px; }
+    span { font-size: 11px; color: var(--cc-ink-3); }
+  }
+
+  &__updated { font-size: 10.5px; color: var(--cc-ink-3); margin: 2px 0 0; }
+
+  &__form { display: flex; flex-direction: column; gap: 11px; }
+
+  &__actions {
+    display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 4px;
+  }
+  &__dirty { font-size: 10.5px; font-weight: 700; color: var(--cc-amber); margin-right: auto; }
+}
+
+.cbadge {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.02em; border-radius: 20px; padding: 2px 8px;
+  &--ok { background: rgba(46,139,87,0.12); color: var(--cc-green); }
+  &--warning { background: rgba(182,121,31,0.13); color: var(--cc-amber); }
+  &--critical { background: rgba(192,71,60,0.12); color: var(--cc-red); }
+  &--info { background: rgba(47,107,179,0.12); color: var(--cc-blue); }
+}
+
+.emrcard {
+  background: var(--cc-surface); border-radius: 10px; padding: 9px 11px;
+  display: flex; flex-direction: column; gap: 4px; box-shadow: var(--cc-shadow-sm);
+  &__k { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cc-ink-3); }
+  &__v { font-size: 13px; font-weight: 700; color: var(--cc-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__vapair { display: grid; grid-template-columns: auto 1fr auto 1fr; align-items: baseline; gap: 2px 7px;
+    span { font-size: 9.5px; font-weight: 700; color: var(--cc-ink-3); }
+    strong { font-size: 15px; font-weight: 800; color: var(--cc-ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  }
+}
+.emr--high { color: var(--cc-red) !important; }
+.emr--alert { color: var(--cc-amber) !important; }
+
+// EMR edit form fields
+.ef {
+  display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;
+  span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cc-ink-3); }
+  input, select, textarea {
+    width: 100%; font-family: inherit; font-size: 12.5px; color: var(--cc-ink);
+    border: 1.5px solid var(--cc-hair); border-radius: 8px; padding: 7px 9px; background: var(--cc-surface);
+    &::placeholder { color: var(--cc-ink-3); }
+    &:focus { outline: none; border-color: rgba(15,118,110,0.4); box-shadow: 0 0 0 3px rgba(15,118,110,0.12); }
+  }
+  textarea { resize: vertical; min-height: 40px; }
+  &--full { width: 100%; }
+  &--grow { flex: 2; }
+
+  &__group { display: flex; flex-direction: column; gap: 6px; }
+  &__glabel { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cc-ink-2); }
+  &__row { display: flex; gap: 8px; }
+
+  &__exam {
+    border: 1px solid var(--cc-hair); border-radius: 10px; padding: 8px 10px; background: var(--cc-surface);
+    summary { font-size: 11.5px; font-weight: 700; color: var(--cc-ink-2); cursor: pointer; }
+    &[open] summary { margin-bottom: 9px; }
+  }
+  &__examgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+}
+
+// Unified history kind tags
+.kindtag {
+  font-size: 8.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  border-radius: 4px; padding: 1px 5px; margin-right: 5px;
+  &--clinical { background: rgba(15,118,110,0.12); color: var(--cc-teal); }
+  &--flow { background: rgba(47,107,179,0.12); color: var(--cc-blue); }
+  &--imaging { background: rgba(176,136,24,0.14); color: var(--cc-gold); }
+  &--billing { background: rgba(46,139,87,0.12); color: var(--cc-green); }
+}
+.tline__dot {
+  &--clinical { background: var(--cc-teal); box-shadow: 0 0 0 3px rgba(15,118,110,0.10); }
+  &--flow { background: var(--cc-blue); box-shadow: 0 0 0 3px rgba(47,107,179,0.10); }
+  &--imaging { background: var(--cc-gold); box-shadow: 0 0 0 3px rgba(176,136,24,0.12); }
+  &--billing { background: var(--cc-green); box-shadow: 0 0 0 3px rgba(46,139,87,0.10); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // RESPONSIVE
 // ═══════════════════════════════════════════════════════════════════════════
 

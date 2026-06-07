@@ -733,6 +733,47 @@ export interface WorkAudit {
   detail?: string;
 }
 
+// ── EMR clinical record (persisted, editable) ────────────────────────────────
+export interface ClinicalAllergy { substance: string; reaction?: string; severity?: 'mild' | 'moderate' | 'severe'; }
+export interface ClinicalMedication { name: string; dose?: string; route?: string; }
+export interface ClinicalDiagnosis { icd10?: string; description?: string; eye?: 'OD' | 'OS' | 'OU' | 'N/A'; }
+
+export interface PatientClinicalRecord {
+  patientId: string;
+  mrn: string;
+  encounterId: string;
+  providerId?: string;
+  visitDate?: string;
+  chiefComplaint?: string;
+  visualAcuity: { od?: string; os?: string; ou?: string; pinholeOd?: string; pinholeOs?: string; };
+  iop: { od?: number; os?: number; method?: 'Goldmann' | 'iCare' | 'Tonopen' | 'Other'; measuredAt?: string; };
+  allergies: ClinicalAllergy[];
+  medications: ClinicalMedication[];
+  ocularHistory: string[];
+  systemicHistory?: string[];
+  examFindings: {
+    external?: string; lidsLashes?: string; conjunctiva?: string; cornea?: string;
+    anteriorChamber?: string; iris?: string; lens?: string; vitreous?: string;
+    retina?: string; opticNerve?: string; macula?: string; vessels?: string; periphery?: string;
+  };
+  diagnosis: ClinicalDiagnosis[];
+  assessmentPlan?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+/** Timestamped clinical change record for the unified patient history. */
+export interface ClinicalAuditEntry {
+  id?: string;
+  patientId: string;
+  encounterId?: string;
+  action: 'clinical-update';
+  changedSections: string[];
+  note?: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
 /**
  * Persisted operational state for a patient's imaging or claim work item.
  * Keyed by patientId. Status drives the module work queues; the Command

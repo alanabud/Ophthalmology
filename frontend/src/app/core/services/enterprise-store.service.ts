@@ -20,9 +20,11 @@ import { FirestoreService } from './firestore.service';
 import {
   AiBriefingItem,
   ClaimRecord,
+  ClinicalAuditEntry,
   CockpitImagingItem,
   FlowMove,
   FlowStation,
+  PatientClinicalRecord,
   ImagingStudy,
   InjectionSafetyRecord,
   InventoryRecord,
@@ -292,6 +294,32 @@ export class EnterpriseStoreService {
     }));
   }
 
+  // ── EMR clinical records (persisted, editable) ─────────────────────────────
+  private readonly clinicalBase = signal<Record<string, PatientClinicalRecord>>({});
+  readonly clinicalRecords = this.clinicalBase.asReadonly();
+  private readonly clinicalAuditBase = signal<Record<string, ClinicalAuditEntry[]>>({});
+  readonly clinicalAudit = this.clinicalAuditBase.asReadonly();
+
+  /** Save a clinical record + emit a clinical audit entry (both persisted). */
+  saveClinicalRecord(rec: PatientClinicalRecord, changedSections: string[], author = 'Sandbox User'): void {
+    const next: PatientClinicalRecord = {
+      ...rec,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      updatedBy: author,
+    };
+    this.clinicalBase.update((m) => ({ ...m, [rec.patientId]: next }));
+    void this.fs.upsert('clinicalRecords', rec.patientId, this.sanitize(next))
+      .catch((e) => console.warn('[Store] clinical persist failed', e?.message ?? e));
+
+    const entry: ClinicalAuditEntry = {
+      id: `${rec.patientId}-${Date.now()}`, patientId: rec.patientId, encounterId: rec.encounterId,
+      action: 'clinical-update', changedSections, createdAt: this.nowStamp(), createdBy: author,
+    };
+    this.clinicalAuditBase.update((m) => ({ ...m, [rec.patientId]: [...(m[rec.patientId] ?? []), entry] }));
+    void this.fs.upsert('clinicalAudit', entry.id!, this.sanitize(entry))
+      .catch((e) => console.warn('[Store] clinical audit persist failed', e?.message ?? e));
+  }
+
   // ── Compliance ─────────────────────────────────────────────────────────────
   readonly complianceEvents = computed(() => COMPLIANCE_EVENTS.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
 
@@ -489,6 +517,20 @@ export class EnterpriseStoreService {
     }
     if (claimWork.length) {
       this.claimWorkBase.set(Object.fromEntries(claimWork.map((w) => [w.id, w])));
+    }
+
+    // EMR clinical records + clinical audit.
+    const [clinical, clinicalAudit] = await Promise.all([
+      this.fs.getAll<PatientClinicalRecord>('clinicalRecords'),
+      this.fs.getAll<ClinicalAuditEntry>('clinicalAudit'),
+    ]);
+    if (clinical.length) {
+      this.clinicalBase.set(Object.fromEntries(clinical.map((c) => [c.patientId, c])));
+    }
+    if (clinicalAudit.length) {
+      const grouped: Record<string, ClinicalAuditEntry[]> = {};
+      for (const a of clinicalAudit) (grouped[a.patientId] ??= []).push(a);
+      this.clinicalAuditBase.set(grouped);
     }
   }
 

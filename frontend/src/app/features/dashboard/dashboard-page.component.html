@@ -546,33 +546,138 @@
           </div>
         }
 
-        <!-- Chief complaint -->
-        <div class="esec">
-          <span class="drawer__sec">Chief complaint</span>
-          <p class="esec__text">{{ clinicalProfile(p).chiefComplaint }}</p>
-        </div>
-
-        <!-- Vitals: VA + IOP -->
-        <div class="esec">
-          <span class="drawer__sec">Exam vitals</span>
-          <div class="vitals">
-            <div class="vital">
-              <span class="vital__k">Visual acuity</span>
-              <div class="vital__pair">
-                <span class="vital__eye">OD</span><strong>{{ clinicalProfile(p).vaOD }}</strong>
-                <span class="vital__eye">OS</span><strong>{{ clinicalProfile(p).vaOS }}</strong>
+        <!-- ══ EMR CLINICAL RECORD (view / edit) ══ -->
+        <div class="emr">
+          <div class="emr__hd">
+            <div class="emr__title">
+              <span class="drawer__sec">EMR · Clinical record</span>
+              <div class="emr__badges">
+                @for (b of clinicalBadges(p); track b.label) {
+                  <span class="cbadge cbadge--{{ b.tone }}">{{ b.label }}</span>
+                }
               </div>
             </div>
-            <div class="vital">
-              <span class="vital__k">IOP (mmHg)</span>
-              <div class="vital__pair">
-                <span class="vital__eye">OD</span>
-                <strong [class.vital--high]="clinicalProfile(p).iopOD > 21">{{ clinicalProfile(p).iopOD }}</strong>
-                <span class="vital__eye">OS</span>
-                <strong [class.vital--high]="clinicalProfile(p).iopOS > 21">{{ clinicalProfile(p).iopOS }}</strong>
-              </div>
-            </div>
+            @if (!clinicalEditing()) {
+              <button class="emr__edit" type="button" (click)="startEditClinical(p)">
+                @if (clinicalFor(p)) { Edit } @else { Chart now }
+              </button>
+            }
           </div>
+
+          @if (!clinicalEditing()) {
+            <!-- VIEW MODE -->
+            @if (clinicalFor(p); as cr) {
+              <div class="emr__cards">
+                <div class="emrcard">
+                  <span class="emrcard__k">Visual acuity</span>
+                  <div class="emrcard__vapair">
+                    <span>OD</span><strong>{{ cr.visualAcuity.od || '—' }}</strong>
+                    <span>OS</span><strong>{{ cr.visualAcuity.os || '—' }}</strong>
+                  </div>
+                </div>
+                <div class="emrcard">
+                  <span class="emrcard__k">IOP (mmHg)</span>
+                  <div class="emrcard__vapair">
+                    <span>OD</span><strong [class.emr--high]="(cr.iop.od ?? 0) > 21">{{ cr.iop.od ?? '—' }}</strong>
+                    <span>OS</span><strong [class.emr--high]="(cr.iop.os ?? 0) > 21">{{ cr.iop.os ?? '—' }}</strong>
+                  </div>
+                </div>
+                <div class="emrcard">
+                  <span class="emrcard__k">Allergies</span>
+                  <strong class="emrcard__v" [class.emr--alert]="allergyText(cr) && allergyText(cr) !== 'NKDA'">{{ allergyText(cr) || 'NKDA' }}</strong>
+                </div>
+                <div class="emrcard">
+                  <span class="emrcard__k">Diagnosis</span>
+                  <strong class="emrcard__v" [class.emr--alert]="!primaryDx(cr)">{{ primaryDx(cr) || 'Not coded' }}</strong>
+                </div>
+              </div>
+
+              @if (cr.chiefComplaint) { <div class="esec"><span class="drawer__sec">Chief complaint</span><p class="esec__text">{{ cr.chiefComplaint }}</p></div> }
+              @if (medsText(cr)) { <div class="esec"><span class="drawer__sec">Medications</span><p class="esec__text">{{ medsText(cr) }}</p></div> }
+              @if (cr.ocularHistory.length) { <div class="esec"><span class="drawer__sec">Ocular history</span><p class="esec__text">{{ cr.ocularHistory.join(', ') }}</p></div> }
+              @if (cr.systemicHistory?.length) { <div class="esec"><span class="drawer__sec">Systemic history</span><p class="esec__text">{{ cr.systemicHistory!.join(', ') }}</p></div> }
+              @if (cr.assessmentPlan) { <div class="esec"><span class="drawer__sec">Assessment / plan</span><p class="esec__text">{{ cr.assessmentPlan }}</p></div> }
+              @if (cr.updatedAt) { <p class="emr__updated">Last clinical update {{ cr.updatedAt }} · {{ cr.updatedBy }}</p> }
+            } @else {
+              <div class="emr__empty">
+                <p>No clinical chart yet for this encounter.</p>
+                <span>Add visual acuity, IOP, diagnosis and plan to drive risk &amp; billing.</span>
+              </div>
+            }
+          } @else if (clinicalDraft(); as cd) {
+            <!-- EDIT MODE -->
+            <div class="emr__form">
+              <label class="ef ef--full"><span>Chief complaint</span>
+                <input type="text" [value]="cd.chiefComplaint ?? ''" (input)="patchField('chiefComplaint', $any($event.target).value)" placeholder="e.g. Blurred vision, glare"></label>
+
+              <div class="ef__group">
+                <span class="ef__glabel">Visual acuity</span>
+                <div class="ef__row">
+                  <label class="ef"><span>OD</span><input type="text" [value]="cd.visualAcuity.od ?? ''" (input)="patchVa('od', $any($event.target).value)" placeholder="20/20"></label>
+                  <label class="ef"><span>OS</span><input type="text" [value]="cd.visualAcuity.os ?? ''" (input)="patchVa('os', $any($event.target).value)" placeholder="20/20"></label>
+                  <label class="ef"><span>OU</span><input type="text" [value]="cd.visualAcuity.ou ?? ''" (input)="patchVa('ou', $any($event.target).value)" placeholder="20/20"></label>
+                </div>
+                <div class="ef__row">
+                  <label class="ef"><span>Pinhole OD</span><input type="text" [value]="cd.visualAcuity.pinholeOd ?? ''" (input)="patchVa('pinholeOd', $any($event.target).value)" placeholder="20/20"></label>
+                  <label class="ef"><span>Pinhole OS</span><input type="text" [value]="cd.visualAcuity.pinholeOs ?? ''" (input)="patchVa('pinholeOs', $any($event.target).value)" placeholder="20/20"></label>
+                </div>
+              </div>
+
+              <div class="ef__group">
+                <span class="ef__glabel">Intraocular pressure</span>
+                <div class="ef__row">
+                  <label class="ef"><span>IOP OD</span><input type="number" [value]="cd.iop.od ?? ''" (input)="patchIop('od', $any($event.target).value)" placeholder="14"></label>
+                  <label class="ef"><span>IOP OS</span><input type="number" [value]="cd.iop.os ?? ''" (input)="patchIop('os', $any($event.target).value)" placeholder="14"></label>
+                  <label class="ef"><span>Method</span>
+                    <select [value]="cd.iop.method ?? ''" (change)="patchIopMethod($any($event.target).value)">
+                      <option value="">—</option><option value="Goldmann">Goldmann</option><option value="iCare">iCare</option><option value="Tonopen">Tonopen</option><option value="Other">Other</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <label class="ef ef--full"><span>Allergies (comma-separated)</span>
+                <input type="text" [value]="allergyText(cd)" (input)="patchAllergies($any($event.target).value)" placeholder="NKDA, Sulfa"></label>
+              <label class="ef ef--full"><span>Medications (comma-separated)</span>
+                <input type="text" [value]="medsText(cd)" (input)="patchMeds($any($event.target).value)" placeholder="Latanoprost, Lisinopril"></label>
+              <label class="ef ef--full"><span>Ocular history (comma-separated)</span>
+                <input type="text" [value]="cd.ocularHistory.join(', ')" (input)="patchOcular($any($event.target).value)" placeholder="POAG, Pseudophakia OU"></label>
+              <label class="ef ef--full"><span>Systemic history (comma-separated)</span>
+                <input type="text" [value]="(cd.systemicHistory ?? []).join(', ')" (input)="patchSystemic($any($event.target).value)" placeholder="Diabetes, Hypertension"></label>
+
+              <div class="ef__group">
+                <span class="ef__glabel">Diagnosis</span>
+                <div class="ef__row">
+                  <label class="ef"><span>ICD-10</span><input type="text" [value]="cd.diagnosis[0].icd10 ?? ''" (input)="patchDx('icd10', $any($event.target).value)" placeholder="H40.11"></label>
+                  <label class="ef ef--grow"><span>Description</span><input type="text" [value]="cd.diagnosis[0].description ?? ''" (input)="patchDx('description', $any($event.target).value)" placeholder="Primary open-angle glaucoma"></label>
+                  <label class="ef"><span>Eye</span>
+                    <select [value]="cd.diagnosis[0].eye ?? ''" (change)="patchDx('eye', $any($event.target).value)">
+                      <option value="">—</option><option value="OD">OD</option><option value="OS">OS</option><option value="OU">OU</option><option value="N/A">N/A</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <details class="ef__exam">
+                <summary>Structured exam findings</summary>
+                <div class="ef__examgrid">
+                  @for (x of examFields; track x.key) {
+                    <label class="ef"><span>{{ x.label }}</span>
+                      <input type="text" [value]="cd.examFindings[x.key] ?? ''" (input)="patchExam(x.key, $any($event.target).value)" placeholder="WNL"></label>
+                  }
+                </div>
+              </details>
+
+              <label class="ef ef--full"><span>Assessment / plan</span>
+                <textarea rows="2" [value]="cd.assessmentPlan ?? ''" (input)="patchField('assessmentPlan', $any($event.target).value)" placeholder="Plan, follow-up, orders…"></textarea></label>
+
+              <div class="emr__actions">
+                @if (clinicalDirty()) { <span class="emr__dirty">Unsaved changes</span> }
+                <button class="dbtn" type="button" (click)="cancelEditClinical()">Cancel</button>
+                <button class="dbtn dbtn--primary" type="button" [disabled]="!clinicalDirty()" (click)="saveClinical(p)">Save clinical</button>
+              </div>
+            </div>
+          }
         </div>
 
         <!-- Encounter context grid -->
@@ -582,33 +687,6 @@
           <div class="dfield"><span>Scheduled</span><strong>{{ p.scheduledTime }}</strong></div>
           @if (p.insurance) { <div class="dfield"><span>Insurance</span><strong>{{ p.insurance }}</strong></div> }
           @if (p.authStatus) { <div class="dfield"><span>Prior auth</span><strong class="auth--{{ p.authStatus }}">{{ p.authStatus }}</strong></div> }
-          <div class="dfield"><span>Diagnosis</span><strong>{{ clinicalProfile(p).diagnosis }}</strong></div>
-        </div>
-
-        <!-- Allergies + meds -->
-        <div class="drawer__cols2">
-          <div class="esec">
-            <span class="drawer__sec">Allergies</span>
-            <div class="chiplist">
-              @for (a of clinicalProfile(p).allergies; track a) {
-                <span class="medchip" [class.medchip--allergy]="a !== 'NKDA'">{{ a }}</span>
-              }
-            </div>
-          </div>
-          <div class="esec">
-            <span class="drawer__sec">Medications</span>
-            <div class="chiplist">
-              @for (m of clinicalProfile(p).medications; track m) { <span class="medchip">{{ m }}</span> }
-            </div>
-          </div>
-        </div>
-
-        <!-- Ocular history -->
-        <div class="esec">
-          <span class="drawer__sec">Prior ocular history</span>
-          <ul class="hxlist">
-            @for (h of clinicalProfile(p).ocularHistory; track h) { <li>{{ h }}</li> }
-          </ul>
         </div>
 
         <!-- Pending imaging / tests (from real readiness items) -->
@@ -679,24 +757,24 @@
           </div>
         </div>
 
-        <!-- Movement audit trail -->
+        <!-- Unified patient history (clinical + flow + imaging + billing) -->
         <div class="drawer__history esec">
-          <span class="drawer__sec">Movement audit trail</span>
-          @if (selectedHistory().length) {
+          <span class="drawer__sec">Patient history</span>
+          @if (unifiedHistory(p).length) {
             <ol class="timeline">
-              @for (m of selectedHistory(); track $index) {
-                <li class="tline" [class.tline--skip]="m.skipped">
-                  <span class="tline__dot"></span>
+              @for (h of unifiedHistory(p); track $index) {
+                <li class="tline tline--{{ h.kind }}">
+                  <span class="tline__dot tline__dot--{{ h.kind }}"></span>
                   <div class="tline__body">
-                    <span class="tline__move">{{ stationLabelFor(m.from) }} → <strong>{{ stationLabelFor(m.to) }}</strong></span>
-                    <span class="tline__at">{{ m.at }}@if (m.skipped) { · skipped stages }</span>
-                    @if (m.reason) { <span class="tline__reason">"{{ m.reason }}"</span> }
+                    <span class="tline__move"><span class="kindtag kindtag--{{ h.kind }}">{{ h.kind }}</span> {{ h.label }}</span>
+                    <span class="tline__at">{{ h.at }}</span>
+                    @if (h.detail) { <span class="tline__reason">{{ h.detail }}</span> }
                   </div>
                 </li>
               }
             </ol>
           } @else {
-            <p class="drawer__muted">No movements yet this visit.</p>
+            <p class="drawer__muted">No activity yet this visit.</p>
           }
         </div>
       </div>

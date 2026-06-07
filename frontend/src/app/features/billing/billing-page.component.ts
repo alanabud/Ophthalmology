@@ -52,7 +52,12 @@ export class BillingPageComponent implements AfterViewInit {
     this.store.patientFlow().map(p => {
       const ws = this.store.claimWork()[p.id];
       const status = this.clmStatus(p);
-      const dx = this.diagnoses[p.visitCategory] ?? 'Pending coding';
+      // Diagnosis now sourced from the EMR clinical record where charted.
+      const cr = this.store.clinicalRecords()[p.id];
+      const charted = (cr?.diagnosis ?? []).find(d => d.icd10);
+      const dx = charted
+        ? `${charted.icd10}${charted.description ? ' — ' + charted.description : ''}`
+        : 'Pending coding';
       const missingReadiness = p.readinessItems.filter(r => r.required && !r.done).map(r => r.label);
       // Work status resolves blockers as the biller advances the claim.
       const authResolved  = status === 'Auth received' || status === 'Ready' || status === 'Submitted';

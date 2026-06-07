@@ -55,15 +55,25 @@ export class ImagingPageComponent implements AfterViewInit {
         const blockers = imgReadiness.filter(r => r.required && !r.done).map(r => r.label);
         const testType = imgReadiness.map(r => r.label).join(', ') || 'Imaging / testing';
         const urgent = p.urgent || p.tone === 'critical';
+        // Clinical context from the EMR record (why the test was ordered).
+        const cr = this.store.clinicalRecords()[p.id];
+        const dx = (cr?.diagnosis ?? []).find(d => d.icd10);
+        const va = cr ? `OD ${cr.visualAcuity.od ?? '—'} · OS ${cr.visualAcuity.os ?? '—'}` : '—';
+        const iop = cr && (cr.iop.od != null || cr.iop.os != null) ? `OD ${cr.iop.od ?? '—'} · OS ${cr.iop.os ?? '—'}` : '—';
         return {
           id: p.id, name: p.name, mrn: p.mrn, line1: testType,
           status, statusTone: urgent && status !== 'Interpreted' ? 'critical' : tone,
           fields: [
             { k: 'Station',  v: this.stationLabel(p.station) },
             { k: 'Provider', v: p.provider },
-            { k: 'Reason',   v: p.visitType },
             { k: 'Modality', v: testType },
             { k: 'Laterality', v: p.laterality ?? '—' },
+            { k: 'Chief complaint', v: cr?.chiefComplaint || p.visitType },
+            { k: 'Diagnosis', v: dx ? `${dx.icd10}${dx.description ? ' — ' + dx.description : ''}` : 'Not coded', tone: dx ? undefined : 'warning' },
+            { k: 'Eye', v: dx?.eye ?? p.laterality ?? '—' },
+            { k: 'Visual acuity', v: va },
+            { k: 'IOP', v: iop },
+            { k: 'Ocular history', v: cr?.ocularHistory?.length ? cr.ocularHistory.join(', ') : '—' },
             { k: 'Priority', v: urgent ? 'Urgent' : 'Routine', tone: urgent ? 'critical' : undefined },
           ],
           blockers,
