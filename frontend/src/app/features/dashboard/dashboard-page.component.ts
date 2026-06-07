@@ -465,4 +465,81 @@ export class DashboardPageComponent {
     { id: 'create-claim',    label: 'Create Claim', primary: false },
     { id: 'collect-payment', label: 'Collect',      primary: false },
   ];
+
+  // ── Generic navigation (module cards, cockpit cards) ──────────────────────
+  protected navigate(route: string): void { void this.router.navigate([route]); }
+
+  // ── Cockpit: 4 operational command cards ──────────────────────────────────
+
+  /** Average provider utilization across active lanes. */
+  protected readonly avgUtilization = computed(() => {
+    const c = this.providerCapacity();
+    if (!c.length) return 0;
+    return Math.round(c.reduce((s, p) => s + p.pct, 0) / c.length);
+  });
+
+  protected readonly busiestProvider = computed(() => {
+    const c = [...this.providerCapacity()].sort((a, b) => b.pct - a.pct);
+    return c[0] ?? null;
+  });
+
+  /** Patient-flow stage distribution → normalized mini bars. */
+  protected readonly stageBars = computed(() => {
+    const stages = this.flowBoard();
+    const max = Math.max(...stages.map(s => s.count), 1);
+    return stages.map(s => ({
+      label: s.label, color: s.color,
+      pct: Math.max(8, Math.round((s.count / max) * 100)),
+      count: s.count,
+    }));
+  });
+
+  /** Revenue mix → stacked bar segments. */
+  protected readonly revenueParts = computed(() => {
+    const r = this.revenueSnapshot();
+    const total = Math.max(r.total, 1);
+    return {
+      paidPct:    Math.round((r.paid / total) * 100),
+      pendingPct: Math.round((r.pending / total) * 100),
+      deniedPct:  Math.round((r.denied / total) * 100),
+      paid: r.paid, pending: r.pending, denied: r.denied,
+    };
+  });
+
+  /** Demo trend series (clearly synthetic — labeled in template). */
+  protected readonly riskTrend    = [4, 5, 3, 6, 5, 7, 6];
+  protected readonly revenueTrend = [12, 14, 11, 15, 13, 16, 18];
+
+  /** Convert a series to an SVG polyline points string (viewBox 100x32). */
+  protected sparkPoints(data: number[]): string {
+    if (!data.length) return '';
+    const max = Math.max(...data), min = Math.min(...data);
+    const span = max - min || 1;
+    const step = 100 / (data.length - 1 || 1);
+    return data
+      .map((v, i) => `${(i * step).toFixed(1)},${(30 - ((v - min) / span) * 28).toFixed(1)}`)
+      .join(' ');
+  }
+
+  // ── Operational module cards (built from real navigation data) ────────────
+  protected readonly moduleCards = computed(() =>
+    this.store.navigationSections()
+      .flatMap(sec => sec.items.map(it => ({ ...it, section: sec.label })))
+      .filter(it => it.route !== '/command-center')   // not "current page"
+      .map(it => ({
+        label: it.label,
+        route: it.route,
+        icon: it.icon,
+        note: this.shortNote(it.summary),
+        count: it.counter ?? '',
+        tone: it.tone ?? 'neutral',
+        section: it.section,
+      }))
+  );
+
+  /** Trim a long sidebar summary into a tight module-card note. */
+  private shortNote(summary: string): string {
+    const firstClause = summary.split(/[—,]/)[0].trim();
+    return firstClause.length > 42 ? firstClause.slice(0, 40) + '…' : firstClause;
+  }
 }

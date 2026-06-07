@@ -1,98 +1,33 @@
 <section class="ccx">
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       ZONE A — COMMAND PULSE (asymmetric hero: ring + signal ticker)
+       IDENTITY STRIP — compact, no wasted space
   ═══════════════════════════════════════════════════════════════════ -->
-  <header class="pulse">
-
-    <!-- Left: dominant capacity ring + clinic identity -->
-    <div class="pulse__lead">
-      <div class="pulse__ring">
-        <svg viewBox="0 0 128 128" class="ring">
-          <circle class="ring__track" cx="64" cy="64" r="54" />
-          <circle class="ring__bar" cx="64" cy="64" r="54"
-            [style.stroke-dasharray]="ringCircumference"
-            [style.stroke-dashoffset]="ringOffset()" />
+  <div class="idbar">
+    <div class="idbar__left">
+      <div class="idbar__ring">
+        <svg viewBox="0 0 64 64" class="miniring">
+          <circle class="miniring__track" cx="32" cy="32" r="26" />
+          <circle class="miniring__bar" cx="32" cy="32" r="26"
+            [style.stroke-dasharray]="2 * Math.PI * 26"
+            [style.stroke-dashoffset]="(2 * Math.PI * 26) * (1 - dayProgressPct / 100)" />
         </svg>
-        <div class="ring__center">
-          <span class="ring__pct">{{ dayProgressPct }}<i>%</i></span>
-          <span class="ring__label">Clinic Day</span>
-        </div>
+        <span class="miniring__pct">{{ dayProgressPct }}%</span>
       </div>
-
-      <div class="pulse__id">
-        <div class="pulse__status">
-          <span class="beacon"></span>
-          <span class="pulse__state">Operational</span>
-        </div>
-        <h1 class="pulse__clinic">
+      <div class="idbar__id">
+        <div class="idbar__status"><span class="beacon"></span>Operational</div>
+        <h1 class="idbar__clinic">
           @if (currentClinic().id === 'network') { Acuity Eye Network }
           @else { {{ currentClinic().name }} }
         </h1>
-        <p class="pulse__date">{{ currentDate }} · {{ greeting }}</p>
-
-        <div class="pulse__throughput">
-          <div class="thru">
-            <strong>{{ seenCount() }}</strong>
-            <span>Seen</span>
-          </div>
-          <div class="thru__div"></div>
-          <div class="thru">
-            <strong>{{ checkedInCount() }}</strong>
-            <span>Active</span>
-          </div>
-          <div class="thru__div"></div>
-          <div class="thru">
-            <strong>{{ todayApptCount() }}</strong>
-            <span>Booked</span>
-          </div>
-        </div>
+        <p class="idbar__date">{{ currentDate }} · {{ greeting }}</p>
       </div>
     </div>
 
-    <!-- Right: signal ticker (hairline-separated rows, no boxes) -->
-    <div class="pulse__signals">
-      @for (sig of heroSignals(); track sig.key) {
-        <div class="sig">
-          <span class="sig__icon sig__icon--{{ sig.tone }}">
-            @switch (sig.icon) {
-              @case ('user') {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-              }
-              @case ('clock') {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-              }
-              @case ('eye') {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.4" fill="currentColor"/><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7" fill="none"/></svg>
-              }
-              @case ('alert') {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 3.5h.01M10.3 4l-8 13.8A1.8 1.8 0 0 0 3.9 20.5h16.2a1.8 1.8 0 0 0 1.6-2.7L13.7 4a1.8 1.8 0 0 0-3.4 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              }
-              @case ('card') {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5.5" width="19" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 10h19" stroke="currentColor" stroke-width="1.7"/></svg>
-              }
-            }
-          </span>
-          <span class="sig__label">{{ sig.label }}</span>
-          <span class="sig__value">{{ sig.value }}</span>
-          <span class="sig__sub sig__sub--{{ sig.tone }}">{{ sig.sub }}</span>
-        </div>
-      }
-    </div>
-  </header>
-
-  <!-- ═══════════════════════════════════════════════════════════════════
-       QUICK ACTIONS — slim command bar
-  ═══════════════════════════════════════════════════════════════════ -->
-  <div class="qbar">
-    <span class="qbar__hint">Quick actions</span>
-    <div class="qbar__set">
+    <div class="idbar__actions">
+      <span class="idbar__hint">Quick actions</span>
       @for (act of quickActions; track act.id) {
-        <button
-          class="qbtn"
-          [class.qbtn--primary]="act.primary"
-          type="button"
-          (click)="doAction(act.id)">
+        <button class="qbtn" [class.qbtn--primary]="act.primary" type="button" (click)="doAction(act.id)">
           {{ act.label }}
         </button>
       }
@@ -100,7 +35,101 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       ZONE B — LIVE PATIENT FLOW MAP (connected pipeline, not a kanban)
+       COCKPIT — 4 high-impact operational cards
+  ═══════════════════════════════════════════════════════════════════ -->
+  <div class="cockpit">
+
+    <!-- Patient Flow -->
+    <button class="ccard ccard--teal" type="button" (click)="navigate('/today')">
+      <div class="ccard__hd">
+        <span class="ccard__tag">Patient Flow</span>
+        <span class="ccard__arrow">→</span>
+      </div>
+      <div class="ccard__kpi">
+        <strong>{{ checkedInCount() }}</strong>
+        <span class="ccard__unit">active</span>
+      </div>
+      <div class="ccard__bars">
+        @for (b of stageBars(); track b.label) {
+          <span class="distbar distbar--{{ b.color }}" [style.height.%]="b.pct" [title]="b.label + ': ' + b.count"></span>
+        }
+      </div>
+      <div class="ccard__foot">
+        <span class="ccard__sub">{{ seenCount() }} seen · {{ waitingCount() }} waiting</span>
+        <span class="trend trend--up">{{ todayApptCount() }} booked</span>
+      </div>
+    </button>
+
+    <!-- Clinical Risk -->
+    <button class="ccard ccard--coral" type="button" (click)="navigate('/encounters')">
+      <div class="ccard__hd">
+        <span class="ccard__tag">Clinical Risk</span>
+        <span class="ccard__arrow">→</span>
+      </div>
+      <div class="ccard__kpi">
+        <strong>{{ visibleAlerts().length }}</strong>
+        <span class="ccard__unit">open alerts</span>
+      </div>
+      <svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none">
+        <polyline class="spark__line spark__line--coral" [attr.points]="sparkPoints(riskTrend)" />
+      </svg>
+      <div class="ccard__foot ccard__foot--chips">
+        @if (criticalAlerts().length) { <span class="rchip rchip--critical">{{ criticalAlerts().length }} critical</span> }
+        @if (warningAlerts().length)  { <span class="rchip rchip--warning">{{ warningAlerts().length }} action</span> }
+        @if (infoAlerts().length)     { <span class="rchip rchip--info">{{ infoAlerts().length }} follow-up</span> }
+        @if (visibleAlerts().length === 0) { <span class="rchip rchip--ok">all clear</span> }
+      </div>
+    </button>
+
+    <!-- Revenue at Risk -->
+    <button class="ccard ccard--gold" type="button" (click)="navigate('/billing')">
+      <div class="ccard__hd">
+        <span class="ccard__tag">Revenue at Risk</span>
+        <span class="ccard__arrow">→</span>
+      </div>
+      <div class="ccard__kpi">
+        <strong>{{ claimsPendingCount() }}</strong>
+        <span class="ccard__unit">claims pending</span>
+      </div>
+      <div class="stack">
+        <span class="stack__seg stack__seg--paid"    [style.width.%]="revenueParts().paidPct"></span>
+        <span class="stack__seg stack__seg--pending" [style.width.%]="revenueParts().pendingPct"></span>
+        <span class="stack__seg stack__seg--denied"  [style.width.%]="revenueParts().deniedPct"></span>
+      </div>
+      <div class="ccard__foot">
+        <span class="ccard__sub">{{ claimsDeniedCount() }} denied · {{ authExpiredCount() }} auth expired</span>
+        <span class="trend trend--gold">{{ revenueSnapshot().todayRev }}</span>
+      </div>
+    </button>
+
+    <!-- Provider Capacity -->
+    <button class="ccard ccard--blue" type="button" (click)="navigate('/scheduling')">
+      <div class="ccard__hd">
+        <span class="ccard__tag">Provider Capacity</span>
+        <span class="ccard__arrow">→</span>
+      </div>
+      <div class="ccard__kpi">
+        <strong>{{ avgUtilization() }}<i>%</i></strong>
+        <span class="ccard__unit">avg utilization</span>
+      </div>
+      <div class="capmini">
+        @for (p of providerCapacity().slice(0, 4); track p.name) {
+          <div class="capmini__row">
+            <span class="capmini__bar"><span class="capmini__fill capmini__fill--{{ p.tone }}" [style.width.%]="p.pct"></span></span>
+          </div>
+        }
+      </div>
+      <div class="ccard__foot">
+        @if (busiestProvider()) {
+          <span class="ccard__sub">Busiest · {{ busiestProvider()!.name }} ({{ busiestProvider()!.pct }}%)</span>
+        }
+      </div>
+    </button>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       LIVE PATIENT FLOW MAP — the centerpiece, larger cards
   ═══════════════════════════════════════════════════════════════════ -->
   <section class="flow">
     <div class="flow__hd">
@@ -119,39 +148,40 @@
             <span class="lane__name">{{ stage.label }}</span>
             <span class="lane__n lane__n--{{ stage.color }}">{{ stage.count }}</span>
           </div>
-
           <div class="lane__rail lane__rail--{{ stage.color }}"></div>
 
           <div class="lane__body">
             @for (p of stage.patients; track p.name) {
               <button class="pchip pchip--{{ p.tone }}" type="button" (click)="viewPatient()">
-                <span class="pchip__ring pchip__ring--{{ p.tone }}">
-                  <span class="pchip__av">{{ p.name.charAt(0) }}</span>
+                <span class="pchip__row">
+                  <span class="pchip__ring pchip__ring--{{ p.tone }}">
+                    <span class="pchip__av">{{ p.name.charAt(0) }}</span>
+                  </span>
+                  <span class="pchip__main">
+                    <strong>{{ p.name }}</strong>
+                    <span>{{ p.visitType }}</span>
+                  </span>
+                  <span class="pchip__wait"
+                    [class.pchip__wait--warm]="p.wait > 15"
+                    [class.pchip__wait--hot]="p.wait > 30">{{ p.wait }}m</span>
                 </span>
-                <span class="pchip__main">
-                  <strong>{{ p.name }}</strong>
-                  <span>{{ p.visitType }}</span>
+                <span class="pchip__act">
+                  Open chart
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
-                <span class="pchip__wait"
-                  [class.pchip__wait--warm]="p.wait > 15"
-                  [class.pchip__wait--hot]="p.wait > 30">{{ p.wait }}m</span>
               </button>
             }
             @if (stage.patients.length === 0 && stage.count === 0) {
               <div class="lane__empty">—</div>
             }
             @if (stage.count > stage.patients.length) {
-              <button class="lane__more" type="button" (click)="viewPatient()">
-                +{{ stage.count - stage.patients.length }} more
-              </button>
+              <button class="lane__more" type="button" (click)="viewPatient()">+{{ stage.count - stage.patients.length }} more</button>
             }
           </div>
 
           @if (!last) {
             <div class="lane__connector" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           }
         </div>
@@ -160,13 +190,35 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       ZONE C + D — ACTION INBOX (left) + INTELLIGENCE RAIL (right)
+       OPERATIONAL MODULES — visual module cards (real nav data)
+  ═══════════════════════════════════════════════════════════════════ -->
+  <section class="modules">
+    <div class="modules__hd">
+      <h2 class="modules__title">Operational Modules</h2>
+      <p class="modules__sub">Jump into any area of the clinic</p>
+    </div>
+    <div class="modgrid">
+      @for (m of moduleCards(); track m.route) {
+        <button class="mod mod--{{ m.tone }}" type="button" (click)="navigate(m.route)">
+          <div class="mod__top">
+            <span class="mod__icon mod__icon--{{ m.tone }}">{{ m.icon }}</span>
+            @if (m.count) { <span class="mod__count mod__count--{{ m.tone }}">{{ m.count }}</span> }
+          </div>
+          <strong class="mod__label">{{ m.label }}</strong>
+          <span class="mod__note">{{ m.note }}</span>
+          <span class="mod__go">Open <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ACTION INBOX (left) + INTELLIGENCE RAIL (right)
   ═══════════════════════════════════════════════════════════════════ -->
   <div class="grid">
 
     <main class="grid__main">
 
-      <!-- Action Inbox -->
       <div class="inbox">
         <div class="inbox__hd">
           <div>
@@ -254,7 +306,6 @@
         }
       </div>
 
-      <!-- Today's Appointments -->
       <div class="appts">
         <div class="appts__hd">
           <h2 class="appts__title">Today's Schedule</h2>
@@ -286,7 +337,6 @@
 
     </main>
 
-    <!-- Intelligence Rail -->
     <aside class="rail">
       <div class="rail__brand">
         <span class="rail__spark">
@@ -295,7 +345,6 @@
         <span>Operations Intelligence</span>
       </div>
 
-      <!-- Provider Capacity -->
       <div class="ipanel">
         <div class="ipanel__hd"><h3>Provider Capacity</h3><span class="ipanel__tag">Today</span></div>
         <div class="caps">
@@ -311,12 +360,8 @@
         </div>
       </div>
 
-      <!-- Next Best Actions (AI) -->
       <div class="ipanel ipanel--ai">
-        <div class="ipanel__hd">
-          <h3>Next Best Actions</h3>
-          <span class="ai-tag">AI</span>
-        </div>
+        <div class="ipanel__hd"><h3>Next Best Actions</h3><span class="ai-tag">AI</span></div>
         <div class="nba">
           @for (rec of aiRecs().slice(0, 3); track rec.text) {
             <div class="nba__row nba__row--{{ rec.type }}">
@@ -327,7 +372,6 @@
         </div>
       </div>
 
-      <!-- Bottleneck / Imaging -->
       <div class="ipanel">
         <div class="ipanel__hd"><h3>Imaging Review</h3><button class="ipanel__link" type="button" (click)="doAction('order-imaging')">Open</button></div>
         <div class="mini">
@@ -337,7 +381,6 @@
         </div>
       </div>
 
-      <!-- Revenue Blockers -->
       <div class="ipanel">
         <div class="ipanel__hd"><h3>Revenue at Risk</h3><button class="ipanel__link" type="button" (click)="doAction('collect-payment')">Open</button></div>
         <div class="rev">
@@ -351,7 +394,6 @@
         </div>
       </div>
 
-      <!-- Surgery Readiness -->
       <div class="ipanel">
         <div class="ipanel__hd"><h3>Surgery Readiness</h3><button class="ipanel__link" type="button" (click)="doAction('surgery-case')">Open</button></div>
         <div class="sxlist">
