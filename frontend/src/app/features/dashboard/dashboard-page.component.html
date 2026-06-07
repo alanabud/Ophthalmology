@@ -437,6 +437,15 @@
       </div>
 
       <div class="ipanel">
+        <div class="ipanel__hd"><h3>Encounter Pipeline</h3><span class="ipanel__tag">Live</span></div>
+        <div class="encpipe">
+          <div class="encpipe__row encpipe__row--info"><span>Checkout ready</span><strong>{{ checkoutReadyCount() }}</strong></div>
+          <div class="encpipe__row encpipe__row--ok"><span>Billing ready</span><strong>{{ billingReadyCount() }}</strong></div>
+          <div class="encpipe__row encpipe__row--crit"><span>Blocked encounters</span><strong>{{ blockedEncounterCount() }}</strong></div>
+        </div>
+      </div>
+
+      <div class="ipanel">
         <div class="ipanel__hd"><h3>Provider Capacity</h3><span class="ipanel__tag">Today</span></div>
         <div class="caps">
           @for (p of providerCapacity(); track p.name) {
@@ -523,260 +532,285 @@
         </button>
       </header>
 
-      <div class="drawer__body">
-
-        <!-- Visit context -->
-        <div class="drawer__tags">
-          <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
-          <span class="drawer__visit">{{ p.visitType }}</span>
-          <span class="slatag slatag--{{ slaForStage(p).tone }}">{{ p.waitMinutes }}m · {{ slaForStage(p).label }}</span>
-        </div>
-
-        <!-- Risk flags -->
-        @if (riskFlags(p).length) {
-          <div class="esec">
-            <span class="drawer__sec">Clinical risk</span>
-            <div class="riskflags">
-              @for (f of riskFlags(p); track f.label) {
-                <span class="riskflag riskflag--{{ f.tone }}">
-                  <span class="riskflag__dot"></span>{{ f.label }}
-                </span>
-              }
-            </div>
+      <!-- Encounter progress tracker -->
+      <div class="enctrack">
+        @for (s of encounterStages; track s.id; let last = $last) {
+          <div class="encstep encstep--{{ stageTone(stageStatus(p, s.id)) }}" [title]="s.label + ': ' + stageStatus(p, s.id)">
+            <span class="encstep__dot"></span>
+            <span class="encstep__lbl">{{ s.label }}</span>
           </div>
         }
+      </div>
 
-        <!-- ══ EMR CLINICAL RECORD (view / edit) ══ -->
-        <div class="emr">
-          <div class="emr__hd">
-            <div class="emr__title">
-              <span class="drawer__sec">EMR · Clinical record</span>
-              <div class="emr__badges">
-                @for (b of clinicalBadges(p); track b.label) {
-                  <span class="cbadge cbadge--{{ b.tone }}">{{ b.label }}</span>
-                }
-              </div>
+      <!-- Next recommended action -->
+      <div class="encnext">
+        <span class="encnext__k">Next</span>
+        <span class="encnext__v">{{ encounterNextAction(p) }}</span>
+        @if (nextStage(p)) {
+          <button class="encnext__go" type="button" (click)="goToNextStage(p)">Go →</button>
+        }
+      </div>
+
+      <!-- Tabs -->
+      <nav class="enctabs">
+        <button class="enctab" [class.enctab--on]="drawerTab()==='overview'" type="button" (click)="setTab('overview')">Overview</button>
+        <button class="enctab" [class.enctab--on]="drawerTab()==='intake'" type="button" (click)="setTab('intake')">Intake</button>
+        <button class="enctab" [class.enctab--on]="drawerTab()==='workup'" type="button" (click)="setTab('workup')">Workup</button>
+        <button class="enctab" [class.enctab--on]="drawerTab()==='exam'" type="button" (click)="setTab('exam')">Exam</button>
+        <button class="enctab" [class.enctab--on]="drawerTab()==='ap'" type="button" (click)="setTab('ap')">A&amp;P</button>
+        <button class="enctab" [class.enctab--on]="drawerTab()==='orders'" type="button" (click)="setTab('orders')">Orders</button>
+        <button class="enctab" [class.enctab--on]="drawerTab()==='checkout'" type="button" (click)="setTab('checkout')">Checkout</button>
+      </nav>
+
+      <div class="drawer__body">
+        @switch (drawerTab()) {
+
+          <!-- ═══ OVERVIEW ═══ -->
+          @case ('overview') {
+            <div class="drawer__tags">
+              <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
+              <span class="drawer__visit">{{ p.visitType }}</span>
+              <span class="slatag slatag--{{ slaForStage(p).tone }}">{{ p.waitMinutes }}m · {{ slaForStage(p).label }}</span>
             </div>
-            @if (!clinicalEditing()) {
-              <button class="emr__edit" type="button" (click)="startEditClinical(p)">
-                @if (clinicalFor(p)) { Edit } @else { Chart now }
-              </button>
-            }
-          </div>
 
-          @if (!clinicalEditing()) {
-            <!-- VIEW MODE -->
+            @if (riskFlags(p).length) {
+              <div class="esec"><span class="drawer__sec">Clinical risk</span>
+                <div class="riskflags">
+                  @for (f of riskFlags(p); track f.label) {
+                    <span class="riskflag riskflag--{{ f.tone }}"><span class="riskflag__dot"></span>{{ f.label }}</span>
+                  }
+                </div>
+              </div>
+            }
+
             @if (clinicalFor(p); as cr) {
               <div class="emr__cards">
-                <div class="emrcard">
-                  <span class="emrcard__k">Visual acuity</span>
-                  <div class="emrcard__vapair">
-                    <span>OD</span><strong>{{ cr.visualAcuity.od || '—' }}</strong>
-                    <span>OS</span><strong>{{ cr.visualAcuity.os || '—' }}</strong>
-                  </div>
-                </div>
-                <div class="emrcard">
-                  <span class="emrcard__k">IOP (mmHg)</span>
-                  <div class="emrcard__vapair">
-                    <span>OD</span><strong [class.emr--high]="(cr.iop.od ?? 0) > 21">{{ cr.iop.od ?? '—' }}</strong>
-                    <span>OS</span><strong [class.emr--high]="(cr.iop.os ?? 0) > 21">{{ cr.iop.os ?? '—' }}</strong>
-                  </div>
-                </div>
-                <div class="emrcard">
-                  <span class="emrcard__k">Allergies</span>
-                  <strong class="emrcard__v" [class.emr--alert]="allergyText(cr) && allergyText(cr) !== 'NKDA'">{{ allergyText(cr) || 'NKDA' }}</strong>
-                </div>
-                <div class="emrcard">
-                  <span class="emrcard__k">Diagnosis</span>
-                  <strong class="emrcard__v" [class.emr--alert]="!primaryDx(cr)">{{ primaryDx(cr) || 'Not coded' }}</strong>
-                </div>
+                <div class="emrcard"><span class="emrcard__k">Visual acuity</span><div class="emrcard__vapair"><span>OD</span><strong>{{ cr.visualAcuity.od || '—' }}</strong><span>OS</span><strong>{{ cr.visualAcuity.os || '—' }}</strong></div></div>
+                <div class="emrcard"><span class="emrcard__k">IOP (mmHg)</span><div class="emrcard__vapair"><span>OD</span><strong [class.emr--high]="(cr.iop.od ?? 0) > 21">{{ cr.iop.od ?? '—' }}</strong><span>OS</span><strong [class.emr--high]="(cr.iop.os ?? 0) > 21">{{ cr.iop.os ?? '—' }}</strong></div></div>
+                <div class="emrcard"><span class="emrcard__k">Allergies</span><strong class="emrcard__v" [class.emr--alert]="allergyText(cr) && allergyText(cr) !== 'NKDA'">{{ allergyText(cr) || 'NKDA' }}</strong></div>
+                <div class="emrcard"><span class="emrcard__k">Diagnosis</span><strong class="emrcard__v" [class.emr--alert]="!primaryDx(cr)">{{ primaryDx(cr) || 'Not coded' }}</strong></div>
               </div>
-
-              @if (cr.chiefComplaint) { <div class="esec"><span class="drawer__sec">Chief complaint</span><p class="esec__text">{{ cr.chiefComplaint }}</p></div> }
-              @if (medsText(cr)) { <div class="esec"><span class="drawer__sec">Medications</span><p class="esec__text">{{ medsText(cr) }}</p></div> }
-              @if (cr.ocularHistory.length) { <div class="esec"><span class="drawer__sec">Ocular history</span><p class="esec__text">{{ cr.ocularHistory.join(', ') }}</p></div> }
-              @if (cr.systemicHistory?.length) { <div class="esec"><span class="drawer__sec">Systemic history</span><p class="esec__text">{{ cr.systemicHistory!.join(', ') }}</p></div> }
               @if (cr.assessmentPlan) { <div class="esec"><span class="drawer__sec">Assessment / plan</span><p class="esec__text">{{ cr.assessmentPlan }}</p></div> }
               @if (cr.updatedAt) { <p class="emr__updated">Last clinical update {{ cr.updatedAt }} · {{ cr.updatedBy }}</p> }
             } @else {
-              <div class="emr__empty">
-                <p>No clinical chart yet for this encounter.</p>
-                <span>Add visual acuity, IOP, diagnosis and plan to drive risk &amp; billing.</span>
+              <div class="emr__empty"><p>No clinical chart yet.</p><span>Use the Intake → Workup → Exam → A&amp;P tabs to build the encounter.</span></div>
+            }
+
+            <div class="drawer__grid">
+              <div class="dfield"><span>Stage</span><strong>{{ stationLabel(p.station) }}</strong></div>
+              <div class="dfield"><span>Provider</span><strong>{{ p.provider }}</strong></div>
+              @if (p.insurance) { <div class="dfield"><span>Insurance</span><strong>{{ p.insurance }}</strong></div> }
+              @if (p.authStatus) { <div class="dfield"><span>Prior auth</span><strong class="auth--{{ p.authStatus }}">{{ p.authStatus }}</strong></div> }
+            </div>
+
+            <!-- Provider notes -->
+            <div class="esec">
+              <span class="drawer__sec">Provider notes</span>
+              @if (p.notes?.length) {
+                <div class="notelist">
+                  @for (n of p.notes; track $index) { <div class="noteitem"><div class="noteitem__hd"><strong>{{ n.author }}</strong><span>{{ n.at }}</span></div><p>{{ n.text }}</p></div> }
+                </div>
+              } @else { <p class="drawer__muted">No notes yet.</p> }
+              <div class="notecompose">
+                <textarea class="noteinput" rows="2" placeholder="Add a clinical note…" [value]="noteDraft()" (input)="noteDraft.set($any($event.target).value)"></textarea>
+                <button class="dbtn dbtn--sm" type="button" [disabled]="!noteDraft().trim()" (click)="addNote(p)">Add note</button>
+              </div>
+            </div>
+
+            <!-- Unified history -->
+            <div class="drawer__history esec">
+              <span class="drawer__sec">Patient history</span>
+              @if (unifiedHistory(p).length) {
+                <ol class="timeline">
+                  @for (h of unifiedHistory(p); track $index) {
+                    <li class="tline tline--{{ h.kind }}"><span class="tline__dot tline__dot--{{ h.kind }}"></span>
+                      <div class="tline__body"><span class="tline__move"><span class="kindtag kindtag--{{ h.kind }}">{{ h.kind }}</span> {{ h.label }}</span><span class="tline__at">{{ h.at }}</span>@if (h.detail) { <span class="tline__reason">{{ h.detail }}</span> }</div>
+                    </li>
+                  }
+                </ol>
+              } @else { <p class="drawer__muted">No activity yet this visit.</p> }
+            </div>
+          }
+
+          <!-- ═══ INTAKE ═══ -->
+          @case ('intake') {
+            @if (encounterDraft(); as ed) {
+              <div class="emr__form">
+                <label class="ef ef--full"><span>Chief complaint</span><input type="text" [value]="ed.intake?.chiefComplaint ?? ''" (input)="patchIntake('chiefComplaint', $any($event.target).value)" placeholder="Reason for visit"></label>
+                <div class="ef__row">
+                  <label class="ef"><span>Visit type</span><input type="text" [value]="ed.intake?.visitType ?? p.visitType" (input)="patchIntake('visitType', $any($event.target).value)"></label>
+                  <label class="ef"><span>Affected eye</span><select [value]="ed.intake?.eye ?? ''" (change)="patchIntake('eye', $any($event.target).value)"><option value="">—</option><option value="OD">OD</option><option value="OS">OS</option><option value="OU">OU</option></select></label>
+                  <label class="ef"><span>Consent / forms</span><select [value]="ed.intake?.consentStatus ?? ''" (change)="patchIntake('consentStatus', $any($event.target).value)"><option value="">—</option><option value="pending">Pending</option><option value="signed">Signed</option><option value="n/a">N/A</option></select></label>
+                </div>
+                <div class="ef__checks">
+                  <label class="efchk"><input type="checkbox" [checked]="ed.intake?.allergiesReviewed" (change)="patchIntake('allergiesReviewed', $any($event.target).checked)"> Allergies reviewed</label>
+                  <label class="efchk"><input type="checkbox" [checked]="ed.intake?.medsReviewed" (change)="patchIntake('medsReviewed', $any($event.target).checked)"> Medications reviewed</label>
+                  <label class="efchk"><input type="checkbox" [checked]="ed.intake?.ocularHxReviewed" (change)="patchIntake('ocularHxReviewed', $any($event.target).checked)"> Ocular history reviewed</label>
+                  <label class="efchk"><input type="checkbox" [checked]="ed.intake?.systemicHxReviewed" (change)="patchIntake('systemicHxReviewed', $any($event.target).checked)"> Systemic history reviewed</label>
+                </div>
+                <label class="ef ef--full"><span>Intake notes</span><textarea rows="2" [value]="ed.intake?.notes ?? ''" (input)="patchIntake('notes', $any($event.target).value)"></textarea></label>
+                <div class="emr__actions">
+                  @if (encounterFor(p)?.intake?.completedAt) { <span class="emr__done">Completed</span> }
+                  <button class="dbtn dbtn--primary" type="button" (click)="saveIntake(p)">Save intake</button>
+                </div>
               </div>
             }
-          } @else if (clinicalDraft(); as cd) {
-            <!-- EDIT MODE -->
-            <div class="emr__form">
-              <label class="ef ef--full"><span>Chief complaint</span>
-                <input type="text" [value]="cd.chiefComplaint ?? ''" (input)="patchField('chiefComplaint', $any($event.target).value)" placeholder="e.g. Blurred vision, glare"></label>
+          }
 
-              <div class="ef__group">
-                <span class="ef__glabel">Visual acuity</span>
-                <div class="ef__row">
-                  <label class="ef"><span>OD</span><input type="text" [value]="cd.visualAcuity.od ?? ''" (input)="patchVa('od', $any($event.target).value)" placeholder="20/20"></label>
-                  <label class="ef"><span>OS</span><input type="text" [value]="cd.visualAcuity.os ?? ''" (input)="patchVa('os', $any($event.target).value)" placeholder="20/20"></label>
-                  <label class="ef"><span>OU</span><input type="text" [value]="cd.visualAcuity.ou ?? ''" (input)="patchVa('ou', $any($event.target).value)" placeholder="20/20"></label>
+          <!-- ═══ WORKUP ═══ -->
+          @case ('workup') {
+            @if (clinicalDraft(); as cd) {
+              @if (encounterDraft(); as ed) {
+                <div class="emr__form">
+                  <div class="ef__group"><span class="ef__glabel">Visual acuity</span>
+                    <div class="ef__row">
+                      <label class="ef"><span>OD</span><input type="text" [value]="cd.visualAcuity.od ?? ''" (input)="patchVa('od', $any($event.target).value)" placeholder="20/20"></label>
+                      <label class="ef"><span>OS</span><input type="text" [value]="cd.visualAcuity.os ?? ''" (input)="patchVa('os', $any($event.target).value)" placeholder="20/20"></label>
+                    </div>
+                    <div class="ef__row">
+                      <label class="ef"><span>Pinhole OD</span><input type="text" [value]="cd.visualAcuity.pinholeOd ?? ''" (input)="patchVa('pinholeOd', $any($event.target).value)" placeholder="20/20"></label>
+                      <label class="ef"><span>Pinhole OS</span><input type="text" [value]="cd.visualAcuity.pinholeOs ?? ''" (input)="patchVa('pinholeOs', $any($event.target).value)" placeholder="20/20"></label>
+                    </div>
+                  </div>
+                  <div class="ef__group"><span class="ef__glabel">IOP</span>
+                    <div class="ef__row">
+                      <label class="ef"><span>OD</span><input type="number" [value]="cd.iop.od ?? ''" (input)="patchIop('od', $any($event.target).value)" placeholder="14"></label>
+                      <label class="ef"><span>OS</span><input type="number" [value]="cd.iop.os ?? ''" (input)="patchIop('os', $any($event.target).value)" placeholder="14"></label>
+                      <label class="ef"><span>Method</span><select [value]="cd.iop.method ?? ''" (change)="patchIopMethod($any($event.target).value)"><option value="">—</option><option value="Goldmann">Goldmann</option><option value="iCare">iCare</option><option value="Tonopen">Tonopen</option><option value="Other">Other</option></select></label>
+                    </div>
+                  </div>
+                  <div class="ef__row">
+                    <label class="ef"><span>Pupils</span><input type="text" [value]="ed.workup?.pupils ?? ''" (input)="patchWorkup('pupils', $any($event.target).value)" placeholder="PERRL, no APD"></label>
+                    <label class="ef"><span>EOM</span><input type="text" [value]="ed.workup?.eom ?? ''" (input)="patchWorkup('eom', $any($event.target).value)" placeholder="Full OU"></label>
+                  </div>
+                  <div class="ef__row">
+                    <label class="ef"><span>Confrontation fields</span><input type="text" [value]="ed.workup?.confrontation ?? ''" (input)="patchWorkup('confrontation', $any($event.target).value)" placeholder="Full to count"></label>
+                    <label class="ef"><span>Refraction</span><input type="text" [value]="ed.workup?.refractionStatus ?? ''" (input)="patchWorkup('refractionStatus', $any($event.target).value)" placeholder="Manifest done"></label>
+                  </div>
+                  <div class="ef__row">
+                    <label class="ef"><span>Dilation</span><input type="text" [value]="ed.workup?.dilationStatus ?? ''" (input)="patchWorkup('dilationStatus', $any($event.target).value)" placeholder="Dilated 1% tropicamide"></label>
+                  </div>
+                  <label class="ef ef--full"><span>Technician notes</span><textarea rows="2" [value]="ed.workup?.techNotes ?? ''" (input)="patchWorkup('techNotes', $any($event.target).value)"></textarea></label>
+                  <div class="emr__actions">
+                    @if (encounterFor(p)?.workup?.completedAt) { <span class="emr__done">Completed</span> }
+                    <button class="dbtn dbtn--primary" type="button" (click)="saveWorkup(p)">Save workup</button>
+                  </div>
                 </div>
-                <div class="ef__row">
-                  <label class="ef"><span>Pinhole OD</span><input type="text" [value]="cd.visualAcuity.pinholeOd ?? ''" (input)="patchVa('pinholeOd', $any($event.target).value)" placeholder="20/20"></label>
-                  <label class="ef"><span>Pinhole OS</span><input type="text" [value]="cd.visualAcuity.pinholeOs ?? ''" (input)="patchVa('pinholeOs', $any($event.target).value)" placeholder="20/20"></label>
-                </div>
-              </div>
+              }
+            }
+          }
 
-              <div class="ef__group">
-                <span class="ef__glabel">Intraocular pressure</span>
-                <div class="ef__row">
-                  <label class="ef"><span>IOP OD</span><input type="number" [value]="cd.iop.od ?? ''" (input)="patchIop('od', $any($event.target).value)" placeholder="14"></label>
-                  <label class="ef"><span>IOP OS</span><input type="number" [value]="cd.iop.os ?? ''" (input)="patchIop('os', $any($event.target).value)" placeholder="14"></label>
-                  <label class="ef"><span>Method</span>
-                    <select [value]="cd.iop.method ?? ''" (change)="patchIopMethod($any($event.target).value)">
-                      <option value="">—</option><option value="Goldmann">Goldmann</option><option value="iCare">iCare</option><option value="Tonopen">Tonopen</option><option value="Other">Other</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-
-              <label class="ef ef--full"><span>Allergies (comma-separated)</span>
-                <input type="text" [value]="allergyText(cd)" (input)="patchAllergies($any($event.target).value)" placeholder="NKDA, Sulfa"></label>
-              <label class="ef ef--full"><span>Medications (comma-separated)</span>
-                <input type="text" [value]="medsText(cd)" (input)="patchMeds($any($event.target).value)" placeholder="Latanoprost, Lisinopril"></label>
-              <label class="ef ef--full"><span>Ocular history (comma-separated)</span>
-                <input type="text" [value]="cd.ocularHistory.join(', ')" (input)="patchOcular($any($event.target).value)" placeholder="POAG, Pseudophakia OU"></label>
-              <label class="ef ef--full"><span>Systemic history (comma-separated)</span>
-                <input type="text" [value]="(cd.systemicHistory ?? []).join(', ')" (input)="patchSystemic($any($event.target).value)" placeholder="Diabetes, Hypertension"></label>
-
-              <div class="ef__group">
-                <span class="ef__glabel">Diagnosis</span>
-                <div class="ef__row">
-                  <label class="ef"><span>ICD-10</span><input type="text" [value]="cd.diagnosis[0].icd10 ?? ''" (input)="patchDx('icd10', $any($event.target).value)" placeholder="H40.11"></label>
-                  <label class="ef ef--grow"><span>Description</span><input type="text" [value]="cd.diagnosis[0].description ?? ''" (input)="patchDx('description', $any($event.target).value)" placeholder="Primary open-angle glaucoma"></label>
-                  <label class="ef"><span>Eye</span>
-                    <select [value]="cd.diagnosis[0].eye ?? ''" (change)="patchDx('eye', $any($event.target).value)">
-                      <option value="">—</option><option value="OD">OD</option><option value="OS">OS</option><option value="OU">OU</option><option value="N/A">N/A</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-
-              <details class="ef__exam">
-                <summary>Structured exam findings</summary>
+          <!-- ═══ EXAM ═══ -->
+          @case ('exam') {
+            @if (clinicalDraft(); as cd) {
+              <div class="emr__form">
                 <div class="ef__examgrid">
                   @for (x of examFields; track x.key) {
-                    <label class="ef"><span>{{ x.label }}</span>
-                      <input type="text" [value]="cd.examFindings[x.key] ?? ''" (input)="patchExam(x.key, $any($event.target).value)" placeholder="WNL"></label>
+                    <label class="ef"><span>{{ x.label }}</span><input type="text" [value]="cd.examFindings[x.key] ?? ''" (input)="patchExam(x.key, $any($event.target).value)" placeholder="WNL"></label>
                   }
                 </div>
-              </details>
-
-              <label class="ef ef--full"><span>Assessment / plan</span>
-                <textarea rows="2" [value]="cd.assessmentPlan ?? ''" (input)="patchField('assessmentPlan', $any($event.target).value)" placeholder="Plan, follow-up, orders…"></textarea></label>
-
-              <div class="emr__actions">
-                @if (clinicalDirty()) { <span class="emr__dirty">Unsaved changes</span> }
-                <button class="dbtn" type="button" (click)="cancelEditClinical()">Cancel</button>
-                <button class="dbtn dbtn--primary" type="button" [disabled]="!clinicalDirty()" (click)="saveClinical(p)">Save clinical</button>
-              </div>
-            </div>
-          }
-        </div>
-
-        <!-- Encounter context grid -->
-        <div class="drawer__grid">
-          <div class="dfield"><span>Stage</span><strong>{{ stationLabel(p.station) }}</strong></div>
-          <div class="dfield"><span>Provider</span><strong>{{ p.provider }}</strong></div>
-          <div class="dfield"><span>Scheduled</span><strong>{{ p.scheduledTime }}</strong></div>
-          @if (p.insurance) { <div class="dfield"><span>Insurance</span><strong>{{ p.insurance }}</strong></div> }
-          @if (p.authStatus) { <div class="dfield"><span>Prior auth</span><strong class="auth--{{ p.authStatus }}">{{ p.authStatus }}</strong></div> }
-        </div>
-
-        <!-- Pending imaging / tests (from real readiness items) -->
-        <div class="esec">
-          <span class="drawer__sec">Pending imaging &amp; tests</span>
-          @if (clinicalProfile(p).pendingTests.length) {
-            <div class="chiplist">
-              @for (t of clinicalProfile(p).pendingTests; track t) { <span class="testchip">{{ t }}</span> }
-            </div>
-          } @else {
-            <p class="drawer__muted">All required testing complete.</p>
-          }
-        </div>
-
-        <!-- Readiness checklist -->
-        @if (p.readinessItems.length) {
-          <div class="drawer__ready esec">
-            <span class="drawer__sec">Diagnosis / procedure readiness</span>
-            @for (item of p.readinessItems; track item.label) {
-              <div class="ritem" [class.ritem--done]="item.done">
-                <span class="ritem__box">
-                  @if (item.done) {
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  }
-                </span>
-                <span class="ritem__label">{{ item.label }}</span>
-                @if (item.required && !item.done) { <span class="ritem__req">Required</span> }
+                <div class="emr__actions">
+                  @if (encounterFor(p)?.examCompletedAt) { <span class="emr__done">Completed</span> }
+                  <button class="dbtn dbtn--primary" type="button" (click)="saveExam(p)">Save exam</button>
+                </div>
               </div>
             }
-          </div>
-        }
+          }
 
-        <!-- Provider notes -->
-        <div class="esec">
-          <span class="drawer__sec">Provider notes</span>
-          @if (p.notes?.length) {
-            <div class="notelist">
-              @for (n of p.notes; track $index) {
-                <div class="noteitem">
-                  <div class="noteitem__hd"><strong>{{ n.author }}</strong><span>{{ n.at }}</span></div>
-                  <p>{{ n.text }}</p>
+          <!-- ═══ ASSESSMENT / PLAN ═══ -->
+          @case ('ap') {
+            @if (clinicalDraft(); as cd) {
+              @if (encounterDraft(); as ed) {
+                <div class="emr__form">
+                  <div class="ef__group"><span class="ef__glabel">Diagnosis</span>
+                    <div class="ef__row">
+                      <label class="ef"><span>ICD-10</span><input type="text" [value]="cd.diagnosis[0].icd10 ?? ''" (input)="patchDx('icd10', $any($event.target).value)" placeholder="H40.11"></label>
+                      <label class="ef ef--grow"><span>Description</span><input type="text" [value]="cd.diagnosis[0].description ?? ''" (input)="patchDx('description', $any($event.target).value)" placeholder="Primary open-angle glaucoma"></label>
+                      <label class="ef"><span>Eye</span><select [value]="cd.diagnosis[0].eye ?? ''" (change)="patchDx('eye', $any($event.target).value)"><option value="">—</option><option value="OD">OD</option><option value="OS">OS</option><option value="OU">OU</option><option value="N/A">N/A</option></select></label>
+                    </div>
+                  </div>
+                  <label class="ef ef--full"><span>Assessment / plan</span><textarea rows="3" [value]="cd.assessmentPlan ?? ''" (input)="patchField('assessmentPlan', $any($event.target).value)" placeholder="Plan, orders, rationale…"></textarea></label>
+                  <div class="ef__row">
+                    <label class="ef"><span>Follow-up interval</span><input type="text" [value]="ed.assessment?.followUpInterval ?? ''" (input)="patchAssess('followUpInterval', $any($event.target).value)" placeholder="4 weeks"></label>
+                    <label class="ef"><span>Medication changes</span><input type="text" [value]="ed.assessment?.medicationChanges ?? ''" (input)="patchAssess('medicationChanges', $any($event.target).value)" placeholder="Start latanoprost"></label>
+                  </div>
+                  <label class="ef ef--full"><span>Patient education</span><input type="text" [value]="ed.assessment?.patientEducation ?? ''" (input)="patchAssess('patientEducation', $any($event.target).value)" placeholder="Counseled on adherence"></label>
+                  <div class="ef__row">
+                    <label class="ef ef--grow"><span>Procedure recommendation</span><input type="text" [value]="ed.assessment?.procedureRecommendation ?? ''" (input)="patchAssess('procedureRecommendation', $any($event.target).value)" placeholder="SLT if uncontrolled"></label>
+                    <label class="efchk efchk--inline"><input type="checkbox" [checked]="ed.assessment?.surgeryConsider" (change)="patchAssess('surgeryConsider', $any($event.target).checked)"> Surgery consideration</label>
+                  </div>
+                  <div class="emr__actions">
+                    @if (encounterFor(p)?.assessment?.completedAt) { <span class="emr__done">Completed</span> }
+                    <button class="dbtn dbtn--primary" type="button" (click)="saveAssessment(p)">Save assessment</button>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          <!-- ═══ ORDERS ═══ -->
+          @case ('orders') {
+            <div class="esec">
+              <span class="drawer__sec">Encounter orders</span>
+              @if (encounterFor(p)?.orders?.length) {
+                <div class="ordlist">
+                  @for (o of encounterFor(p)!.orders; track o.id) {
+                    <div class="orditem">
+                      <span class="ordtype ordtype--{{ o.type }}">{{ o.type }}</span>
+                      <span class="ordtext">{{ o.detail }}</span>
+                      <span class="ordstatus">{{ o.status }}</span>
+                    </div>
+                  }
+                </div>
+              } @else { <p class="drawer__muted">No orders placed yet.</p> }
+            </div>
+            <div class="emr__form">
+              <div class="ef__row">
+                <label class="ef"><span>Order type</span>
+                  <select [value]="orderType()" (change)="orderType.set($any($event.target).value)">
+                    @for (t of orderTypes; track t.id) { <option [value]="t.id">{{ t.label }}</option> }
+                  </select>
+                </label>
+                <label class="ef ef--grow"><span>Detail</span><input type="text" [value]="orderDetail()" (input)="orderDetail.set($any($event.target).value)" placeholder="e.g. OCT RNFL OU, HVF 24-2"></label>
+              </div>
+              <div class="emr__actions">
+                <button class="dbtn dbtn--primary" type="button" [disabled]="!orderDetail().trim()" (click)="placeOrder(p)">Place order</button>
+              </div>
+            </div>
+          }
+
+          <!-- ═══ CHECKOUT ═══ -->
+          @case ('checkout') {
+            <div class="esec">
+              <span class="drawer__sec">Checkout readiness</span>
+              <div class="ckready">
+                @for (c of checkoutItems(p); track c.label) {
+                  <div class="ckitem" [class.ckitem--ok]="c.ok">
+                    <span class="ckitem__ic">
+                      @if (c.ok) { <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg> }
+                      @else { <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 8v5m0 3h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg> }
+                    </span>
+                    {{ c.label }}
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="esec">
+              <span class="drawer__sec">Billing readiness</span>
+              @if (billingReady(p).ready) {
+                <p class="ck-ready">Ready to bill — all clinical prerequisites met.</p>
+              } @else {
+                <div class="chiplist">
+                  @for (b of billingReady(p).blockers; track b) { <span class="testchip">{{ b }}</span> }
                 </div>
               }
             </div>
-          } @else {
-            <p class="drawer__muted">No notes yet.</p>
+            <div class="emr__actions">
+              @if (encounterFor(p)?.checkout?.completedAt) { <span class="emr__done">Checkout complete</span> }
+              <button class="dbtn dbtn--primary" type="button" [disabled]="!canCheckout(p) || !!encounterFor(p)?.checkout?.completedAt" (click)="completeCheckout(p)">Complete checkout</button>
+            </div>
           }
-          <div class="notecompose">
-            <textarea class="noteinput" rows="2" placeholder="Add a clinical note…"
-              [value]="noteDraft()" (input)="noteDraft.set($any($event.target).value)"></textarea>
-            <button class="dbtn dbtn--sm" type="button" [disabled]="!noteDraft().trim()" (click)="addNote(p)">Add note</button>
-          </div>
-        </div>
-
-        <!-- Checkout / claim readiness -->
-        <div class="esec">
-          <span class="drawer__sec">Checkout &amp; claim readiness</span>
-          <div class="readybar">
-            <div class="readybar__item" [class.readybar__item--ok]="clinicalProfile(p).pendingTests.length === 0">
-              <span class="readybar__dot"></span>Testing {{ clinicalProfile(p).pendingTests.length === 0 ? 'complete' : 'pending' }}
-            </div>
-            <div class="readybar__item" [class.readybar__item--ok]="p.authStatus !== 'expired'">
-              <span class="readybar__dot"></span>Auth {{ p.authStatus === 'expired' ? 'blocked' : 'clear' }}
-            </div>
-            <div class="readybar__item" [class.readybar__item--ok]="p.station === 'checkout'">
-              <span class="readybar__dot"></span>{{ p.station === 'checkout' ? 'Ready to bill' : 'Encounter open' }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Unified patient history (clinical + flow + imaging + billing) -->
-        <div class="drawer__history esec">
-          <span class="drawer__sec">Patient history</span>
-          @if (unifiedHistory(p).length) {
-            <ol class="timeline">
-              @for (h of unifiedHistory(p); track $index) {
-                <li class="tline tline--{{ h.kind }}">
-                  <span class="tline__dot tline__dot--{{ h.kind }}"></span>
-                  <div class="tline__body">
-                    <span class="tline__move"><span class="kindtag kindtag--{{ h.kind }}">{{ h.kind }}</span> {{ h.label }}</span>
-                    <span class="tline__at">{{ h.at }}</span>
-                    @if (h.detail) { <span class="tline__reason">{{ h.detail }}</span> }
-                  </div>
-                </li>
-              }
-            </ol>
-          } @else {
-            <p class="drawer__muted">No activity yet this visit.</p>
-          }
-        </div>
+        }
       </div>
 
       <footer class="drawer__foot drawer__foot--emr">
@@ -787,11 +821,6 @@
           <button class="dbtn dbtn--danger" type="button" (click)="toggleUrgent(p)">
             @if (p.urgent) { Clear urgent } @else { Flag urgent }
           </button>
-        </div>
-        <div class="drawer__actrow">
-          <button class="dbtn" type="button" (click)="sendToImaging(p)" [disabled]="p.station === 'imaging'">Send to imaging</button>
-          <button class="dbtn" type="button" (click)="markReady(p)" [disabled]="p.station === 'ready'">Mark ready</button>
-          <button class="dbtn" type="button" (click)="closeToCheckout(p)" [disabled]="p.station === 'checkout'">Checkout</button>
         </div>
       </footer>
     </aside>

@@ -713,6 +713,7 @@ export interface FlowMove {
   id?: string;           // storage id (patientId + sequence)
   patientId?: string;    // owning patient (for Firestore grouping)
   at: string;            // timestamp label, e.g. "9:42 AM"
+  iso?: string;          // sortable ISO timestamp (Sprint 6)
   from: FlowStation;
   to: FlowStation;
   skipped: boolean;      // true if the move jumped past required stages
@@ -729,8 +730,81 @@ export interface ClinicalNote {
 /** A timestamped audit entry for an imaging or claim work item. */
 export interface WorkAudit {
   at: string;
+  iso?: string;          // sortable ISO timestamp (Sprint 6)
   action: string;
   detail?: string;
+}
+
+// ── Encounter workflow (Sprint 6) ────────────────────────────────────────────
+export type EncounterStageId =
+  | 'checked-in' | 'intake' | 'pre-test' | 'provider-exam'
+  | 'assessment' | 'orders' | 'checkout' | 'billing-ready';
+
+export type StageStatus = 'not-started' | 'in-progress' | 'complete' | 'blocked';
+
+export type EncounterOrderType = 'imaging' | 'procedure' | 'medication' | 'referral' | 'follow-up' | 'surgery-consult';
+
+export interface EncounterOrder {
+  id: string;
+  type: EncounterOrderType;
+  detail: string;
+  status: 'ordered' | 'in-progress' | 'completed';
+  createdAt: string;     // ISO
+}
+
+export interface EncounterAudit {
+  at: string;
+  iso: string;           // sortable
+  action: string;
+  detail?: string;
+}
+
+/**
+ * Workflow state for a patient's visit. Clinical truth (VA/IOP/exam/dx/plan)
+ * lives in PatientClinicalRecord; this record carries stage progress and the
+ * workflow-specific fields (intake, workup extras, A/P extras, orders, checkout).
+ */
+export interface EncounterRecord {
+  patientId: string;
+  mrn: string;
+  encounterId: string;
+  intake?: {
+    chiefComplaint?: string;
+    visitType?: string;
+    eye?: 'OD' | 'OS' | 'OU';
+    allergiesReviewed?: boolean;
+    medsReviewed?: boolean;
+    ocularHxReviewed?: boolean;
+    systemicHxReviewed?: boolean;
+    consentStatus?: 'pending' | 'signed' | 'n/a';
+    notes?: string;
+    completedAt?: string;
+  };
+  workup?: {
+    pupils?: string;
+    eom?: string;
+    confrontation?: string;
+    refractionStatus?: string;
+    dilationStatus?: string;
+    techNotes?: string;
+    completedAt?: string;
+  };
+  assessment?: {
+    followUpInterval?: string;
+    patientEducation?: string;
+    medicationChanges?: string;
+    procedureRecommendation?: string;
+    surgeryConsider?: boolean;
+    completedAt?: string;
+  };
+  examCompletedAt?: string;
+  orders: EncounterOrder[];
+  checkout?: {
+    instructionsReady?: boolean;
+    completedAt?: string;
+  };
+  audit: EncounterAudit[];
+  updatedAt?: string;
 }
 
 // ── EMR clinical record (persisted, editable) ────────────────────────────────
@@ -771,6 +845,7 @@ export interface ClinicalAuditEntry {
   changedSections: string[];
   note?: string;
   createdAt: string;
+  iso?: string;          // sortable ISO timestamp (Sprint 6)
   createdBy?: string;
 }
 

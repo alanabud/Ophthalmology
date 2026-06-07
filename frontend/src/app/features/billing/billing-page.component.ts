@@ -63,12 +63,15 @@ export class BillingPageComponent implements AfterViewInit {
       const authResolved  = status === 'Auth received' || status === 'Ready' || status === 'Submitted';
       const billerCleared = status === 'Ready' || status === 'Submitted';
       const blockers: string[] = [];
+      const enc = this.store.encounters()[p.id];
+      const checkedOut = p.station === 'checkout' || !!enc?.checkout?.completedAt;
       if (!billerCleared) {
         if (!authResolved && p.authStatus === 'expired') blockers.push('Prior auth expired');
         else if (!authResolved && p.authStatus === 'pending') blockers.push('Prior auth pending');
         if (dx.includes('Pending')) blockers.push('Diagnosis not coded');
-        if (missingReadiness.length) blockers.push(`Readiness incomplete (${missingReadiness.length})`);
-        if (p.station !== 'checkout') blockers.push('Encounter not checked out');
+        // A completed encounter checkout supersedes raw flow-readiness items.
+        if (!checkedOut && missingReadiness.length) blockers.push(`Readiness incomplete (${missingReadiness.length})`);
+        if (!checkedOut) blockers.push('Encounter not checked out');
       }
       const tone = this.clmTone(status, blockers.length);
       return {

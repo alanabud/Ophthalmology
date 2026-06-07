@@ -47,13 +47,16 @@ export class ImagingPageComponent implements AfterViewInit {
     this.store.patientFlow()
       .map(p => {
         const imgReadiness = p.readinessItems.filter(r => this.imagingRe.test(r.label));
-        const inQueue = imgReadiness.length > 0 || p.station === 'imaging' || p.station === 'dilating';
+        // Encounter imaging orders (Sprint 6) also place a patient in the queue.
+        const imgOrders = (this.store.encounters()[p.id]?.orders ?? []).filter(o => o.type === 'imaging');
+        const inQueue = imgReadiness.length > 0 || imgOrders.length > 0 || p.station === 'imaging' || p.station === 'dilating';
         if (!inQueue) return null;
         const ws = this.store.imagingWork()[p.id];
         const status = this.imgStatus(p);
         const tone = this.imgTone(status);
         const blockers = imgReadiness.filter(r => r.required && !r.done).map(r => r.label);
-        const testType = imgReadiness.map(r => r.label).join(', ') || 'Imaging / testing';
+        const orderText = imgOrders.map(o => o.detail).join(', ');
+        const testType = [imgReadiness.map(r => r.label).join(', '), orderText].filter(Boolean).join(' · ') || 'Imaging / testing';
         const urgent = p.urgent || p.tone === 'critical';
         // Clinical context from the EMR record (why the test was ordered).
         const cr = this.store.clinicalRecords()[p.id];

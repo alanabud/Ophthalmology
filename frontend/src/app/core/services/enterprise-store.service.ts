@@ -22,6 +22,8 @@ import {
   ClaimRecord,
   ClinicalAuditEntry,
   CockpitImagingItem,
+  EncounterOrder,
+  EncounterRecord,
   FlowMove,
   FlowStation,
   PatientClinicalRecord,
@@ -197,7 +199,7 @@ export class EnterpriseStoreService {
         if (p.id !== id || p.station === to) return p;
         move = {
           id: `${id}-${Date.now()}-${++this.moveSeq}`, patientId: id,
-          at, from: p.station, to, skipped: opts?.skipped ?? false, reason: opts?.reason,
+          at, iso: this.nowIso(), from: p.station, to, skipped: opts?.skipped ?? false, reason: opts?.reason,
         };
         moved = { ...p, station: to, waitMinutes: 0, arrivedAt: at };
         return moved;
@@ -248,6 +250,7 @@ export class EnterpriseStoreService {
   private nowStamp(): string {
     return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
+  private nowIso(): string { return new Date().toISOString(); }
 
   private mutateWork(
     base: typeof this.imagingWorkBase,
@@ -269,28 +272,28 @@ export class EnterpriseStoreService {
 
   setImagingStatus(id: string, status: string, action: string): void {
     this.mutateWork(this.imagingWorkBase, 'imagingWork', id, (s) => ({
-      ...s, status, audit: [...(s.audit ?? []), { at: this.nowStamp(), action }],
+      ...s, status, audit: [...(s.audit ?? []), { at: this.nowStamp(), iso: this.nowIso(), action }],
     }));
   }
   addImagingNote(id: string, text: string, author = 'Sandbox User'): void {
     this.mutateWork(this.imagingWorkBase, 'imagingWork', id, (s) => ({
       ...s,
       notes: [...(s.notes ?? []), { at: this.nowStamp(), author, text }],
-      audit: [...(s.audit ?? []), { at: this.nowStamp(), action: 'Note added' }],
+      audit: [...(s.audit ?? []), { at: this.nowStamp(), iso: this.nowIso(), action: 'Note added' }],
     }));
   }
 
   setClaimStatus(id: string, status: string, action: string, holdReason?: string): void {
     this.mutateWork(this.claimWorkBase, 'claimWork', id, (s) => ({
       ...s, status, holdReason: holdReason ?? s.holdReason,
-      audit: [...(s.audit ?? []), { at: this.nowStamp(), action, detail: holdReason }],
+      audit: [...(s.audit ?? []), { at: this.nowStamp(), iso: this.nowIso(), action, detail: holdReason }],
     }));
   }
   addClaimNote(id: string, text: string, author = 'Sandbox User'): void {
     this.mutateWork(this.claimWorkBase, 'claimWork', id, (s) => ({
       ...s,
       notes: [...(s.notes ?? []), { at: this.nowStamp(), author, text }],
-      audit: [...(s.audit ?? []), { at: this.nowStamp(), action: 'Billing note added' }],
+      audit: [...(s.audit ?? []), { at: this.nowStamp(), iso: this.nowIso(), action: 'Billing note added' }],
     }));
   }
 
@@ -313,11 +316,43 @@ export class EnterpriseStoreService {
 
     const entry: ClinicalAuditEntry = {
       id: `${rec.patientId}-${Date.now()}`, patientId: rec.patientId, encounterId: rec.encounterId,
-      action: 'clinical-update', changedSections, createdAt: this.nowStamp(), createdBy: author,
+      action: 'clinical-update', changedSections, createdAt: this.nowStamp(), iso: this.nowIso(), createdBy: author,
     };
     this.clinicalAuditBase.update((m) => ({ ...m, [rec.patientId]: [...(m[rec.patientId] ?? []), entry] }));
     void this.fs.upsert('clinicalAudit', entry.id!, this.sanitize(entry))
       .catch((e) => console.warn('[Store] clinical audit persist failed', e?.message ?? e));
+  }
+
+  // ── Encounter workflow (Sprint 6) ──────────────────────────────────────────
+  private readonly encounterBase = signal<Record<string, EncounterRecord>>({});
+  readonly encounters = this.encounterBase.asReadonly();
+
+  private blankEncounter(patientId: string, mrn: string): EncounterRecord {
+    return { patientId, mrn, encounterId: `${patientId}-enc`, orders: [], audit: [] };
+  }
+
+  getEncounter(patientId: string, mrn = ''): EncounterRecord {
+    return this.encounterBase()[patientId] ?? this.blankEncounter(patientId, mrn);
+  }
+
+  private persistEncounter(rec: EncounterRecord): void {
+    void this.fs.upsert('encounters', rec.patientId, this.sanitize(rec))
+      .catch((e) => console.warn('[Store] encounter persist failed', e?.message ?? e));
+  }
+
+  /** Merge an encounter patch, emit an audit entry, and persist. */
+  updateEncounter(patientId: string, mrn: string, patch: Partial<EncounterRecord>, auditAction: string, detail?: string): void {
+    const cur = this.getEncounter(patientId, mrn);
+    const audit = [...(cur.audit ?? []), { at: this.nowStamp(), iso: this.nowIso(), action: auditAction, detail }];
+    const next: EncounterRecord = { ...cur, ...patch, mrn: mrn || cur.mrn, audit, updatedAt: this.nowStamp() };
+    this.encounterBase.update((m) => ({ ...m, [patientId]: next }));
+    this.persistEncounter(next);
+  }
+
+  addEncounterOrder(patientId: string, mrn: string, order: Omit<EncounterOrder, 'id' | 'createdAt'>): void {
+    const cur = this.getEncounter(patientId, mrn);
+    const full: EncounterOrder = { ...order, id: `ord-${Date.now()}`, createdAt: this.nowIso() };
+    this.updateEncounter(patientId, mrn, { orders: [...(cur.orders ?? []), full] }, `Order placed · ${order.type}`, order.detail);
   }
 
   // ── Compliance ─────────────────────────────────────────────────────────────
@@ -531,6 +566,12 @@ export class EnterpriseStoreService {
       const grouped: Record<string, ClinicalAuditEntry[]> = {};
       for (const a of clinicalAudit) (grouped[a.patientId] ??= []).push(a);
       this.clinicalAuditBase.set(grouped);
+    }
+
+    // Encounter workflow records.
+    const encounters = await this.fs.getAll<EncounterRecord>('encounters');
+    if (encounters.length) {
+      this.encounterBase.set(Object.fromEntries(encounters.map((e) => [e.patientId, e])));
     }
   }
 

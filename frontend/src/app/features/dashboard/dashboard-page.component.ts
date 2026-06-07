@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { FlowStation, PatientClinicalRecord, PatientFlowRecord, ScheduleBlock, SurfaceTone } from '../../core/models/enterprise.models';
+import { EncounterOrderType, EncounterRecord, EncounterStageId, FlowStation, PatientClinicalRecord, PatientFlowRecord, ScheduleBlock, StageStatus, SurfaceTone } from '../../core/models/enterprise.models';
 import { ActionService } from '../../core/services/action.service';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
@@ -636,8 +636,17 @@ export class DashboardPageComponent {
 
   // ── Patient drawer (slide-over) ───────────────────────────────────────────
   protected readonly selectedPatient = signal<PatientFlowRecord | null>(null);
-  protected openPatient(p: PatientFlowRecord): void { this.selectedPatient.set(p); this.clinicalEditing.set(false); this.clinicalDraft.set(null); }
-  protected closePatient(): void { this.selectedPatient.set(null); this.clinicalEditing.set(false); this.clinicalDraft.set(null); }
+  protected openPatient(p: PatientFlowRecord): void {
+    this.selectedPatient.set(p);
+    this.drawerTab.set('overview');
+    this.clinicalDraft.set(structuredClone(this.clinicalFor(p) ?? this.blankClinical(p)));
+    this.encounterDraft.set(this.blankEncounterDraft(p));
+  }
+  protected closePatient(): void {
+    this.selectedPatient.set(null);
+    this.clinicalDraft.set(null);
+    this.encounterDraft.set(null);
+  }
 
   // Clinical board order — matches boardStations so skip/advance logic and the
   // visual columns agree.
@@ -990,8 +999,7 @@ export class DashboardPageComponent {
     { key: 'vessels', label: 'Vessels' }, { key: 'periphery', label: 'Periphery' },
   ];
 
-  // Edit state
-  protected readonly clinicalEditing = signal(false);
+  // Clinical draft (initialized when the drawer opens; edited across tabs)
   protected readonly clinicalDraft = signal<PatientClinicalRecord | null>(null);
 
   private blankClinical(p: PatientFlowRecord): PatientClinicalRecord {
@@ -1003,27 +1011,14 @@ export class DashboardPageComponent {
     };
   }
 
-  protected startEditClinical(p: PatientFlowRecord): void {
-    const existing = this.clinicalFor(p);
-    const base = existing ? structuredClone(existing) : this.blankClinical(p);
-    if (!base.diagnosis?.length) base.diagnosis = [{}];
-    this.clinicalDraft.set(base);
-    this.clinicalEditing.set(true);
-  }
-  protected cancelEditClinical(): void {
-    this.clinicalEditing.set(false);
-    this.clinicalDraft.set(null);
-  }
-  protected saveClinical(p: PatientFlowRecord): void {
+  /** Persist the working clinical draft for a set of changed sections. */
+  private commitClinical(p: PatientFlowRecord): void {
     const d = this.clinicalDraft();
     if (!d) return;
     const prev = this.clinicalFor(p);
     const changed = this.changedSections(prev, d);
-    // strip an empty diagnosis row
-    d.diagnosis = (d.diagnosis ?? []).filter(x => x.icd10 || x.description);
-    this.store.saveClinicalRecord(d, changed.length ? changed : ['clinical']);
-    this.clinicalEditing.set(false);
-    this.clinicalDraft.set(null);
+    const clean: PatientClinicalRecord = { ...d, diagnosis: (d.diagnosis ?? []).filter(x => x.icd10 || x.description) };
+    this.store.saveClinicalRecord(clean, changed.length ? changed : ['clinical']);
   }
 
   private changedSections(prev: PatientClinicalRecord | null, next: PatientClinicalRecord): string[] {
@@ -1041,13 +1036,6 @@ export class DashboardPageComponent {
     if (j(prev?.assessmentPlan) !== j(next.assessmentPlan)) s.push('assessment/plan');
     return s;
   }
-
-  protected readonly clinicalDirty = computed(() => {
-    const d = this.clinicalDraft();
-    if (!d) return false;
-    const prev = this.store.clinicalRecords()[d.patientId] ?? null;
-    return this.changedSections(prev, d).length > 0;
-  });
 
   // ── Draft patch helpers ─────────────────────────────────────────────────────
   private patch(mut: (d: PatientClinicalRecord) => void): void {
@@ -1079,18 +1067,222 @@ export class DashboardPageComponent {
     return d ? `${d.icd10 ?? ''}${d.icd10 && d.description ? ' — ' : ''}${d.description ?? ''}` : '';
   }
 
-  // ── Unified patient history (clinical + flow + imaging + billing) ───────────
-  protected unifiedHistory(p: PatientFlowRecord): { kind: 'clinical' | 'flow' | 'imaging' | 'billing'; at: string; label: string; detail?: string }[] {
-    const out: { kind: 'clinical' | 'flow' | 'imaging' | 'billing'; at: string; label: string; detail?: string }[] = [];
+  // ── Unified patient history (clinical + flow + imaging + billing + encounter) ─
+  protected unifiedHistory(p: PatientFlowRecord): { kind: 'clinical' | 'flow' | 'imaging' | 'billing' | 'encounter'; at: string; iso?: string; label: string; detail?: string }[] {
+    const out: { kind: 'clinical' | 'flow' | 'imaging' | 'billing' | 'encounter'; at: string; iso?: string; label: string; detail?: string }[] = [];
     for (const m of this.store.flowHistory()[p.id] ?? [])
-      out.push({ kind: 'flow', at: m.at, label: `${this.stationLabelFor(m.from)} → ${this.stationLabelFor(m.to)}`, detail: m.skipped ? `skipped · ${m.reason ?? ''}` : undefined });
+      out.push({ kind: 'flow', at: m.at, iso: m.iso, label: `${this.stationLabelFor(m.from)} → ${this.stationLabelFor(m.to)}`, detail: m.skipped ? `skipped · ${m.reason ?? ''}` : undefined });
     for (const a of this.store.imagingWork()[p.id]?.audit ?? [])
-      out.push({ kind: 'imaging', at: a.at, label: a.action, detail: a.detail });
+      out.push({ kind: 'imaging', at: a.at, iso: a.iso, label: a.action, detail: a.detail });
     for (const a of this.store.claimWork()[p.id]?.audit ?? [])
-      out.push({ kind: 'billing', at: a.at, label: a.action, detail: a.detail });
+      out.push({ kind: 'billing', at: a.at, iso: a.iso, label: a.action, detail: a.detail });
     for (const a of this.store.clinicalAudit()[p.id] ?? [])
-      out.push({ kind: 'clinical', at: a.createdAt, label: 'Clinical update', detail: a.changedSections.join(', ') });
-    return out;
+      out.push({ kind: 'clinical', at: a.createdAt, iso: a.iso, label: 'Clinical update', detail: a.changedSections.join(', ') });
+    for (const a of this.store.encounters()[p.id]?.audit ?? [])
+      out.push({ kind: 'encounter', at: a.at, iso: a.iso, label: a.action, detail: a.detail });
+    // Chronological (newest first) using sortable ISO where available.
+    return out.sort((x, y) => (y.iso ?? '').localeCompare(x.iso ?? ''));
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ENCOUNTER WORKFLOW (Sprint 6)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  protected readonly drawerTab = signal<'overview' | 'intake' | 'workup' | 'exam' | 'ap' | 'orders' | 'checkout'>('overview');
+  protected setTab(t: 'overview' | 'intake' | 'workup' | 'exam' | 'ap' | 'orders' | 'checkout'): void { this.drawerTab.set(t); }
+
+  protected readonly encounterDraft = signal<EncounterRecord | null>(null);
+  protected encounterFor(p: PatientFlowRecord): EncounterRecord | null { return this.store.encounters()[p.id] ?? null; }
+
+  private blankEncounterDraft(p: PatientFlowRecord): EncounterRecord {
+    const e = this.encounterFor(p);
+    return {
+      patientId: p.id, mrn: p.mrn, encounterId: `${p.id}-enc`,
+      intake: { ...(e?.intake ?? {}) },
+      workup: { ...(e?.workup ?? {}) },
+      assessment: { ...(e?.assessment ?? {}) },
+      examCompletedAt: e?.examCompletedAt,
+      orders: [...(e?.orders ?? [])],
+      checkout: { ...(e?.checkout ?? {}) },
+      audit: [...(e?.audit ?? [])],
+    };
+  }
+  private patchEnc(mut: (d: EncounterRecord) => void): void {
+    const d = this.encounterDraft(); if (!d) return;
+    const copy = structuredClone(d); mut(copy); this.encounterDraft.set(copy);
+  }
+  protected patchIntake(key: string, v: unknown): void { this.patchEnc(d => { d.intake = { ...d.intake, [key]: v }; }); }
+  protected patchWorkup(key: string, v: unknown): void { this.patchEnc(d => { d.workup = { ...d.workup, [key]: v }; }); }
+  protected patchAssess(key: string, v: unknown): void { this.patchEnc(d => { d.assessment = { ...d.assessment, [key]: v }; }); }
+
+  protected readonly encounterStages: { id: EncounterStageId; label: string }[] = [
+    { id: 'checked-in', label: 'Checked In' }, { id: 'intake', label: 'Intake' },
+    { id: 'pre-test', label: 'Pre-Test' }, { id: 'provider-exam', label: 'Provider Exam' },
+    { id: 'assessment', label: 'Assessment / Plan' }, { id: 'orders', label: 'Orders' },
+    { id: 'checkout', label: 'Checkout' }, { id: 'billing-ready', label: 'Billing Ready' },
+  ];
+
+  /** Derive a stage's status from real persisted clinical + encounter state. */
+  protected stageStatus(p: PatientFlowRecord, id: EncounterStageId): StageStatus {
+    const e = this.encounterFor(p);
+    const cr = this.clinicalFor(p);
+    const hasVa = !!(cr?.visualAcuity?.od || cr?.visualAcuity?.os);
+    const hasIop = cr?.iop?.od != null || cr?.iop?.os != null;
+    const hasExam = !!cr && Object.values(cr.examFindings ?? {}).some(Boolean);
+    const hasDx = !!(cr?.diagnosis ?? []).some(d => d.icd10);
+    const hasPlan = !!cr?.assessmentPlan;
+
+    switch (id) {
+      case 'checked-in': return 'complete';
+      case 'intake':
+        if (e?.intake?.completedAt) return 'complete';
+        return e?.intake && Object.keys(e.intake).length ? 'in-progress' : 'not-started';
+      case 'pre-test':
+        if (e?.workup?.completedAt && hasVa && hasIop) return 'complete';
+        return hasVa || hasIop || e?.workup?.pupils ? 'in-progress' : 'not-started';
+      case 'provider-exam':
+        if (e?.examCompletedAt && hasExam) return 'complete';
+        return hasExam ? 'in-progress' : 'not-started';
+      case 'assessment':
+        if (hasDx && hasPlan) return 'complete';
+        return hasDx || hasPlan ? 'in-progress' : 'not-started';
+      case 'orders':
+        return (e?.orders?.length ?? 0) > 0 ? 'complete' : (hasDx && hasPlan ? 'in-progress' : 'not-started');
+      case 'checkout':
+        if (e?.checkout?.completedAt) return 'complete';
+        return (hasDx && hasPlan && hasExam) ? 'in-progress' : 'blocked';
+      case 'billing-ready':
+        return this.billingReady(p).ready ? 'complete' : 'blocked';
+    }
+  }
+
+  /** First non-complete stage = where the visit needs attention. */
+  protected nextStage(p: PatientFlowRecord): { id: EncounterStageId; label: string } | null {
+    return this.encounterStages.find(s => this.stageStatus(p, s.id) !== 'complete') ?? null;
+  }
+  /** Jump the drawer to the tab for the next incomplete stage. */
+  protected goToNextStage(p: PatientFlowRecord): void {
+    const n = this.nextStage(p);
+    if (!n) { this.setTab('checkout'); return; }
+    const tabFor: Record<EncounterStageId, 'overview' | 'intake' | 'workup' | 'exam' | 'ap' | 'orders' | 'checkout'> = {
+      'checked-in': 'intake', 'intake': 'intake', 'pre-test': 'workup', 'provider-exam': 'exam',
+      'assessment': 'ap', 'orders': 'orders', 'checkout': 'checkout', 'billing-ready': 'checkout',
+    };
+    this.setTab(tabFor[n.id]);
+  }
+
+  protected encounterNextAction(p: PatientFlowRecord): string {
+    const n = this.nextStage(p);
+    if (!n) return 'Encounter complete — ready to bill';
+    const map: Record<EncounterStageId, string> = {
+      'checked-in': 'Check in patient', 'intake': 'Complete intake',
+      'pre-test': 'Capture VA & IOP', 'provider-exam': 'Document provider exam',
+      'assessment': 'Add diagnosis & plan', 'orders': 'Review / place orders',
+      'checkout': 'Complete checkout', 'billing-ready': 'Resolve billing blockers',
+    };
+    return map[n.id];
+  }
+
+  /** Checkout readiness breakdown — explains complete vs blocked. */
+  protected checkoutItems(p: PatientFlowRecord): { label: string; ok: boolean }[] {
+    const cr = this.clinicalFor(p);
+    const e = this.encounterFor(p);
+    const hasExam = !!cr && Object.values(cr.examFindings ?? {}).some(Boolean);
+    const hasDx = !!(cr?.diagnosis ?? []).some(d => d.icd10);
+    const hasPlan = !!cr?.assessmentPlan;
+    const imagingOrders = (e?.orders ?? []).filter(o => o.type === 'imaging');
+    return [
+      { label: 'Provider exam documented', ok: hasExam },
+      { label: 'Diagnosis coded', ok: hasDx },
+      { label: 'Plan complete', ok: hasPlan },
+      { label: imagingOrders.length ? `Imaging ordered (${imagingOrders.length})` : 'No imaging required', ok: true },
+      { label: 'Prior auth not blocking', ok: p.authStatus !== 'expired' },
+      { label: 'Billing ready', ok: this.billingReady(p).ready },
+    ];
+  }
+
+  /** Billing readiness derived from the encounter — never faked. */
+  protected billingReady(p: PatientFlowRecord): { ready: boolean; blockers: string[] } {
+    const cr = this.clinicalFor(p);
+    const e = this.encounterFor(p);
+    const blockers: string[] = [];
+    if (!(cr?.diagnosis ?? []).some(d => d.icd10)) blockers.push('Diagnosis not coded');
+    if (!cr?.assessmentPlan) blockers.push('Plan incomplete');
+    if (!e?.checkout?.completedAt && p.station !== 'checkout') blockers.push('Checkout not completed');
+    if (p.authStatus === 'expired') blockers.push('Prior auth expired');
+    return { ready: blockers.length === 0, blockers };
+  }
+
+  // ── Stage save handlers (persist + mark stage + audit) ──────────────────────
+  protected saveIntake(p: PatientFlowRecord): void {
+    const d = this.encounterDraft(); if (!d) return;
+    // Mirror chief complaint into the clinical record so downstream sees it.
+    if (d.intake?.chiefComplaint && d.intake.chiefComplaint !== this.clinicalFor(p)?.chiefComplaint) {
+      this.patch(c => { c.chiefComplaint = d.intake!.chiefComplaint; });
+      this.commitClinical(p);
+    }
+    this.store.updateEncounter(p.id, p.mrn, { intake: { ...d.intake, completedAt: new Date().toISOString() } }, 'Intake completed');
+    this.syncDrawer(p.id);
+  }
+  protected saveWorkup(p: PatientFlowRecord): void {
+    const d = this.encounterDraft(); if (!d) return;
+    this.commitClinical(p); // VA / IOP
+    this.store.updateEncounter(p.id, p.mrn, { workup: { ...d.workup, completedAt: new Date().toISOString() } }, 'Pre-test workup completed');
+    this.syncDrawer(p.id);
+  }
+  protected saveExam(p: PatientFlowRecord): void {
+    this.commitClinical(p); // exam findings
+    this.store.updateEncounter(p.id, p.mrn, { examCompletedAt: new Date().toISOString() }, 'Provider exam documented');
+    this.syncDrawer(p.id);
+  }
+  protected saveAssessment(p: PatientFlowRecord): void {
+    const d = this.encounterDraft(); if (!d) return;
+    this.commitClinical(p); // diagnosis + plan
+    this.store.updateEncounter(p.id, p.mrn, { assessment: { ...d.assessment, completedAt: new Date().toISOString() } }, 'Assessment & plan saved');
+    this.syncDrawer(p.id);
+  }
+
+  // ── Orders ──────────────────────────────────────────────────────────────────
+  protected readonly orderType = signal<EncounterOrderType>('imaging');
+  protected readonly orderDetail = signal('');
+  protected readonly orderTypes: { id: EncounterOrderType; label: string }[] = [
+    { id: 'imaging', label: 'Imaging' }, { id: 'procedure', label: 'Procedure' },
+    { id: 'medication', label: 'Medication' }, { id: 'referral', label: 'Referral' },
+    { id: 'follow-up', label: 'Follow-up' }, { id: 'surgery-consult', label: 'Surgery consult' },
+  ];
+  protected placeOrder(p: PatientFlowRecord): void {
+    const detail = this.orderDetail().trim();
+    if (!detail) return;
+    this.store.addEncounterOrder(p.id, p.mrn, { type: this.orderType(), detail, status: 'ordered' });
+    // An imaging order also seeds the imaging work queue as "Ordered".
+    if (this.orderType() === 'imaging') this.store.setImagingStatus(p.id, 'Ordered', `Imaging ordered · ${detail}`);
+    this.orderDetail.set('');
+    this.syncDrawer(p.id);
+  }
+
+  // ── Checkout ────────────────────────────────────────────────────────────────
+  protected completeCheckout(p: PatientFlowRecord): void {
+    this.store.updateEncounter(p.id, p.mrn, { checkout: { completedAt: new Date().toISOString(), instructionsReady: true } }, 'Checkout completed');
+    if (p.station !== 'checkout') this.store.movePatientStation(p.id, 'checkout');
+    this.syncDrawer(p.id);
+  }
+  protected canCheckout(p: PatientFlowRecord): boolean {
+    return this.checkoutItems(p).filter(i => i.label !== 'Billing ready').every(i => i.ok);
+  }
+
+  // ── Command Center encounter KPIs ───────────────────────────────────────────
+  protected readonly checkoutReadyCount = computed(() =>
+    this.store.patientFlow().filter(p => this.stageStatus(p, 'checkout') === 'in-progress').length
+  );
+  protected readonly billingReadyCount = computed(() =>
+    this.store.patientFlow().filter(p => this.billingReady(p).ready).length
+  );
+  protected readonly blockedEncounterCount = computed(() =>
+    this.store.patientFlow().filter(p => this.encounterStages.some(s => this.stageStatus(p, s.id) === 'blocked')).length
+  );
+
+  protected stageTone(s: StageStatus): 'ok' | 'info' | 'warning' | 'critical' | 'neutral' {
+    return s === 'complete' ? 'ok' : s === 'in-progress' ? 'info' : s === 'blocked' ? 'critical' : 'neutral';
   }
 
   // ── Note composer ──────────────────────────────────────────────────────────
