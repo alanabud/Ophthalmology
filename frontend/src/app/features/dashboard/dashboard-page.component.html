@@ -1,37 +1,82 @@
 <section class="ccx">
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       IDENTITY STRIP — compact, no wasted space
+       COMMAND BRIEFING HEADER — clinic load + live status + next action
   ═══════════════════════════════════════════════════════════════════ -->
-  <div class="idbar">
-    <div class="idbar__left">
-      <div class="idbar__ring">
+  <header class="cmd">
+
+    <!-- Clinic load gauge -->
+    <div class="cmd__load">
+      <div class="loadring">
         <svg viewBox="0 0 64 64" class="miniring">
           <circle class="miniring__track" cx="32" cy="32" r="26" />
           <circle class="miniring__bar" cx="32" cy="32" r="26"
             [style.stroke-dasharray]="2 * Math.PI * 26"
-            [style.stroke-dashoffset]="(2 * Math.PI * 26) * (1 - dayProgressPct / 100)" />
+            [style.stroke-dashoffset]="clinicLoadOffset()" />
         </svg>
-        <span class="miniring__pct">{{ dayProgressPct }}%</span>
+        <span class="miniring__pct">{{ clinicLoadPct() }}%</span>
       </div>
-      <div class="idbar__id">
-        <div class="idbar__status"><span class="beacon"></span>Operational</div>
-        <h1 class="idbar__clinic">
-          @if (currentClinic().id === 'network') { Acuity Eye Network }
-          @else { {{ currentClinic().name }} }
-        </h1>
-        <p class="idbar__date">{{ currentDate }} · {{ greeting }}</p>
+      <div class="cmd__loadmeta">
+        <span class="cmd__loadlabel">Clinic Load</span>
+        <span class="cmd__loadband">{{ clinicLoadBand() }}</span>
       </div>
     </div>
 
-    <div class="idbar__actions">
-      <span class="idbar__hint">Quick actions</span>
-      @for (act of quickActions; track act.id) {
-        <button class="qbtn" [class.qbtn--primary]="act.primary" type="button" (click)="doAction(act.id)">
-          {{ act.label }}
+    <!-- Briefing -->
+    <div class="cmd__brief">
+      <div class="cmd__statusrow">
+        <span class="beacon"></span>
+        <span class="cmd__clinic">
+          @if (currentClinic().id === 'network') { Acuity Eye Network }
+          @else { {{ currentClinic().name }} }
+        </span>
+        <span class="cmd__live">{{ nowTime }} · live</span>
+      </div>
+      <p class="cmd__line">
+        {{ greeting }}, {{ firstName }}.
+        @if (minutesBehind() > 0) {
+          Clinic is running <strong>{{ minutesBehind() }} min behind</strong>.
+        } @else {
+          Clinic is <strong>on schedule</strong>.
+        }
+      </p>
+      <div class="cmd__chips">
+        <button class="bchip" type="button" (click)="setFlowFilter('all')">
+          <strong>{{ checkedInCount() }}</strong> active
         </button>
-      }
+        <button class="bchip bchip--warn" type="button" (click)="setFlowFilter('delayed')">
+          <strong>{{ delayedCount() }}</strong> delayed
+        </button>
+        <button class="bchip bchip--crit" type="button" (click)="navigate('/encounters')">
+          <strong>{{ visibleAlerts().length }}</strong> alerts
+        </button>
+        <button class="bchip bchip--gold" type="button" (click)="navigate('/billing')">
+          <strong>{{ claimsPendingCount() }}</strong> claims
+        </button>
+        <button class="bchip" type="button" (click)="setFlowFilter('critical')">
+          <strong>{{ bottleneckCount() }}</strong> bottlenecks
+        </button>
+      </div>
     </div>
+
+    <!-- Next recommended action -->
+    <div class="cmd__next">
+      <span class="cmd__nextlabel">Next recommended</span>
+      <button class="cmd__nextbtn" type="button" (click)="runRecommended()">
+        {{ nextRecommended().text }}
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Quick actions -->
+  <div class="qbar">
+    <span class="qbar__hint">Quick actions</span>
+    @for (act of quickActions; track act.id) {
+      <button class="qbtn" [class.qbtn--primary]="act.primary" type="button" (click)="doAction(act.id)">
+        {{ act.label }}
+      </button>
+    }
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
@@ -40,7 +85,8 @@
   <div class="cockpit">
 
     <!-- Patient Flow -->
-    <button class="ccard ccard--teal" type="button" (click)="navigate('/today')">
+    <div class="ccard ccard--teal" role="button" tabindex="0"
+         (click)="navigate('/today')" (keydown.enter)="navigate('/today')">
       <div class="ccard__hd">
         <span class="ccard__tag">Patient Flow</span>
         <span class="ccard__arrow">→</span>
@@ -54,14 +100,18 @@
           <span class="distbar distbar--{{ b.color }}" [style.height.%]="b.pct" [title]="b.label + ': ' + b.count"></span>
         }
       </div>
+      @if (longestWait()) {
+        <p class="ccard__intel">Longest wait · <strong>{{ longestWait()!.name }}</strong> {{ longestWait()!.waitMinutes }}m</p>
+      }
       <div class="ccard__foot">
         <span class="ccard__sub">{{ seenCount() }} seen · {{ waitingCount() }} waiting</span>
-        <span class="trend trend--up">{{ todayApptCount() }} booked</span>
+        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); setFlowFilter('delayed')">View board</button>
       </div>
-    </button>
+    </div>
 
     <!-- Clinical Risk -->
-    <button class="ccard ccard--coral" type="button" (click)="navigate('/encounters')">
+    <div class="ccard ccard--coral" role="button" tabindex="0"
+         (click)="navigate('/encounters')" (keydown.enter)="navigate('/encounters')">
       <div class="ccard__hd">
         <span class="ccard__tag">Clinical Risk</span>
         <span class="ccard__arrow">→</span>
@@ -73,16 +123,16 @@
       <svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none">
         <polyline class="spark__line spark__line--coral" [attr.points]="sparkPoints(riskTrend)" />
       </svg>
-      <div class="ccard__foot ccard__foot--chips">
-        @if (criticalAlerts().length) { <span class="rchip rchip--critical">{{ criticalAlerts().length }} critical</span> }
-        @if (warningAlerts().length)  { <span class="rchip rchip--warning">{{ warningAlerts().length }} action</span> }
-        @if (infoAlerts().length)     { <span class="rchip rchip--info">{{ infoAlerts().length }} follow-up</span> }
-        @if (visibleAlerts().length === 0) { <span class="rchip rchip--ok">all clear</span> }
+      <p class="ccard__intel ccard__intel--crit">{{ criticalLine() }}</p>
+      <div class="ccard__foot">
+        <span class="ccard__sub">{{ criticalAlerts().length }} critical · {{ warningAlerts().length }} action</span>
+        <button class="ccard__btn ccard__btn--crit" type="button" (click)="$event.stopPropagation(); runRecommended()">Review critical</button>
       </div>
-    </button>
+    </div>
 
     <!-- Revenue at Risk -->
-    <button class="ccard ccard--gold" type="button" (click)="navigate('/billing')">
+    <div class="ccard ccard--gold" role="button" tabindex="0"
+         (click)="navigate('/billing')" (keydown.enter)="navigate('/billing')">
       <div class="ccard__hd">
         <span class="ccard__tag">Revenue at Risk</span>
         <span class="ccard__arrow">→</span>
@@ -96,14 +146,16 @@
         <span class="stack__seg stack__seg--pending" [style.width.%]="revenueParts().pendingPct"></span>
         <span class="stack__seg stack__seg--denied"  [style.width.%]="revenueParts().deniedPct"></span>
       </div>
+      <p class="ccard__intel">Top issue · {{ topClaimIssue() }}</p>
       <div class="ccard__foot">
-        <span class="ccard__sub">{{ claimsDeniedCount() }} denied · {{ authExpiredCount() }} auth expired</span>
-        <span class="trend trend--gold">{{ revenueSnapshot().todayRev }}</span>
+        <span class="ccard__sub">Captured today {{ revenueSnapshot().todayRev }}</span>
+        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); navigate('/billing')">Work claims</button>
       </div>
-    </button>
+    </div>
 
     <!-- Provider Capacity -->
-    <button class="ccard ccard--blue" type="button" (click)="navigate('/scheduling')">
+    <div class="ccard ccard--blue" role="button" tabindex="0"
+         (click)="navigate('/scheduling')" (keydown.enter)="navigate('/scheduling')">
       <div class="ccard__hd">
         <span class="ccard__tag">Provider Capacity</span>
         <span class="ccard__arrow">→</span>
@@ -119,12 +171,14 @@
           </div>
         }
       </div>
+      @if (busiestProvider() && availableProvider()) {
+        <p class="ccard__intel">Busiest <strong>{{ busiestProvider()!.name }}</strong> · open <strong>{{ availableProvider()!.name }}</strong></p>
+      }
       <div class="ccard__foot">
-        @if (busiestProvider()) {
-          <span class="ccard__sub">Busiest · {{ busiestProvider()!.name }} ({{ busiestProvider()!.pct }}%)</span>
-        }
+        <span class="ccard__sub">{{ providerCapacity().length }} providers on today</span>
+        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); navigate('/scheduling')">Balance load</button>
       </div>
-    </button>
+    </div>
 
   </div>
 
@@ -140,8 +194,16 @@
       <span class="livechip"><span class="livechip__dot"></span>Real-time</span>
     </div>
 
+    <div class="flowfilters">
+      @for (f of flowFilters; track f.id) {
+        <button class="ffchip" [class.ffchip--on]="flowFilter() === f.id" type="button" (click)="setFlowFilter(f.id)">
+          {{ f.label }}
+        </button>
+      }
+    </div>
+
     <div class="track">
-      @for (stage of flowBoard(); track stage.id; let idx = $index; let last = $last) {
+      @for (stage of filteredBoard(); track stage.id; let idx = $index; let last = $last) {
         <div class="lane">
           <div class="lane__hd">
             <span class="lane__idx">{{ idx + 1 }}</span>
@@ -151,31 +213,34 @@
           <div class="lane__rail lane__rail--{{ stage.color }}"></div>
 
           <div class="lane__body">
-            @for (p of stage.patients; track p.name) {
-              <button class="pchip pchip--{{ p.tone }}" type="button" (click)="viewPatient()">
+            @for (p of stage.patients; track p.id) {
+              <button class="pchip pchip--{{ p.tone }}" type="button" (click)="openPatient(p)">
                 <span class="pchip__row">
                   <span class="pchip__ring pchip__ring--{{ p.tone }}">
                     <span class="pchip__av">{{ p.name.charAt(0) }}</span>
                   </span>
                   <span class="pchip__main">
                     <strong>{{ p.name }}</strong>
-                    <span>{{ p.visitType }}</span>
+                    <span class="pchip__meta">
+                      <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
+                      {{ p.visitType }}
+                    </span>
                   </span>
                   <span class="pchip__wait"
-                    [class.pchip__wait--warm]="p.wait > 15"
-                    [class.pchip__wait--hot]="p.wait > 30">{{ p.wait }}m</span>
+                    [class.pchip__wait--warm]="p.waitMinutes > 15"
+                    [class.pchip__wait--hot]="p.waitMinutes > 30">{{ p.waitMinutes }}m</span>
                 </span>
-                <span class="pchip__act">
-                  Open chart
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="pchip__foot">
+                  <span class="pchip__prov">{{ p.provider }}</span>
+                  <span class="slatag slatag--{{ sla(p.waitMinutes).tone }}">{{ sla(p.waitMinutes).label }}</span>
                 </span>
               </button>
             }
-            @if (stage.patients.length === 0 && stage.count === 0) {
+            @if (stage.patients.length === 0) {
               <div class="lane__empty">—</div>
             }
-            @if (stage.count > stage.patients.length) {
-              <button class="lane__more" type="button" (click)="viewPatient()">+{{ stage.count - stage.patients.length }} more</button>
+            @if (flowFilter() === 'all' && stage.count > stage.patients.length) {
+              <button class="lane__more" type="button" (click)="setFlowFilter('all'); viewPatient()">+{{ stage.count - stage.patients.length }} more</button>
             }
           </div>
 
@@ -409,5 +474,81 @@
     </aside>
 
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       PATIENT DRAWER — slide-over with live detail + real actions
+  ═══════════════════════════════════════════════════════════════════ -->
+  @if (selectedPatient(); as p) {
+    <div class="drawer-scrim" (click)="closePatient()"></div>
+    <aside class="drawer" role="dialog" aria-label="Patient detail">
+      <header class="drawer__hd">
+        <div class="drawer__id">
+          <span class="drawer__av drawer__av--{{ p.tone }}">{{ p.name.charAt(0) }}</span>
+          <div>
+            <h3 class="drawer__name">{{ p.name }}</h3>
+            <p class="drawer__meta">{{ p.age }} yrs · MRN {{ p.mrn }}@if (p.laterality) { · {{ p.laterality }} }</p>
+          </div>
+        </div>
+        <button class="drawer__x" type="button" (click)="closePatient()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <div class="drawer__body">
+        <div class="drawer__tags">
+          <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
+          <span class="drawer__visit">{{ p.visitType }}</span>
+          <span class="slatag slatag--{{ sla(p.waitMinutes).tone }}">{{ sla(p.waitMinutes).label }}</span>
+        </div>
+
+        <div class="drawer__grid">
+          <div class="dfield"><span>Stage</span><strong>{{ stationLabel(p.station) }}</strong></div>
+          <div class="dfield"><span>Wait</span><strong>{{ p.waitMinutes }} min</strong></div>
+          <div class="dfield"><span>Provider</span><strong>{{ p.provider }}</strong></div>
+          <div class="dfield"><span>Scheduled</span><strong>{{ p.scheduledTime }}</strong></div>
+          @if (p.insurance) { <div class="dfield"><span>Insurance</span><strong>{{ p.insurance }}</strong></div> }
+          @if (p.authStatus) { <div class="dfield"><span>Auth</span><strong class="auth--{{ p.authStatus }}">{{ p.authStatus }}</strong></div> }
+        </div>
+
+        @if (p.aiFlag) {
+          <div class="drawer__ai">
+            <span class="ai-tag">AI</span>
+            <p>{{ p.aiFlag }}</p>
+          </div>
+        }
+
+        <div class="drawer__next">
+          <span class="drawer__sec">Next action</span>
+          <p>{{ p.nextAction }}</p>
+        </div>
+
+        @if (p.readinessItems.length) {
+          <div class="drawer__ready">
+            <span class="drawer__sec">Readiness checklist</span>
+            @for (item of p.readinessItems; track item.label) {
+              <div class="ritem" [class.ritem--done]="item.done">
+                <span class="ritem__box">
+                  @if (item.done) {
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  }
+                </span>
+                <span class="ritem__label">{{ item.label }}</span>
+                @if (item.required && !item.done) { <span class="ritem__req">Required</span> }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <footer class="drawer__foot">
+        <button class="dbtn dbtn--primary" type="button" (click)="advancePatient(p)"
+          [disabled]="p.station === 'checkout'">
+          @if (p.station === 'checkout') { Completed } @else { Advance stage → }
+        </button>
+        <button class="dbtn" type="button" (click)="openEncounter()">Open encounter</button>
+        <button class="dbtn" type="button" (click)="openPatientChart()">Patient chart</button>
+      </footer>
+    </aside>
+  }
 
 </section>

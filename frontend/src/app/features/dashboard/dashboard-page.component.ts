@@ -1,8 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { ScheduleBlock, SurfaceTone } from '../../core/models/enterprise.models';
+import { FlowStation, PatientFlowRecord, ScheduleBlock, SurfaceTone } from '../../core/models/enterprise.models';
 import { ActionService } from '../../core/services/action.service';
+import { AuthStateService } from '../../core/services/auth-state.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 
 // ── Local interfaces for derived dashboard data ────────────────────────────
@@ -12,8 +13,10 @@ interface FlowStage {
   label: string;
   count: number;
   color: SurfaceTone;
-  patients: Array<{ name: string; visitType: string; wait: number; tone: SurfaceTone }>;
+  patients: PatientFlowRecord[];
 }
+
+type FlowFilter = 'all' | 'delayed' | 'critical' | 'ready' | 'checkout';
 
 interface ClinicalAlert {
   severity: 'critical' | 'warning' | 'info';
@@ -46,7 +49,13 @@ interface SurgeryStage {
 export class DashboardPageComponent {
   protected readonly store          = inject(EnterpriseStoreService);
   private   readonly actionService  = inject(ActionService);
+  private   readonly authState      = inject(AuthStateService);
   private   readonly router         = inject(Router);
+
+  /** First name for the command briefing greeting. */
+  protected readonly firstName = (this.authState.displayName().split(/\s+/)[0]) || 'Doctor';
+  /** Timestamp as of dashboard load. */
+  protected readonly nowTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   // ── Topbar passthrough (used by template) ───────────────────────────────
   protected readonly currentClinic   = this.store.currentClinic;
@@ -109,11 +118,7 @@ export class DashboardPageComponent {
 
   protected readonly flowBoard = computed((): FlowStage[] => {
     const pf = this.store.patientFlow();
-    const pick = (fn: (p: typeof pf[0]) => boolean) =>
-      pf.filter(fn).slice(0, 3).map(p => ({
-        name: p.name, visitType: p.visitType,
-        wait: p.waitMinutes, tone: p.tone,
-      }));
+    const pick = (fn: (p: PatientFlowRecord) => boolean) => pf.filter(fn).slice(0, 3);
 
     return [
       {
@@ -537,9 +542,145 @@ export class DashboardPageComponent {
       }))
   );
 
-  /** Trim a long sidebar summary into a tight module-card note. */
+  /** Operational note for a module card — prefer the clause carrying a live count. */
   private shortNote(summary: string): string {
-    const firstClause = summary.split(/[—,]/)[0].trim();
-    return firstClause.length > 42 ? firstClause.slice(0, 40) + '…' : firstClause;
+    const clauses = summary.split(/[—,·]/).map(c => c.trim()).filter(Boolean);
+    const withNum = clauses.find(c => /\d/.test(c));
+    const s = withNum ?? clauses[0] ?? '';
+    return s.length > 40 ? s.slice(0, 38) + '…' : s;
+  }
+
+  // ── Clinic load (replaces the meaningless 0% ring) ────────────────────────
+  protected readonly clinicCapacity = 28;
+  protected readonly clinicLoadPct = computed(() =>
+    Math.min(100, Math.round((this.checkedInCount() / this.clinicCapacity) * 100))
+  );
+  protected readonly clinicLoadBand = computed(() => {
+    const p = this.clinicLoadPct();
+    return p >= 85 ? 'High volume' : p >= 55 ? 'Normal volume' : 'Light volume';
+  });
+  protected readonly clinicLoadOffset = computed(() =>
+    (2 * Math.PI * 26) * (1 - this.clinicLoadPct() / 100)
+  );
+
+  // ── Command briefing ──────────────────────────────────────────────────────
+  protected readonly minutesBehind = computed(() => Math.max(0, this.avgWaitMinutes() - 15));
+  protected readonly delayedCount  = computed(() =>
+    this.store.patientFlow().filter(p => p.waitMinutes > 20).length
+  );
+  protected readonly bottleneckCount = computed(() =>
+    this.flowBoard().filter(s => s.id !== 'scheduled' && s.count >= 5).length
+  );
+
+  protected readonly nextRecommended = computed((): { text: string; action: string } => {
+    if (this.criticalAlerts().length) {
+      const n = this.criticalAlerts().length;
+      return { text: `Review ${n} critical alert${n > 1 ? 's' : ''}`, action: 'review-critical' };
+    }
+    if (this.delayedCount()) {
+      return { text: `Clear ${this.delayedCount()} delayed patients`, action: 'view-flow' };
+    }
+    if (this.claimsPendingCount()) {
+      return { text: `Work ${this.claimsPendingCount()} pending claims`, action: 'collect-payment' };
+    }
+    return { text: 'All systems nominal', action: 'none' };
+  });
+
+  protected runRecommended(): void {
+    switch (this.nextRecommended().action) {
+      case 'review-critical': void this.router.navigate(['/encounters']); break;
+      case 'collect-payment': void this.router.navigate(['/billing']);    break;
+      case 'view-flow':       this.setFlowFilter('delayed');              break;
+    }
+  }
+
+  // ── KPI card intelligence ─────────────────────────────────────────────────
+  protected readonly longestWait = computed(() =>
+    [...this.store.patientFlow()].sort((a, b) => b.waitMinutes - a.waitMinutes)[0] ?? null
+  );
+  protected readonly criticalLine = computed(() => {
+    const c = this.criticalAlerts();
+    if (!c.length) return 'No critical alerts';
+    return c.map(a => a.title.split(' — ')[0].split(',')[0]).slice(0, 2).join(' · ');
+  });
+  protected readonly topClaimIssue = computed(() => {
+    if (this.claimsDeniedCount()) return `${this.claimsDeniedCount()} denied — needs resubmission`;
+    if (this.authExpiredCount())  return `${this.authExpiredCount()} auth expired — reauthorize`;
+    return 'Claims on track';
+  });
+  protected readonly availableProvider = computed(() =>
+    [...this.providerCapacity()].sort((a, b) => a.pct - b.pct)[0] ?? null
+  );
+
+  // ── Patient-flow filter ───────────────────────────────────────────────────
+  protected readonly flowFilter = signal<FlowFilter>('all');
+  protected setFlowFilter(f: FlowFilter): void { this.flowFilter.set(f); }
+
+  protected readonly flowFilters: { id: FlowFilter; label: string }[] = [
+    { id: 'all',      label: 'All' },
+    { id: 'delayed',  label: 'Delayed' },
+    { id: 'critical', label: 'Critical' },
+    { id: 'ready',    label: 'Ready for doctor' },
+    { id: 'checkout', label: 'Checkout' },
+  ];
+
+  protected readonly filteredBoard = computed((): FlowStage[] => {
+    const f = this.flowFilter();
+    const board = this.flowBoard();
+    if (f === 'all') return board;
+    const pred = (p: PatientFlowRecord): boolean =>
+      f === 'delayed'  ? p.waitMinutes > 20 :
+      f === 'critical' ? p.tone === 'critical' :
+      f === 'ready'    ? (p.station === 'ready' || p.station === 'with-doctor') :
+      f === 'checkout' ? p.station === 'checkout' : true;
+    return board.map(s => {
+      const patients = s.patients.filter(pred);
+      return { ...s, patients, count: patients.length };
+    });
+  });
+
+  // ── Visit category + SLA helpers ──────────────────────────────────────────
+  protected categoryTag(cat: string): string {
+    return ({
+      cataract: 'CAT', retina: 'RET', glaucoma: 'GLA', comprehensive: 'CMP',
+      'post-op': 'POP', lasik: 'LAS', optical: 'OPT', injection: 'INJ',
+    } as Record<string, string>)[cat] ?? 'GEN';
+  }
+
+  protected sla(wait: number): { label: string; tone: 'ok' | 'warning' | 'critical' } {
+    if (wait > 30) return { label: 'Overdue',  tone: 'critical' };
+    if (wait > 15) return { label: 'At risk',  tone: 'warning' };
+    return { label: 'On time', tone: 'ok' };
+  }
+
+  private readonly stationLabels: Record<FlowStation, string> = {
+    'checked-in': 'Waiting room', 'tech-workup': 'Tech workup', 'imaging': 'Imaging',
+    'dilating': 'Dilating', 'ready': 'Ready for doctor', 'with-doctor': 'In exam', 'checkout': 'Checkout',
+  };
+  protected stationLabel(s: FlowStation): string { return this.stationLabels[s] ?? s; }
+
+  // ── Patient drawer (slide-over) ───────────────────────────────────────────
+  protected readonly selectedPatient = signal<PatientFlowRecord | null>(null);
+  protected openPatient(p: PatientFlowRecord): void { this.selectedPatient.set(p); }
+  protected closePatient(): void { this.selectedPatient.set(null); }
+
+  private readonly stationOrder: FlowStation[] =
+    ['checked-in', 'tech-workup', 'imaging', 'dilating', 'ready', 'with-doctor', 'checkout'];
+
+  /** Advance a patient to the next stage — a real, live board mutation. */
+  protected advancePatient(p: PatientFlowRecord): void {
+    const idx = this.stationOrder.indexOf(p.station);
+    const next = this.stationOrder[Math.min(this.stationOrder.length - 1, idx + 1)];
+    this.store.updatePatientFlowStation(p.id, next);
+    this.selectedPatient.set(this.store.patientFlow().find(r => r.id === p.id) ?? null);
+  }
+
+  protected openPatientChart(): void {
+    this.closePatient();
+    void this.router.navigate(['/patients']);
+  }
+  protected openEncounter(): void {
+    this.closePatient();
+    void this.router.navigate(['/encounters']);
   }
 }

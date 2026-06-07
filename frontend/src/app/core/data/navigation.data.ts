@@ -18,7 +18,7 @@ import { NavigationSection } from '../models/enterprise.models';
 export const NAVIGATION_SECTIONS: NavigationSection[] = [
   // ── COMMAND ────────────────────────────────────────────────────────────────
   {
-    label: 'Command',
+    label: 'Command Center',
     items: [
       {
         label: 'Dashboard',
@@ -41,7 +41,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
 
   // ── CLINIC FLOW ────────────────────────────────────────────────────────────
   {
-    label: 'Clinic Flow',
+    label: 'Daily Operations',
     items: [
       {
         label: 'Schedule',
@@ -64,7 +64,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
 
   // ── PATIENT RECORDS ────────────────────────────────────────────────────────
   {
-    label: 'Patient Records',
+    label: 'Patient Registry',
     items: [
       {
         label: 'Patients',
@@ -79,7 +79,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
 
   // ── DIAGNOSTICS ────────────────────────────────────────────────────────────
   {
-    label: 'Diagnostics',
+    label: 'Imaging & Testing',
     items: [
       {
         label: 'Imaging',
@@ -132,7 +132,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
 
   // ── REVENUE CYCLE ──────────────────────────────────────────────────────────
   {
-    label: 'Revenue Cycle',
+    label: 'Billing & Claims',
     items: [
       {
         label: 'Billing',
@@ -147,7 +147,7 @@ export const NAVIGATION_SECTIONS: NavigationSection[] = [
 
   // ── INTELLIGENCE ──────────────────────────────────────────────────────────
   {
-    label: 'Intelligence',
+    label: 'Insights & Compliance',
     items: [
       {
         label: 'Analytics',
