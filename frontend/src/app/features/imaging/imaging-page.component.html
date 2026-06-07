@@ -10,6 +10,18 @@
     </div>
   </header>
 
+  <!-- Patient imaging work queue (derived from live readiness data) -->
+  <app-work-queue
+    title="Patient Imaging Queue"
+    subtitle="Imaging & testing derived from live patient readiness — capture, review, interpret"
+    [items]="imagingItems()"
+    [filters]="imagingFilters()"
+    [activeFilter]="imgFilter()"
+    (filterChange)="setImgFilter($event)"
+    (action)="onImagingAction($event)"
+    (addNote)="onImagingNote($event)"
+  />
+
   <!-- Stats bar -->
   <section class="img-stats">
     <div class="img-stat">

@@ -15,6 +15,18 @@
     </div>
   </header>
 
+  <!-- Patient claim work queue (derived from encounter readiness) -->
+  <app-work-queue
+    title="Claim Readiness Queue"
+    subtitle="Claims derived from encounter readiness — clear blockers, then submit"
+    [items]="claimItems()"
+    [filters]="claimFilters()"
+    [activeFilter]="clmFilter()"
+    (filterChange)="setClmFilter($event)"
+    (action)="onClaimAction($event)"
+    (addNote)="onClaimNote($event)"
+  />
+
   <!-- ── KPI strip ───────────────────────────────────────── -->
   <div class="kpi-strip">
     <article class="kpi-card">

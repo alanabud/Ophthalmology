@@ -471,6 +471,10 @@ export class DashboardPageComponent {
 
   // ── Generic navigation (module cards, cockpit cards) ──────────────────────
   protected navigate(route: string): void { void this.router.navigate([route]); }
+  /** Navigate into a module drilldown with a preset filter / patient. */
+  protected navigateQ(route: string, queryParams: Record<string, string>): void {
+    void this.router.navigate([route], { queryParams });
+  }
 
   // ── Cockpit: 4 operational command cards ──────────────────────────────────
 
@@ -906,10 +910,22 @@ export class DashboardPageComponent {
     if (p.visitCategory === 'post-op') flags.push({ label: 'Post-operative — monitor', tone: 'info' });
     if (p.visitCategory === 'glaucoma') flags.push({ label: 'Glaucoma monitoring', tone: 'warning' });
     if (/diabet/i.test(p.visitType)) flags.push({ label: 'Diabetic eye exam', tone: 'warning' });
-    if (c.pendingTests.some(t => /imag|biometr|topograph|oct|field/i.test(t)))
+
+    // Reflect imaging module status: resolved studies clear the flag.
+    const imgStatus = this.store.imagingWork()[p.id]?.status;
+    const imgResolved = imgStatus === 'Interpreted' || imgStatus === 'Ready for review';
+    if (!imgResolved && c.pendingTests.some(t => /imag|biometr|topograph|oct|field/i.test(t)))
       flags.push({ label: 'Imaging / testing incomplete', tone: 'warning' });
-    if (p.authStatus === 'expired') flags.push({ label: 'Prior auth expired — blocker', tone: 'critical' });
-    else if (p.authStatus === 'pending') flags.push({ label: 'Prior auth pending', tone: 'warning' });
+    else if (imgStatus === 'Repeat requested')
+      flags.push({ label: 'Imaging repeat requested', tone: 'warning' });
+
+    // Reflect billing module status: auth received / submitted clears the blocker.
+    const clmStatus = this.store.claimWork()[p.id]?.status;
+    const clmResolved = clmStatus === 'Submitted' || clmStatus === 'Auth received' || clmStatus === 'Ready';
+    if (!clmResolved) {
+      if (p.authStatus === 'expired') flags.push({ label: 'Prior auth expired — blocker', tone: 'critical' });
+      else if (p.authStatus === 'pending') flags.push({ label: 'Prior auth pending', tone: 'warning' });
+    }
     return flags;
   }
 

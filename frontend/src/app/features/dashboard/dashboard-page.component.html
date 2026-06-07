@@ -50,7 +50,7 @@
         <button class="bchip bchip--crit" type="button" (click)="navigate('/encounters')">
           <strong>{{ visibleAlerts().length }}</strong> alerts
         </button>
-        <button class="bchip bchip--gold" type="button" (click)="navigate('/billing')">
+        <button class="bchip bchip--gold" type="button" (click)="navigateQ('/billing', { filter: 'prior-auth' })">
           <strong>{{ claimsPendingCount() }}</strong> claims
         </button>
         <button class="bchip" type="button" (click)="setBoardFilter('critical')">
@@ -132,7 +132,7 @@
 
     <!-- Revenue at Risk -->
     <div class="ccard ccard--gold" role="button" tabindex="0"
-         (click)="navigate('/billing')" (keydown.enter)="navigate('/billing')">
+         (click)="navigateQ('/billing', { filter: 'prior-auth' })" (keydown.enter)="navigateQ('/billing', { filter: 'prior-auth' })">
       <div class="ccard__hd">
         <span class="ccard__tag">Revenue at Risk</span>
         <span class="ccard__arrow">→</span>
@@ -149,7 +149,7 @@
       <p class="ccard__intel">Top issue · {{ topClaimIssue() }}</p>
       <div class="ccard__foot">
         <span class="ccard__sub">Captured today {{ revenueSnapshot().todayRev }}</span>
-        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); navigate('/billing')">Work claims</button>
+        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); navigateQ('/billing', { filter: 'ready-to-bill' })">Work claims</button>
       </div>
     </div>
 
@@ -464,7 +464,7 @@
       </div>
 
       <div class="ipanel">
-        <div class="ipanel__hd"><h3>Imaging Review</h3><button class="ipanel__link" type="button" (click)="doAction('order-imaging')">Open</button></div>
+        <div class="ipanel__hd"><h3>Imaging Review</h3><button class="ipanel__link" type="button" (click)="navigateQ('/imaging', { filter: 'ready-review' })">Open</button></div>
         <div class="mini">
           <div class="mini__row"><span class="mini__dot mini__dot--critical"></span><span>{{ imagingOverdueCount() }} overdue</span></div>
           <div class="mini__row"><span class="mini__dot mini__dot--warning"></span><span>{{ imagingPendingCount() }} pending review</span></div>
@@ -473,7 +473,7 @@
       </div>
 
       <div class="ipanel">
-        <div class="ipanel__hd"><h3>Revenue at Risk</h3><button class="ipanel__link" type="button" (click)="doAction('collect-payment')">Open</button></div>
+        <div class="ipanel__hd"><h3>Revenue at Risk</h3><button class="ipanel__link" type="button" (click)="navigateQ('/billing', { filter: 'prior-auth' })">Open</button></div>
         <div class="rev">
           <strong class="rev__big">{{ claimsPendingCount() }}</strong>
           <span class="rev__cap">claims pending</span>

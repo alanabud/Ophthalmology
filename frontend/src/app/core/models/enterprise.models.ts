@@ -726,6 +726,26 @@ export interface ClinicalNote {
   text: string;
 }
 
+/** A timestamped audit entry for an imaging or claim work item. */
+export interface WorkAudit {
+  at: string;
+  action: string;
+  detail?: string;
+}
+
+/**
+ * Persisted operational state for a patient's imaging or claim work item.
+ * Keyed by patientId. Status drives the module work queues; the Command
+ * Center reflects these statuses back into its risk flags / KPIs.
+ */
+export interface WorkItemState {
+  id: string;            // patientId (Firestore docId)
+  status?: string;       // lifecycle status (module-specific)
+  holdReason?: string;   // claims: reason a claim is on hold
+  notes?: ClinicalNote[];
+  audit?: WorkAudit[];
+}
+
 export interface PatientFlowRecord {
   id: string;
   clinicId: string;

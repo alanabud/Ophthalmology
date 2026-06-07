@@ -34,6 +34,7 @@ import {
   SurgeryCase,
   SurgicalReadinessCase,
   WaitlistRecord,
+  WorkItemState,
 } from '../models/enterprise.models';
 
 function clinicMatches(clinicId: string, activeClinicId: string): boolean {
@@ -236,6 +237,61 @@ export class EnterpriseStoreService {
     if (updated) this.persistFlowRecord(updated);
   }
 
+  // ── Imaging & claim work state (module drilldowns, persisted) ──────────────
+  private readonly imagingWorkBase = signal<Record<string, WorkItemState>>({});
+  readonly imagingWork = this.imagingWorkBase.asReadonly();
+  private readonly claimWorkBase = signal<Record<string, WorkItemState>>({});
+  readonly claimWork = this.claimWorkBase.asReadonly();
+
+  private nowStamp(): string {
+    return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  private mutateWork(
+    base: typeof this.imagingWorkBase,
+    collection: 'imagingWork' | 'claimWork',
+    id: string,
+    fn: (s: WorkItemState) => WorkItemState,
+  ): void {
+    let next: WorkItemState | null = null;
+    base.update((map) => {
+      const cur: WorkItemState = map[id] ?? { id, notes: [], audit: [] };
+      next = fn({ ...cur, notes: cur.notes ?? [], audit: cur.audit ?? [] });
+      return { ...map, [id]: next };
+    });
+    if (next) {
+      void this.fs.upsert(collection, id, this.sanitize(next))
+        .catch((e) => console.warn(`[Store] ${collection} persist failed`, e?.message ?? e));
+    }
+  }
+
+  setImagingStatus(id: string, status: string, action: string): void {
+    this.mutateWork(this.imagingWorkBase, 'imagingWork', id, (s) => ({
+      ...s, status, audit: [...(s.audit ?? []), { at: this.nowStamp(), action }],
+    }));
+  }
+  addImagingNote(id: string, text: string, author = 'Sandbox User'): void {
+    this.mutateWork(this.imagingWorkBase, 'imagingWork', id, (s) => ({
+      ...s,
+      notes: [...(s.notes ?? []), { at: this.nowStamp(), author, text }],
+      audit: [...(s.audit ?? []), { at: this.nowStamp(), action: 'Note added' }],
+    }));
+  }
+
+  setClaimStatus(id: string, status: string, action: string, holdReason?: string): void {
+    this.mutateWork(this.claimWorkBase, 'claimWork', id, (s) => ({
+      ...s, status, holdReason: holdReason ?? s.holdReason,
+      audit: [...(s.audit ?? []), { at: this.nowStamp(), action, detail: holdReason }],
+    }));
+  }
+  addClaimNote(id: string, text: string, author = 'Sandbox User'): void {
+    this.mutateWork(this.claimWorkBase, 'claimWork', id, (s) => ({
+      ...s,
+      notes: [...(s.notes ?? []), { at: this.nowStamp(), author, text }],
+      audit: [...(s.audit ?? []), { at: this.nowStamp(), action: 'Billing note added' }],
+    }));
+  }
+
   // ── Compliance ─────────────────────────────────────────────────────────────
   readonly complianceEvents = computed(() => COMPLIANCE_EVENTS.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
 
@@ -421,6 +477,18 @@ export class EnterpriseStoreService {
         (grouped[m.patientId] ??= []).push(m);
       }
       this.flowHistoryBase.set(grouped);
+    }
+
+    // Imaging & claim work state (module drilldowns).
+    const [imagingWork, claimWork] = await Promise.all([
+      this.fs.getAll<WorkItemState>('imagingWork'),
+      this.fs.getAll<WorkItemState>('claimWork'),
+    ]);
+    if (imagingWork.length) {
+      this.imagingWorkBase.set(Object.fromEntries(imagingWork.map((w) => [w.id, w])));
+    }
+    if (claimWork.length) {
+      this.claimWorkBase.set(Object.fromEntries(claimWork.map((w) => [w.id, w])));
     }
   }
 
