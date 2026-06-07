@@ -1,9 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { EncounterOrderType, EncounterRecord, EncounterStageId, FlowStation, PatientClinicalRecord, PatientFlowRecord, ScheduleBlock, StageStatus, SurfaceTone } from '../../core/models/enterprise.models';
 import { ActionService } from '../../core/services/action.service';
 import { AuthStateService } from '../../core/services/auth-state.service';
+import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 
 // ── Local interfaces for derived dashboard data ────────────────────────────
@@ -46,9 +47,20 @@ interface SurgeryStage {
 })
 export class DashboardPageComponent {
   protected readonly store          = inject(EnterpriseStoreService);
+  protected readonly enc            = inject(EncounterService);
   private   readonly actionService  = inject(ActionService);
   private   readonly authState      = inject(AuthStateService);
   private   readonly router         = inject(Router);
+  private   readonly route          = inject(ActivatedRoute);
+
+  constructor() {
+    // Deep-link from the Patient Registry: /command-center?patient=<flowId|MRN>
+    const key = this.route.snapshot.queryParamMap.get('patient');
+    if (key) {
+      const p = this.store.patientFlow().find(r => r.id === key || r.mrn === key);
+      if (p) setTimeout(() => this.openPatient(p), 0);
+    }
+  }
 
   /** First name for the command briefing greeting. */
   protected readonly firstName = (this.authState.displayName().split(/\s+/)[0]) || 'Doctor';
@@ -907,88 +919,12 @@ export class DashboardPageComponent {
     };
   }
 
-  /** Clinical risk flags — now driven by persisted EMR data where present. */
-  protected riskFlags(p: PatientFlowRecord): { label: string; tone: 'critical' | 'warning' | 'info' }[] {
-    const flags: { label: string; tone: 'critical' | 'warning' | 'info' }[] = [];
-    if (p.urgent) flags.push({ label: 'Flagged urgent', tone: 'critical' });
+  /** Clinical risk flags — delegated to the shared encounter engine. */
+  protected riskFlags(p: PatientFlowRecord) { return this.enc.riskFlags(p); }
 
-    const cr = this.store.clinicalRecords()[p.id];
-    if (cr) {
-      const iopMax = Math.max(cr.iop?.od ?? 0, cr.iop?.os ?? 0);
-      if (iopMax > 21) flags.push({ label: `Elevated IOP ${iopMax} mmHg`, tone: 'critical' });
-
-      const worst = this.worstVa(cr);
-      if (worst && Number(worst.va.split('/')[1]) >= 50)
-        flags.push({ label: `Reduced acuity ${worst.va} ${worst.eye}`, tone: 'warning' });
-
-      if ((cr.allergies ?? []).some(a => a.substance && a.substance.toUpperCase() !== 'NKDA'))
-        flags.push({ label: `Allergy: ${cr.allergies[0].substance}`, tone: 'warning' });
-
-      const text = [
-        ...(cr.diagnosis ?? []).map(d => `${d.icd10 ?? ''} ${d.description ?? ''}`),
-        ...(cr.ocularHistory ?? []), ...(cr.systemicHistory ?? []),
-      ].join(' ').toLowerCase();
-      if (/glaucoma|h40/.test(text)) flags.push({ label: 'Glaucoma monitoring', tone: 'warning' });
-      if (/diabet|e11|retinopathy/.test(text)) flags.push({ label: 'Diabetic eye risk', tone: 'warning' });
-
-      const missing = this.missingClinical(cr);
-      if (missing.length) flags.push({ label: `Incomplete chart — ${missing.join(', ')}`, tone: 'info' });
-    } else {
-      flags.push({ label: 'Not charted — clinical data missing', tone: 'info' });
-    }
-
-    // Reflect imaging module status.
-    const imgStatus = this.store.imagingWork()[p.id]?.status;
-    const imgResolved = imgStatus === 'Interpreted' || imgStatus === 'Ready for review';
-    if (!imgResolved && p.readinessItems.some(r => r.required && !r.done && /imag|biometr|topograph|oct|field/i.test(r.label)))
-      flags.push({ label: 'Imaging / testing incomplete', tone: 'warning' });
-    else if (imgStatus === 'Repeat requested')
-      flags.push({ label: 'Imaging repeat requested', tone: 'warning' });
-
-    // Reflect billing module status.
-    const clmStatus = this.store.claimWork()[p.id]?.status;
-    const clmResolved = clmStatus === 'Submitted' || clmStatus === 'Auth received' || clmStatus === 'Ready';
-    if (!clmResolved) {
-      if (p.authStatus === 'expired') flags.push({ label: 'Prior auth expired — blocker', tone: 'critical' });
-      else if (p.authStatus === 'pending') flags.push({ label: 'Prior auth pending', tone: 'warning' });
-    }
-    return flags;
-  }
-
-  // ── EMR clinical record: read + edit ────────────────────────────────────────
-  protected clinicalFor(p: PatientFlowRecord): PatientClinicalRecord | null {
-    return this.store.clinicalRecords()[p.id] ?? null;
-  }
-
-  private worstVa(cr: PatientClinicalRecord): { va: string; eye: string } | null {
-    const od = cr.visualAcuity?.od, os = cr.visualAcuity?.os;
-    const denom = (v?: string) => (v && v.includes('/') ? Number(v.split('/')[1]) : -1);
-    if (!od && !os) return null;
-    return denom(od) >= denom(os) ? { va: od!, eye: 'OD' } : { va: os!, eye: 'OS' };
-  }
-
-  protected missingClinical(cr: PatientClinicalRecord): string[] {
-    const m: string[] = [];
-    if (!cr.chiefComplaint) m.push('complaint');
-    if (!cr.visualAcuity?.od && !cr.visualAcuity?.os) m.push('VA');
-    if (cr.iop?.od == null && cr.iop?.os == null) m.push('IOP');
-    if (!(cr.diagnosis ?? []).some(d => d.icd10)) m.push('diagnosis');
-    if (!cr.assessmentPlan) m.push('plan');
-    return m;
-  }
-
-  /** Compact status chips shown on the EMR summary header. */
-  protected clinicalBadges(p: PatientFlowRecord): { label: string; tone: 'ok' | 'warning' | 'critical' | 'info' }[] {
-    const cr = this.clinicalFor(p);
-    if (!cr) return [{ label: 'Needs charting', tone: 'info' }];
-    const b: { label: string; tone: 'ok' | 'warning' | 'critical' | 'info' }[] = [];
-    const iopMax = Math.max(cr.iop?.od ?? 0, cr.iop?.os ?? 0);
-    if (iopMax > 21) b.push({ label: 'IOP elevated', tone: 'critical' });
-    if ((cr.allergies ?? []).some(a => a.substance && a.substance.toUpperCase() !== 'NKDA')) b.push({ label: 'Allergy alert', tone: 'warning' });
-    if (!(cr.diagnosis ?? []).some(d => d.icd10)) b.push({ label: 'Needs diagnosis', tone: 'warning' });
-    if (this.missingClinical(cr).length === 0) b.push({ label: 'Chart complete', tone: 'ok' });
-    return b.length ? b : [{ label: 'Charted', tone: 'ok' }];
-  }
+  // ── EMR clinical record: read (delegated) ───────────────────────────────────
+  protected clinicalFor(p: PatientFlowRecord): PatientClinicalRecord | null { return this.enc.clinicalFor(p.id); }
+  protected clinicalBadges(p: PatientFlowRecord) { return this.enc.clinicalBadges(p.id); }
 
   protected readonly examFields: { key: keyof PatientClinicalRecord['examFindings']; label: string }[] = [
     { key: 'lidsLashes', label: 'Lids / lashes' }, { key: 'conjunctiva', label: 'Conjunctiva' },
@@ -1060,39 +996,22 @@ export class DashboardPageComponent {
   private splitList(v: string): string[] { return v.split(',').map(s => s.trim()).filter(Boolean); }
 
   // Display joiners
-  protected allergyText(cr: PatientClinicalRecord | null): string { return (cr?.allergies ?? []).map(a => a.substance).join(', '); }
-  protected medsText(cr: PatientClinicalRecord | null): string { return (cr?.medications ?? []).map(m => m.name).join(', '); }
-  protected primaryDx(cr: PatientClinicalRecord | null): string {
-    const d = (cr?.diagnosis ?? []).find(x => x.icd10 || x.description);
-    return d ? `${d.icd10 ?? ''}${d.icd10 && d.description ? ' — ' : ''}${d.description ?? ''}` : '';
-  }
+  protected allergyText(cr: PatientClinicalRecord | null): string { return this.enc.allergyText(cr); }
+  protected medsText(cr: PatientClinicalRecord | null): string { return this.enc.medsText(cr); }
+  protected primaryDx(cr: PatientClinicalRecord | null): string { return this.enc.primaryDx(cr); }
 
-  // ── Unified patient history (clinical + flow + imaging + billing + encounter) ─
-  protected unifiedHistory(p: PatientFlowRecord): { kind: 'clinical' | 'flow' | 'imaging' | 'billing' | 'encounter'; at: string; iso?: string; label: string; detail?: string }[] {
-    const out: { kind: 'clinical' | 'flow' | 'imaging' | 'billing' | 'encounter'; at: string; iso?: string; label: string; detail?: string }[] = [];
-    for (const m of this.store.flowHistory()[p.id] ?? [])
-      out.push({ kind: 'flow', at: m.at, iso: m.iso, label: `${this.stationLabelFor(m.from)} → ${this.stationLabelFor(m.to)}`, detail: m.skipped ? `skipped · ${m.reason ?? ''}` : undefined });
-    for (const a of this.store.imagingWork()[p.id]?.audit ?? [])
-      out.push({ kind: 'imaging', at: a.at, iso: a.iso, label: a.action, detail: a.detail });
-    for (const a of this.store.claimWork()[p.id]?.audit ?? [])
-      out.push({ kind: 'billing', at: a.at, iso: a.iso, label: a.action, detail: a.detail });
-    for (const a of this.store.clinicalAudit()[p.id] ?? [])
-      out.push({ kind: 'clinical', at: a.createdAt, iso: a.iso, label: 'Clinical update', detail: a.changedSections.join(', ') });
-    for (const a of this.store.encounters()[p.id]?.audit ?? [])
-      out.push({ kind: 'encounter', at: a.at, iso: a.iso, label: a.action, detail: a.detail });
-    // Chronological (newest first) using sortable ISO where available.
-    return out.sort((x, y) => (y.iso ?? '').localeCompare(x.iso ?? ''));
-  }
+  /** Unified, chronological patient history — delegated to the shared engine. */
+  protected unifiedHistory(p: PatientFlowRecord) { return this.enc.unifiedHistory(p.id); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // ENCOUNTER WORKFLOW (Sprint 6)
+  // ENCOUNTER WORKFLOW (Sprint 6) — editing state local, derivation delegated
   // ══════════════════════════════════════════════════════════════════════════
 
   protected readonly drawerTab = signal<'overview' | 'intake' | 'workup' | 'exam' | 'ap' | 'orders' | 'checkout'>('overview');
   protected setTab(t: 'overview' | 'intake' | 'workup' | 'exam' | 'ap' | 'orders' | 'checkout'): void { this.drawerTab.set(t); }
 
   protected readonly encounterDraft = signal<EncounterRecord | null>(null);
-  protected encounterFor(p: PatientFlowRecord): EncounterRecord | null { return this.store.encounters()[p.id] ?? null; }
+  protected encounterFor(p: PatientFlowRecord): EncounterRecord | null { return this.enc.encounterFor(p.id); }
 
   private blankEncounterDraft(p: PatientFlowRecord): EncounterRecord {
     const e = this.encounterFor(p);
@@ -1115,51 +1034,15 @@ export class DashboardPageComponent {
   protected patchWorkup(key: string, v: unknown): void { this.patchEnc(d => { d.workup = { ...d.workup, [key]: v }; }); }
   protected patchAssess(key: string, v: unknown): void { this.patchEnc(d => { d.assessment = { ...d.assessment, [key]: v }; }); }
 
-  protected readonly encounterStages: { id: EncounterStageId; label: string }[] = [
-    { id: 'checked-in', label: 'Checked In' }, { id: 'intake', label: 'Intake' },
-    { id: 'pre-test', label: 'Pre-Test' }, { id: 'provider-exam', label: 'Provider Exam' },
-    { id: 'assessment', label: 'Assessment / Plan' }, { id: 'orders', label: 'Orders' },
-    { id: 'checkout', label: 'Checkout' }, { id: 'billing-ready', label: 'Billing Ready' },
-  ];
+  protected readonly encounterStages = this.enc.encounterStages;
 
-  /** Derive a stage's status from real persisted clinical + encounter state. */
-  protected stageStatus(p: PatientFlowRecord, id: EncounterStageId): StageStatus {
-    const e = this.encounterFor(p);
-    const cr = this.clinicalFor(p);
-    const hasVa = !!(cr?.visualAcuity?.od || cr?.visualAcuity?.os);
-    const hasIop = cr?.iop?.od != null || cr?.iop?.os != null;
-    const hasExam = !!cr && Object.values(cr.examFindings ?? {}).some(Boolean);
-    const hasDx = !!(cr?.diagnosis ?? []).some(d => d.icd10);
-    const hasPlan = !!cr?.assessmentPlan;
+  /** Derivations delegated to the single encounter engine. */
+  protected stageStatus(p: PatientFlowRecord, id: EncounterStageId): StageStatus { return this.enc.stageStatus(p, id); }
+  protected nextStage(p: PatientFlowRecord) { return this.enc.nextStage(p); }
+  protected encounterNextAction(p: PatientFlowRecord): string { return this.enc.encounterNextAction(p); }
+  protected checkoutItems(p: PatientFlowRecord) { return this.enc.checkoutItems(p); }
+  protected billingReady(p: PatientFlowRecord) { return this.enc.billingReady(p); }
 
-    switch (id) {
-      case 'checked-in': return 'complete';
-      case 'intake':
-        if (e?.intake?.completedAt) return 'complete';
-        return e?.intake && Object.keys(e.intake).length ? 'in-progress' : 'not-started';
-      case 'pre-test':
-        if (e?.workup?.completedAt && hasVa && hasIop) return 'complete';
-        return hasVa || hasIop || e?.workup?.pupils ? 'in-progress' : 'not-started';
-      case 'provider-exam':
-        if (e?.examCompletedAt && hasExam) return 'complete';
-        return hasExam ? 'in-progress' : 'not-started';
-      case 'assessment':
-        if (hasDx && hasPlan) return 'complete';
-        return hasDx || hasPlan ? 'in-progress' : 'not-started';
-      case 'orders':
-        return (e?.orders?.length ?? 0) > 0 ? 'complete' : (hasDx && hasPlan ? 'in-progress' : 'not-started');
-      case 'checkout':
-        if (e?.checkout?.completedAt) return 'complete';
-        return (hasDx && hasPlan && hasExam) ? 'in-progress' : 'blocked';
-      case 'billing-ready':
-        return this.billingReady(p).ready ? 'complete' : 'blocked';
-    }
-  }
-
-  /** First non-complete stage = where the visit needs attention. */
-  protected nextStage(p: PatientFlowRecord): { id: EncounterStageId; label: string } | null {
-    return this.encounterStages.find(s => this.stageStatus(p, s.id) !== 'complete') ?? null;
-  }
   /** Jump the drawer to the tab for the next incomplete stage. */
   protected goToNextStage(p: PatientFlowRecord): void {
     const n = this.nextStage(p);
@@ -1169,48 +1052,6 @@ export class DashboardPageComponent {
       'assessment': 'ap', 'orders': 'orders', 'checkout': 'checkout', 'billing-ready': 'checkout',
     };
     this.setTab(tabFor[n.id]);
-  }
-
-  protected encounterNextAction(p: PatientFlowRecord): string {
-    const n = this.nextStage(p);
-    if (!n) return 'Encounter complete — ready to bill';
-    const map: Record<EncounterStageId, string> = {
-      'checked-in': 'Check in patient', 'intake': 'Complete intake',
-      'pre-test': 'Capture VA & IOP', 'provider-exam': 'Document provider exam',
-      'assessment': 'Add diagnosis & plan', 'orders': 'Review / place orders',
-      'checkout': 'Complete checkout', 'billing-ready': 'Resolve billing blockers',
-    };
-    return map[n.id];
-  }
-
-  /** Checkout readiness breakdown — explains complete vs blocked. */
-  protected checkoutItems(p: PatientFlowRecord): { label: string; ok: boolean }[] {
-    const cr = this.clinicalFor(p);
-    const e = this.encounterFor(p);
-    const hasExam = !!cr && Object.values(cr.examFindings ?? {}).some(Boolean);
-    const hasDx = !!(cr?.diagnosis ?? []).some(d => d.icd10);
-    const hasPlan = !!cr?.assessmentPlan;
-    const imagingOrders = (e?.orders ?? []).filter(o => o.type === 'imaging');
-    return [
-      { label: 'Provider exam documented', ok: hasExam },
-      { label: 'Diagnosis coded', ok: hasDx },
-      { label: 'Plan complete', ok: hasPlan },
-      { label: imagingOrders.length ? `Imaging ordered (${imagingOrders.length})` : 'No imaging required', ok: true },
-      { label: 'Prior auth not blocking', ok: p.authStatus !== 'expired' },
-      { label: 'Billing ready', ok: this.billingReady(p).ready },
-    ];
-  }
-
-  /** Billing readiness derived from the encounter — never faked. */
-  protected billingReady(p: PatientFlowRecord): { ready: boolean; blockers: string[] } {
-    const cr = this.clinicalFor(p);
-    const e = this.encounterFor(p);
-    const blockers: string[] = [];
-    if (!(cr?.diagnosis ?? []).some(d => d.icd10)) blockers.push('Diagnosis not coded');
-    if (!cr?.assessmentPlan) blockers.push('Plan incomplete');
-    if (!e?.checkout?.completedAt && p.station !== 'checkout') blockers.push('Checkout not completed');
-    if (p.authStatus === 'expired') blockers.push('Prior auth expired');
-    return { ready: blockers.length === 0, blockers };
   }
 
   // ── Stage save handlers (persist + mark stage + audit) ──────────────────────
@@ -1270,20 +1111,18 @@ export class DashboardPageComponent {
     return this.checkoutItems(p).filter(i => i.label !== 'Billing ready').every(i => i.ok);
   }
 
-  // ── Command Center encounter KPIs ───────────────────────────────────────────
+  // ── Command Center encounter KPIs (engine-derived) ──────────────────────────
   protected readonly checkoutReadyCount = computed(() =>
-    this.store.patientFlow().filter(p => this.stageStatus(p, 'checkout') === 'in-progress').length
+    this.store.patientFlow().filter(p => this.enc.stageStatus(p, 'checkout') === 'in-progress').length
   );
   protected readonly billingReadyCount = computed(() =>
-    this.store.patientFlow().filter(p => this.billingReady(p).ready).length
+    this.store.patientFlow().filter(p => this.enc.billingReady(p).ready).length
   );
   protected readonly blockedEncounterCount = computed(() =>
-    this.store.patientFlow().filter(p => this.encounterStages.some(s => this.stageStatus(p, s.id) === 'blocked')).length
+    this.store.patientFlow().filter(p => this.enc.encounterStages.some(s => this.enc.stageStatus(p, s.id) === 'blocked')).length
   );
 
-  protected stageTone(s: StageStatus): 'ok' | 'info' | 'warning' | 'critical' | 'neutral' {
-    return s === 'complete' ? 'ok' : s === 'in-progress' ? 'info' : s === 'blocked' ? 'critical' : 'neutral';
-  }
+  protected stageTone(s: StageStatus) { return this.enc.stageTone(s); }
 
   // ── Note composer ──────────────────────────────────────────────────────────
   protected readonly noteDraft = signal('');

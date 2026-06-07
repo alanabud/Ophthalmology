@@ -1,108 +1,116 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
-import { PatientRecord } from '../../core/models/enterprise.models';
+import { PatientFlowRecord } from '../../core/models/enterprise.models';
+import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
-import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-modal.component';
-import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
-import { StatusChipComponent } from '../../shared/ui/status-chip.component';
+
+type RegFilter =
+  | 'all' | 'active-encounter' | 'needs-charting' | 'imaging-pending' | 'billing-blocker'
+  | 'elevated-iop' | 'reduced-acuity' | 'glaucoma' | 'diabetic' | 'no-diagnosis';
 
 @Component({
   selector: 'app-patients-page',
-  imports: [FormsModule, NewPatientModalComponent, NewAppointmentModalComponent, StatusChipComponent],
+  imports: [],
   templateUrl: './patients-page.component.html',
-  styleUrl: './patients-page.component.scss'
+  styleUrl: './patients-page.component.scss',
 })
 export class PatientsPageComponent {
-  private readonly store = inject(EnterpriseStoreService);
+  protected readonly store = inject(EnterpriseStoreService);
+  protected readonly enc = inject(EncounterService);
+  private readonly router = inject(Router);
 
   protected readonly query = signal('');
-  protected readonly statusFilter = signal('');
-  protected readonly clinicFilter = signal('');
-  protected readonly newPatientOpen = signal(false);
-  protected readonly selectedPatientId = signal<string | null>(null);
-  protected readonly editingPatient = signal<PatientRecord | null>(null);
-  protected readonly scheduleModalOpen = signal(false);
-  protected readonly schedulePrefill = signal<{ name: string; mrn: string } | null>(null);
+  protected readonly filter = signal<RegFilter>('all');
+  protected setFilter(f: RegFilter): void { this.filter.set(f); }
 
-  protected readonly allPatients = this.store.patients;
-  protected readonly clinics = this.store.clinicOptions;
-  protected readonly patientBriefings = this.store.patientBriefings;
+  protected readonly chartTab = signal<'summary' | 'clinical' | 'imaging' | 'billing' | 'history'>('summary');
+  protected setChartTab(t: 'summary' | 'clinical' | 'imaging' | 'billing' | 'history'): void { this.chartTab.set(t); }
 
-  protected readonly patients = computed(() => {
-    const search = this.query().trim().toLowerCase();
-    const status = this.statusFilter();
-    let records = this.store.patients();
+  protected readonly selectedId = signal<string | null>(null);
+  protected readonly selected = computed(() =>
+    this.store.patientFlow().find(p => p.id === this.selectedId()) ?? null
+  );
 
-    if (search) {
-      records = records.filter(
-        (r) =>
-          r.fullName.toLowerCase().includes(search) ||
-          r.mrn.toLowerCase().includes(search) ||
-          r.insurance.toLowerCase().includes(search) ||
-          r.status.toLowerCase().includes(search)
-      );
-    }
-    if (status) {
-      records = records.filter((r) => r.status === status);
-    }
-    if (this.clinicFilter()) {
-      records = records.filter((r) => r.clinicId === this.clinicFilter());
-    }
-    return records;
+  // ── Per-patient operational flags (derived from the single engine) ──────────
+  protected imagingPending(p: PatientFlowRecord): boolean {
+    const ws = this.store.imagingWork()[p.id];
+    if (ws?.status && ws.status !== 'Interpreted') return true;
+    return p.readinessItems.some(r => r.required && !r.done && /imag|biometr|topograph|oct|field/i.test(r.label));
+  }
+  private hasDx(p: PatientFlowRecord): boolean {
+    return (this.enc.clinicalFor(p.id)?.diagnosis ?? []).some(d => d.icd10);
+  }
+  private dxText(p: PatientFlowRecord): string {
+    const text = [
+      ...(this.enc.clinicalFor(p.id)?.diagnosis ?? []).map(d => `${d.icd10 ?? ''} ${d.description ?? ''}`),
+      ...(this.enc.clinicalFor(p.id)?.ocularHistory ?? []),
+      ...(this.enc.clinicalFor(p.id)?.systemicHistory ?? []),
+    ].join(' ').toLowerCase();
+    return text;
+  }
+
+  // ── Registry rows (clinically-active patient set) ───────────────────────────
+  protected readonly rows = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const f = this.filter();
+    return this.store.patientFlow()
+      .filter(p => {
+        if (q && !(`${p.name} ${p.mrn} ${p.provider}`.toLowerCase().includes(q))) return false;
+        const cr = this.enc.clinicalFor(p.id);
+        switch (f) {
+          case 'all': return true;
+          case 'active-encounter': return this.enc.nextStage(p) !== null;
+          case 'needs-charting': return !cr || this.enc.missingClinical(cr).length > 0;
+          case 'imaging-pending': return this.imagingPending(p);
+          case 'billing-blocker': return !this.enc.billingReady(p).ready;
+          case 'elevated-iop': return !!cr && Math.max(cr.iop?.od ?? 0, cr.iop?.os ?? 0) > 21;
+          case 'reduced-acuity': { const w = cr ? this.enc.worstVa(cr) : null; return !!w && Number(w.va.split('/')[1]) >= 50; }
+          case 'glaucoma': return /glaucoma|h40/.test(this.dxText(p));
+          case 'diabetic': return /diabet|e11|retinopathy/.test(this.dxText(p));
+          case 'no-diagnosis': return !this.hasDx(p);
+        }
+      })
+      .map(p => ({
+        p,
+        clinical: this.enc.clinicalFor(p.id),
+        badges: this.enc.clinicalBadges(p.id),
+        risk: this.enc.riskFlags(p).slice(0, 3),
+        next: this.enc.nextStage(p),
+        progress: this.enc.encounterProgressPct(p),
+        billing: this.enc.billingReady(p),
+        imaging: this.imagingPending(p),
+      }));
   });
 
-  protected readonly selectedPatient = computed<PatientRecord | null>(() => {
-    const id = this.selectedPatientId();
-    if (!id) return null;
-    return this.patients().find((p) => p.id === id) ?? null;
-  });
+  protected readonly filterDefs: { id: RegFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'active-encounter', label: 'Active encounter' },
+    { id: 'needs-charting', label: 'Needs charting' },
+    { id: 'imaging-pending', label: 'Imaging pending' },
+    { id: 'billing-blocker', label: 'Billing blocker' },
+    { id: 'elevated-iop', label: 'Elevated IOP' },
+    { id: 'reduced-acuity', label: 'Reduced acuity' },
+    { id: 'glaucoma', label: 'Glaucoma' },
+    { id: 'diabetic', label: 'Diabetic' },
+    { id: 'no-diagnosis', label: 'No diagnosis' },
+  ];
 
-  // Stats computed from actual patient data
-  protected readonly recallGaps = computed(() =>
-    this.store.patients().filter((p) => p.status === 'Follow-up overdue').length
+  // ── Registry KPIs ───────────────────────────────────────────────────────────
+  protected readonly activeCount = computed(() => this.store.patientFlow().filter(p => this.enc.nextStage(p)).length);
+  protected readonly needsChartingCount = computed(() =>
+    this.store.patientFlow().filter(p => { const c = this.enc.clinicalFor(p.id); return !c || this.enc.missingClinical(c).length > 0; }).length
   );
-  protected readonly balanceOver = computed(() =>
-    this.store.patients().filter((p) => {
-      const amt = parseFloat((p.balance ?? '$0').replace(/[$,]/g, ''));
-      return amt > 250;
-    }).length
-  );
-  protected readonly highRisk = computed(() =>
-    this.store.patients().filter((p) => p.statusTone === 'critical').length
-  );
-  protected readonly unsignedCharts = computed(() =>
-    this.store.patients().filter((p) => {
-      const pct = parseFloat((p.chartCompleteness ?? '0%').replace('%', ''));
-      return pct < 100;
-    }).length
-  );
-  protected readonly pendingAuths = computed(() =>
-    this.store.patients().filter((p) =>
-      (p.careGap ?? '').toLowerCase().includes('auth')
-    ).length
-  );
+  protected readonly imagingPendingCount = computed(() => this.store.patientFlow().filter(p => this.imagingPending(p)).length);
+  protected readonly billingBlockedCount = computed(() => this.store.patientFlow().filter(p => !this.enc.billingReady(p).ready).length);
 
-  protected selectPatient(patient: PatientRecord): void {
-    this.selectedPatientId.set(patient.id);
+  protected openChart(p: PatientFlowRecord): void { this.selectedId.set(p.id); this.chartTab.set('summary'); }
+  protected closeChart(): void { this.selectedId.set(null); }
+
+  /** Reuse the single Command Center cockpit for editing — no duplicate workflow. */
+  protected openInCockpit(p: PatientFlowRecord): void {
+    void this.router.navigate(['/command-center'], { queryParams: { patient: p.id } });
   }
 
-  protected viewPatient(patient: PatientRecord): void {
-    this.selectedPatientId.set(patient.id);
-    // Scroll detail panel into view on small screens
-    setTimeout(() => {
-      document.querySelector('.pt-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
-  }
-
-  protected editPatient(patient: PatientRecord): void {
-    this.selectedPatientId.set(patient.id);
-    this.editingPatient.set(patient);
-    this.newPatientOpen.set(true);
-  }
-
-  protected schedulePatient(patient: PatientRecord): void {
-    this.schedulePrefill.set({ name: patient.fullName, mrn: patient.mrn });
-    this.scheduleModalOpen.set(true);
-  }
+  protected encounterOrders(p: PatientFlowRecord) { return this.enc.encounterFor(p.id)?.orders ?? []; }
 }

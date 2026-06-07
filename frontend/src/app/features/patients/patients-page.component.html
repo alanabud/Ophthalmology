@@ -1,247 +1,201 @@
-<section class="workspace-page patients-page">
+<section class="reg">
 
-  <!-- ── Top header ────────────────────────────────────── -->
-  <header class="pt-header">
-    <div class="pt-header__left">
-      <p class="pt-breadcrumb">Patient Operations</p>
-      <h1 class="pt-title">Patient Intelligence Workspace</h1>
+  <!-- Header -->
+  <header class="reg__hd">
+    <div>
+      <p class="reg__kicker">Patient Registry</p>
+      <h1 class="reg__title">Longitudinal Patient Chart</h1>
+      <p class="reg__sub">Clinically-active patients — VA, IOP, diagnosis, encounter stage, imaging &amp; billing, all from one record.</p>
     </div>
-    <div class="pt-header__actions">
-      <div class="pt-search-wrap">
-        <svg class="pt-search-icon" viewBox="0 0 20 20" fill="none">
-          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <input
-          class="pt-search"
-          type="search"
-          [ngModel]="query()"
-          (ngModelChange)="query.set($event)"
-          placeholder="Search patient, MRN, status..."
-        />
-      </div>
-      <button class="pt-btn pt-btn--primary" type="button" (click)="newPatientOpen.set(true)">
-        + New patient
-      </button>
-      <button class="pt-btn pt-btn--ghost" type="button"
-        (click)="selectedPatientId() ? viewPatient(selectedPatient()!) : null"
-        [disabled]="!selectedPatientId()"
-        [title]="selectedPatientId() ? 'View briefing for ' + selectedPatient()!.fullName : 'Select a patient first'">
-        Pre-visit briefing
-      </button>
+    <div class="reg__kpis">
+      <button class="rkpi" type="button" (click)="setFilter('active-encounter')"><strong>{{ activeCount() }}</strong><span>Active encounters</span></button>
+      <button class="rkpi rkpi--warn" type="button" (click)="setFilter('needs-charting')"><strong>{{ needsChartingCount() }}</strong><span>Needs charting</span></button>
+      <button class="rkpi rkpi--gold" type="button" (click)="setFilter('imaging-pending')"><strong>{{ imagingPendingCount() }}</strong><span>Imaging pending</span></button>
+      <button class="rkpi rkpi--crit" type="button" (click)="setFilter('billing-blocker')"><strong>{{ billingBlockedCount() }}</strong><span>Billing blockers</span></button>
     </div>
   </header>
 
-  <!-- ── Stats rail ─────────────────────────────────────── -->
-  <div class="pt-stats-rail">
-    <div class="pt-stat">
-      <strong>{{ patients().length }}</strong>
-      <span>Active in scope</span>
+  <!-- Search + filters -->
+  <div class="reg__controls">
+    <div class="reg__search">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input type="search" placeholder="Search name, MRN, provider…" [value]="query()" (input)="query.set($any($event.target).value)">
     </div>
-    <div class="pt-stat-divider"></div>
-    <div class="pt-stat">
-      <strong>{{ recallGaps() }}</strong>
-      <span>Recall gaps</span>
-    </div>
-    <div class="pt-stat-divider"></div>
-    <div class="pt-stat">
-      <strong>{{ balanceOver() }}</strong>
-      <span>Balance &gt; $250</span>
-    </div>
-    <div class="pt-stat-divider"></div>
-    <div class="pt-stat">
-      <strong>{{ highRisk() }}</strong>
-      <span>High-risk today</span>
-    </div>
-    <div class="pt-stat-divider"></div>
-    <div class="pt-stat">
-      <strong>{{ unsignedCharts() }}</strong>
-      <span>Unsigned charts</span>
-    </div>
-    <div class="pt-stat-divider"></div>
-    <div class="pt-stat">
-      <strong>{{ pendingAuths() }}</strong>
-      <span>Pending auths</span>
-    </div>
-  </div>
-
-  <!-- ── Filter bar ─────────────────────────────────────── -->
-  <div class="pt-filter-bar">
-    <span class="pt-patient-count">{{ patients().length }} patients</span>
-    <select class="pt-filter-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
-      <option value="">All statuses</option>
-      <option value="Arrived">Arrived</option>
-      <option value="In exam">In exam</option>
-      <option value="Imaging queue">Imaging queue</option>
-      <option value="Pre-op hold">Pre-op hold</option>
-      <option value="Surgery ready">Surgery ready</option>
-      <option value="Follow-up overdue">Follow-up overdue</option>
-    </select>
-    <select class="pt-filter-select">
-      <option value="">All providers</option>
-    </select>
-    <select class="pt-filter-select" [ngModel]="clinicFilter()" (ngModelChange)="clinicFilter.set($event)">
-      <option value="">All clinics</option>
-      @for (clinic of clinics(); track clinic.id) {
-        @if (clinic.id !== 'network') {
-          <option [value]="clinic.id">{{ clinic.name }}</option>
-        }
+    <div class="reg__filters">
+      @for (f of filterDefs; track f.id) {
+        <button class="rfilter" [class.rfilter--on]="filter() === f.id" type="button" (click)="setFilter(f.id)">{{ f.label }}</button>
       }
-    </select>
+    </div>
   </div>
 
-  <!-- ── Main content ───────────────────────────────────── -->
-  <div class="pt-body">
+  <!-- Patient cards -->
+  @if (rows().length) {
+    <div class="reg__grid">
+      @for (r of rows(); track r.p.id) {
+        <button class="pcardr" [class.pcardr--on]="selectedId() === r.p.id" type="button" (click)="openChart(r.p)">
+          <div class="pcardr__top">
+            <span class="pcardr__av">{{ r.p.name.charAt(0) }}</span>
+            <div class="pcardr__id">
+              <strong>{{ r.p.name }}</strong>
+              <span>{{ r.p.age }} yrs · MRN {{ r.p.mrn }}</span>
+            </div>
+            <div class="pcardr__badges">
+              @for (b of r.badges; track b.label) { <span class="cbadge cbadge--{{ b.tone }}">{{ b.label }}</span> }
+            </div>
+          </div>
 
-    <!-- Roster table -->
-    <div class="pt-roster">
-      <table class="pt-table">
-        <thead>
-          <tr>
-            <th>PATIENT</th>
-            <th>STATUS</th>
-            <th>NEXT VISIT</th>
-            <th>PROVIDER</th>
-            <th>INSURANCE</th>
-            <th>BALANCE</th>
-            <th>CHART %</th>
-            <th>IMAGING</th>
-            <th class="th-actions"></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (patient of patients(); track patient.id) {
-            <tr
-              class="pt-row"
-              [class.pt-row--selected]="selectedPatientId() === patient.id"
-              (click)="selectPatient(patient)"
-            >
-              <td>
-                <div class="pt-patient-cell">
-                  <div class="pt-avatar" [class]="'pt-avatar--' + patient.statusTone">
-                    {{ patient.fullName.charAt(0) }}
-                  </div>
-                  <div class="pt-patient-info">
-                    <strong>{{ patient.fullName }}</strong>
-                    <span>{{ patient.mrn }} · DOB {{ patient.dob }}</span>
-                  </div>
-                </div>
-              </td>
-              <td><app-status-chip [label]="patient.status" [tone]="patient.statusTone" /></td>
-              <td class="pt-cell-muted">{{ patient.nextVisit }}</td>
-              <td class="pt-cell-muted">—</td>
-              <td class="pt-cell-muted">{{ patient.insurance }}</td>
-              <td [class.pt-balance--red]="patient.balance !== '$0.00'">{{ patient.balance }}</td>
-              <td>
-                <div class="pt-chart-bar-wrap">
-                  <div class="pt-chart-bar">
-                    <div
-                      class="pt-chart-fill"
-                      [style.width]="patient.chartCompleteness"
-                      [class.pt-chart-fill--high]="(+patient.chartCompleteness.replace('%','')) >= 90"
-                      [class.pt-chart-fill--mid]="(+patient.chartCompleteness.replace('%','')) >= 70 && (+patient.chartCompleteness.replace('%','')) < 90"
-                      [class.pt-chart-fill--low]="(+patient.chartCompleteness.replace('%','')) < 70"
-                    ></div>
-                  </div>
-                </div>
-              </td>
-              <td class="pt-cell-muted pt-imaging">{{ patient.imageStatus }}</td>
-              <td class="td-actions" (click)="$event.stopPropagation()">
-                <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewPatient(patient)">View</button>
-                  <button class="row-action-btn" type="button" (click)="editPatient(patient)">Edit</button>
-                  <button class="row-action-btn" type="button" (click)="schedulePatient(patient)">Schedule</button>
-                  <button class="row-action-more" type="button" title="More actions">···</button>
-                </div>
-              </td>
-            </tr>
+          <div class="pcardr__vitals">
+            <div class="pv"><span>VA</span><strong>{{ r.clinical?.visualAcuity?.od || '—' }} / {{ r.clinical?.visualAcuity?.os || '—' }}</strong></div>
+            <div class="pv"><span>IOP</span><strong [class.pv--high]="(r.clinical?.iop?.od ?? 0) > 21 || (r.clinical?.iop?.os ?? 0) > 21">{{ r.clinical?.iop?.od ?? '—' }} / {{ r.clinical?.iop?.os ?? '—' }}</strong></div>
+            <div class="pv pv--grow"><span>Dx</span><strong>{{ enc.primaryDx(r.clinical) || 'Not coded' }}</strong></div>
+          </div>
+
+          @if (r.risk.length) {
+            <div class="pcardr__risk">
+              @for (f of r.risk; track f.label) { <span class="rdot rdot--{{ f.tone }}">{{ f.label }}</span> }
+            </div>
           }
-        </tbody>
-      </table>
-    </div>
 
-    <!-- Patient detail panel -->
-    <div class="pt-detail">
-      @if (selectedPatient()) {
-        <div class="pt-detail__content">
-          <div class="pt-detail__patient-head">
-            <div class="pt-detail__big-avatar">{{ selectedPatient()!.fullName.charAt(0) }}</div>
-            <div class="pt-detail__head-info">
-              <h2>{{ selectedPatient()!.fullName }}</h2>
-              <p class="pt-detail__mrn">{{ selectedPatient()!.mrn }} · DOB {{ selectedPatient()!.dob }}</p>
+          <div class="pcardr__foot">
+            <div class="pcardr__stage">
+              <div class="pbar"><div class="pbar__fill" [style.width.%]="r.progress"></div></div>
+              <span>{{ r.next ? r.next.label : 'Complete' }} · {{ r.progress }}%</span>
             </div>
-            <app-status-chip [label]="selectedPatient()!.status" [tone]="selectedPatient()!.statusTone" />
-          </div>
-
-          <div class="pt-detail__section">
-            <p class="pt-detail__section-label">Financial overview &amp; balance</p>
-            <div class="pt-kv-list">
-              <div class="pt-kv-row">
-                <span>Balance due</span>
-                <strong [class.pt-balance--red]="selectedPatient()!.balance !== '$0.00'">{{ selectedPatient()!.balance }}</strong>
-              </div>
-              <div class="pt-kv-row">
-                <span>Insurance</span>
-                <strong>{{ selectedPatient()!.insurance }}</strong>
-              </div>
+            <div class="pcardr__ops">
+              @if (r.imaging) { <span class="optag optag--gold">Imaging</span> }
+              @if (!r.billing.ready) { <span class="optag optag--crit">Billing</span> } @else { <span class="optag optag--ok">Billable</span> }
             </div>
           </div>
-
-          <div class="pt-detail__section">
-            <p class="pt-detail__section-label">Clinical readiness &amp; chart quality</p>
-            <div class="pt-kv-list">
-              <div class="pt-kv-row">
-                <span>Chart completeness</span>
-                <strong>{{ selectedPatient()!.chartCompleteness }}</strong>
-              </div>
-              <div class="pt-kv-row">
-                <span>Imaging status</span>
-                <strong>{{ selectedPatient()!.imageStatus }}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-detail__section">
-            <p class="pt-detail__section-label">Care gaps &amp; next actions</p>
-            <div class="pt-detail__flag-box pt-detail__flag-box--warn">{{ selectedPatient()!.careGap }}</div>
-          </div>
-
-          <div class="pt-detail__section">
-            <p class="pt-detail__section-label">AI pre-visit briefing</p>
-            <div class="pt-detail__flag-box pt-detail__flag-box--ai">{{ selectedPatient()!.aiFlag }}</div>
-          </div>
-        </div>
-      } @else {
-        <div class="pt-detail__empty">
-          <svg class="pt-detail__empty-icon" viewBox="0 0 48 48" fill="none">
-            <circle cx="24" cy="18" r="8" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M8 42c0-8.837 7.163-16 16-16s16 7.163 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          <strong>Select a patient</strong>
-          <p>Click any row in the roster to open<br>their full workspace</p>
-          <ul class="pt-detail__feature-list">
-            <li>Financial overview &amp; balance</li>
-            <li>Clinical readiness &amp; chart quality</li>
-            <li>Care gaps &amp; next actions</li>
-            <li>AI pre-visit briefing</li>
-          </ul>
-        </div>
+        </button>
       }
     </div>
+  } @else {
+    <div class="reg__empty">
+      <strong>No patients match</strong>
+      <p>Try a different search or filter.</p>
+    </div>
+  }
 
-  </div>
+  <!-- ═══ LONGITUDINAL CHART DRAWER ═══ -->
+  @if (selected(); as p) {
+    <div class="chart-scrim" (click)="closeChart()"></div>
+    <aside class="chart" role="dialog" [attr.aria-label]="p.name + ' chart'">
+      <header class="chart__hd">
+        <div class="chart__id">
+          <span class="chart__av">{{ p.name.charAt(0) }}</span>
+          <div>
+            <h3>{{ p.name }} @if (p.urgent) { <span class="urgenttag">URGENT</span> }</h3>
+            <p>{{ p.age }} yrs · MRN {{ p.mrn }} · {{ p.provider }}</p>
+          </div>
+        </div>
+        <button class="chart__x" type="button" (click)="closeChart()" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <!-- Encounter status strip -->
+      <div class="chart__enc">
+        <div class="chart__encbar"><div class="chart__encfill" [style.width.%]="enc.encounterProgressPct(p)"></div></div>
+        <span class="chart__encnext">{{ enc.encounterNextAction(p) }}</span>
+        <button class="chart__open" type="button" (click)="openInCockpit(p)">Open encounter →</button>
+      </div>
+
+      <nav class="charttabs">
+        <button class="charttab" [class.charttab--on]="chartTab()==='summary'" type="button" (click)="setChartTab('summary')">Summary</button>
+        <button class="charttab" [class.charttab--on]="chartTab()==='clinical'" type="button" (click)="setChartTab('clinical')">Clinical</button>
+        <button class="charttab" [class.charttab--on]="chartTab()==='imaging'" type="button" (click)="setChartTab('imaging')">Imaging</button>
+        <button class="charttab" [class.charttab--on]="chartTab()==='billing'" type="button" (click)="setChartTab('billing')">Billing</button>
+        <button class="charttab" [class.charttab--on]="chartTab()==='history'" type="button" (click)="setChartTab('history')">History</button>
+      </nav>
+
+      <div class="chart__body">
+        @switch (chartTab()) {
+
+          @case ('summary') {
+            @if (enc.riskFlags(p).length) {
+              <div class="csec"><span class="clbl">Clinical risk</span>
+                <div class="cflags">@for (f of enc.riskFlags(p); track f.label) { <span class="rdot rdot--{{ f.tone }}">{{ f.label }}</span> }</div>
+              </div>
+            }
+            <div class="summary-cards">
+              <div class="scard"><span>Vision</span><strong>OD {{ enc.clinicalFor(p.id)?.visualAcuity?.od || '—' }} · OS {{ enc.clinicalFor(p.id)?.visualAcuity?.os || '—' }}</strong><em>PH {{ enc.clinicalFor(p.id)?.visualAcuity?.pinholeOd || '—' }}/{{ enc.clinicalFor(p.id)?.visualAcuity?.pinholeOs || '—' }}</em></div>
+              <div class="scard"><span>Pressure</span><strong [class.pv--high]="(enc.clinicalFor(p.id)?.iop?.od ?? 0) > 21 || (enc.clinicalFor(p.id)?.iop?.os ?? 0) > 21">OD {{ enc.clinicalFor(p.id)?.iop?.od ?? '—' }} · OS {{ enc.clinicalFor(p.id)?.iop?.os ?? '—' }}</strong><em>{{ enc.clinicalFor(p.id)?.iop?.method || 'method —' }}</em></div>
+              <div class="scard"><span>Diagnosis</span><strong>{{ enc.primaryDx(enc.clinicalFor(p.id)) || 'Not coded' }}</strong></div>
+              <div class="scard"><span>Allergies</span><strong [class.pv--high]="enc.allergyText(enc.clinicalFor(p.id)) && enc.allergyText(enc.clinicalFor(p.id)) !== 'NKDA'">{{ enc.allergyText(enc.clinicalFor(p.id)) || 'NKDA' }}</strong></div>
+              <div class="scard"><span>Orders</span><strong>{{ encounterOrders(p).length }} open</strong></div>
+              <div class="scard"><span>Billing</span><strong [class.pv--high]="!enc.billingReady(p).ready">{{ enc.billingReady(p).ready ? 'Ready to bill' : enc.billingReady(p).blockers.length + ' blocker(s)' }}</strong></div>
+            </div>
+            @if (enc.clinicalFor(p.id)?.assessmentPlan) { <div class="csec"><span class="clbl">Assessment / plan</span><p class="ctext">{{ enc.clinicalFor(p.id)?.assessmentPlan }}</p></div> }
+            @if (enc.encounterFor(p.id)?.assessment?.followUpInterval) { <div class="csec"><span class="clbl">Follow-up</span><p class="ctext">{{ enc.encounterFor(p.id)?.assessment?.followUpInterval }}</p></div> }
+            @if (!enc.clinicalFor(p.id)) { <div class="cempty"><strong>No clinical chart yet</strong><p>Open the encounter to begin charting.</p></div> }
+          }
+
+          @case ('clinical') {
+            @if (enc.clinicalFor(p.id); as cr) {
+              <div class="csec"><span class="clbl">Chief complaint</span><p class="ctext">{{ cr.chiefComplaint || '—' }}</p></div>
+              <div class="csec"><span class="clbl">Medications</span><p class="ctext">{{ enc.medsText(cr) || '—' }}</p></div>
+              <div class="csec"><span class="clbl">Ocular history</span><p class="ctext">{{ cr.ocularHistory.length ? cr.ocularHistory.join(', ') : '—' }}</p></div>
+              <div class="csec"><span class="clbl">Systemic history</span><p class="ctext">{{ cr.systemicHistory?.length ? cr.systemicHistory!.join(', ') : '—' }}</p></div>
+              <div class="csec"><span class="clbl">Exam findings</span>
+                <div class="exgrid">
+                  @for (x of enc.examFields; track x.key) {
+                    @if (cr.examFindings[x.key]) { <div class="exrow"><span>{{ x.label }}</span><strong>{{ cr.examFindings[x.key] }}</strong></div> }
+                  }
+                </div>
+              </div>
+              @if (cr.updatedAt) { <p class="cupd">Last update {{ cr.updatedAt }} · {{ cr.updatedBy }}</p> }
+            } @else { <div class="cempty"><strong>Not charted</strong><p>Open the encounter to add clinical data.</p></div> }
+          }
+
+          @case ('imaging') {
+            <div class="csec"><span class="clbl">Imaging orders</span>
+              @if (encounterOrders(p).length) {
+                <div class="ordlist">@for (o of encounterOrders(p); track o.id) { @if (o.type === 'imaging') { <div class="orditem"><span class="ordtype ordtype--imaging">{{ o.type }}</span><span class="ordtext">{{ o.detail }}</span><span class="ordstatus">{{ o.status }}</span></div> } }</div>
+              } @else { <p class="ctext">No imaging orders.</p> }
+            </div>
+            <div class="csec"><span class="clbl">Imaging status</span>
+              <p class="ctext">{{ store.imagingWork()[p.id]?.status || (imagingPending(p) ? 'Pending readiness' : 'No active study') }}</p>
+            </div>
+            <div class="csec"><span class="clbl">Pending readiness</span>
+              <div class="chiplist">
+                @for (it of p.readinessItems; track it.label) { @if (it.required && !it.done) { <span class="testchip">{{ it.label }}</span> } }
+              </div>
+            </div>
+          }
+
+          @case ('billing') {
+            <div class="csec"><span class="clbl">Billing readiness</span>
+              @if (enc.billingReady(p).ready) { <p class="ck-ready">Ready to bill — all clinical prerequisites met.</p> }
+              @else { <div class="chiplist">@for (b of enc.billingReady(p).blockers; track b) { <span class="testchip">{{ b }}</span> }</div> }
+            </div>
+            <div class="csec"><span class="clbl">Coverage</span>
+              <div class="exgrid">
+                <div class="exrow"><span>Insurance</span><strong>{{ p.insurance || 'Self-pay' }}</strong></div>
+                <div class="exrow"><span>Prior auth</span><strong>{{ p.authStatus || 'n/a' }}</strong></div>
+                <div class="exrow"><span>Diagnosis</span><strong>{{ enc.primaryDx(enc.clinicalFor(p.id)) || 'Not coded' }}</strong></div>
+                <div class="exrow"><span>Claim status</span><strong>{{ store.claimWork()[p.id]?.status || 'Draft' }}</strong></div>
+              </div>
+            </div>
+          }
+
+          @case ('history') {
+            @if (enc.unifiedHistory(p.id).length) {
+              <ol class="timeline">
+                @for (h of enc.unifiedHistory(p.id); track $index) {
+                  <li class="tline tline--{{ h.kind }}"><span class="tline__dot tline__dot--{{ h.kind }}"></span>
+                    <div class="tline__body"><span class="tline__move"><span class="kindtag kindtag--{{ h.kind }}">{{ h.kind }}</span> {{ h.label }}</span><span class="tline__at">{{ h.at }}</span>@if (h.detail) { <span class="tline__reason">{{ h.detail }}</span> }</div>
+                  </li>
+                }
+              </ol>
+            } @else { <div class="cempty"><strong>No activity yet</strong><p>This visit has no recorded history.</p></div> }
+          }
+        }
+      </div>
+
+      <footer class="chart__foot">
+        <button class="dbtn dbtn--primary" type="button" (click)="openInCockpit(p)">Open in cockpit →</button>
+      </footer>
+    </aside>
+  }
 
 </section>
-
-<app-new-patient-modal
-  [open]="newPatientOpen()"
-  [patientToEdit]="editingPatient()"
-  (closed)="newPatientOpen.set(false); editingPatient.set(null)"
-/>
-
-<!-- Schedule appointment from patient context -->
-<app-new-appointment-modal
-  [open]="scheduleModalOpen()"
-  [prefillPatient]="schedulePrefill()"
-  (closed)="scheduleModalOpen.set(false); schedulePrefill.set(null)"
-/>
