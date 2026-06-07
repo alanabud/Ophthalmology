@@ -708,6 +708,15 @@ export interface ReadinessItem {
   required: boolean;
 }
 
+/** Audit entry for a patient stage movement on the Live Patient Flow board. */
+export interface FlowMove {
+  at: string;            // timestamp label, e.g. "9:42 AM"
+  from: FlowStation;
+  to: FlowStation;
+  skipped: boolean;      // true if the move jumped past required stages
+  reason?: string;       // required justification when skipping
+}
+
 export interface PatientFlowRecord {
   id: string;
   clinicId: string;

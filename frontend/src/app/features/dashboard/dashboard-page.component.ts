@@ -16,8 +16,6 @@ interface FlowStage {
   patients: PatientFlowRecord[];
 }
 
-type FlowFilter = 'all' | 'delayed' | 'critical' | 'ready' | 'checkout';
-
 interface ClinicalAlert {
   severity: 'critical' | 'warning' | 'info';
   title: string;
@@ -590,7 +588,7 @@ export class DashboardPageComponent {
     switch (this.nextRecommended().action) {
       case 'review-critical': void this.router.navigate(['/encounters']); break;
       case 'collect-payment': void this.router.navigate(['/billing']);    break;
-      case 'view-flow':       this.setFlowFilter('delayed');              break;
+      case 'view-flow':       this.setBoardFilter('delayed');             break;
     }
   }
 
@@ -611,33 +609,6 @@ export class DashboardPageComponent {
   protected readonly availableProvider = computed(() =>
     [...this.providerCapacity()].sort((a, b) => a.pct - b.pct)[0] ?? null
   );
-
-  // ── Patient-flow filter ───────────────────────────────────────────────────
-  protected readonly flowFilter = signal<FlowFilter>('all');
-  protected setFlowFilter(f: FlowFilter): void { this.flowFilter.set(f); }
-
-  protected readonly flowFilters: { id: FlowFilter; label: string }[] = [
-    { id: 'all',      label: 'All' },
-    { id: 'delayed',  label: 'Delayed' },
-    { id: 'critical', label: 'Critical' },
-    { id: 'ready',    label: 'Ready for doctor' },
-    { id: 'checkout', label: 'Checkout' },
-  ];
-
-  protected readonly filteredBoard = computed((): FlowStage[] => {
-    const f = this.flowFilter();
-    const board = this.flowBoard();
-    if (f === 'all') return board;
-    const pred = (p: PatientFlowRecord): boolean =>
-      f === 'delayed'  ? p.waitMinutes > 20 :
-      f === 'critical' ? p.tone === 'critical' :
-      f === 'ready'    ? (p.station === 'ready' || p.station === 'with-doctor') :
-      f === 'checkout' ? p.station === 'checkout' : true;
-    return board.map(s => {
-      const patients = s.patients.filter(pred);
-      return { ...s, patients, count: patients.length };
-    });
-  });
 
   // ── Visit category + SLA helpers ──────────────────────────────────────────
   protected categoryTag(cat: string): string {
@@ -664,8 +635,10 @@ export class DashboardPageComponent {
   protected openPatient(p: PatientFlowRecord): void { this.selectedPatient.set(p); }
   protected closePatient(): void { this.selectedPatient.set(null); }
 
+  // Clinical board order — matches boardStations so skip/advance logic and the
+  // visual columns agree.
   private readonly stationOrder: FlowStation[] =
-    ['checked-in', 'tech-workup', 'imaging', 'dilating', 'ready', 'with-doctor', 'checkout'];
+    ['checked-in', 'tech-workup', 'dilating', 'imaging', 'ready', 'with-doctor', 'checkout'];
 
   /** Advance a patient to the next stage — a real, live board mutation. */
   protected advancePatient(p: PatientFlowRecord): void {
@@ -682,5 +655,161 @@ export class DashboardPageComponent {
   protected openEncounter(): void {
     this.closePatient();
     void this.router.navigate(['/encounters']);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // LIVE PATIENT FLOW BOARD — drag-and-drop operational workflow
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** Board columns map 1:1 to real, persistable flow stations. */
+  protected readonly boardStations: { id: FlowStation; label: string }[] = [
+    { id: 'checked-in',  label: 'Checked In' },
+    { id: 'tech-workup', label: 'Pre-Test / Workup' },
+    { id: 'dilating',    label: 'Dilation' },
+    { id: 'imaging',     label: 'Imaging' },
+    { id: 'ready',       label: 'Ready for Doctor' },
+    { id: 'with-doctor', label: 'Provider Exam' },
+    { id: 'checkout',    label: 'Checkout / Done' },
+  ];
+
+  /** Per-stage SLA thresholds (minutes) — clinical, not uniform. */
+  private readonly stageThresholds: Record<FlowStation, number> = {
+    'checked-in': 15, 'tech-workup': 20, 'dilating': 30, 'imaging': 25,
+    'ready': 10, 'with-doctor': 30, 'checkout': 15,
+  };
+
+  /** SLA evaluated against the patient's *current* stage threshold. */
+  protected slaForStage(p: PatientFlowRecord): { label: string; tone: 'ok' | 'warning' | 'critical' } {
+    const t = this.stageThresholds[p.station] ?? 15;
+    if (p.waitMinutes > t * 1.5) return { label: 'Overdue', tone: 'critical' };
+    if (p.waitMinutes > t)       return { label: 'At risk', tone: 'warning' };
+    return { label: 'On time', tone: 'ok' };
+  }
+
+  /** Board-level filter (chips). */
+  protected readonly boardFilter = signal<'all' | 'delayed' | 'critical'>('all');
+  protected setBoardFilter(f: 'all' | 'delayed' | 'critical'): void { this.boardFilter.set(f); }
+  protected readonly boardFilters: { id: 'all' | 'delayed' | 'critical'; label: string }[] = [
+    { id: 'all',      label: 'All patients' },
+    { id: 'delayed',  label: 'Delayed' },
+    { id: 'critical', label: 'At risk' },
+  ];
+
+  protected readonly boardColumns = computed(() => {
+    const f = this.boardFilter();
+    const pf = this.store.patientFlow().filter(p => {
+      if (f === 'all') return true;
+      if (f === 'delayed') return p.waitMinutes > 20;
+      return this.slaForStage(p).tone === 'critical';
+    });
+    return this.boardStations.map(s => {
+      const patients = pf.filter(p => p.station === s.id)
+        .sort((a, b) => b.waitMinutes - a.waitMinutes);
+      const threshold = this.stageThresholds[s.id];
+      return {
+        id: s.id, label: s.label, patients,
+        count: patients.length,
+        alertCount: patients.filter(p => p.waitMinutes > threshold).length,
+      };
+    });
+  });
+
+  /** Movement audit trail for the open patient. */
+  protected readonly selectedHistory = computed(() => {
+    const p = this.selectedPatient();
+    return p ? (this.store.flowHistory()[p.id] ?? []) : [];
+  });
+
+  // ── Drag-and-drop state ────────────────────────────────────────────────────
+  protected readonly draggedId       = signal<string | null>(null);
+  protected readonly dragOverStation = signal<FlowStation | null>(null);
+  protected readonly moveMenuFor     = signal<string | null>(null);
+
+  protected onDragStart(p: PatientFlowRecord, ev: DragEvent): void {
+    this.draggedId.set(p.id);
+    this.moveMenuFor.set(null);
+    ev.dataTransfer?.setData('text/plain', p.id);
+    if (ev.dataTransfer) ev.dataTransfer.effectAllowed = 'move';
+  }
+  protected onDragOver(station: FlowStation, ev: DragEvent): void {
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+    if (this.dragOverStation() !== station) this.dragOverStation.set(station);
+  }
+  protected onDragLeaveCol(station: FlowStation): void {
+    if (this.dragOverStation() === station) this.dragOverStation.set(null);
+  }
+  protected onDrop(station: FlowStation, ev: DragEvent): void {
+    ev.preventDefault();
+    const id = this.draggedId() ?? ev.dataTransfer?.getData('text/plain') ?? null;
+    this.dragOverStation.set(null);
+    this.draggedId.set(null);
+    if (!id) return;
+    const p = this.store.patientFlow().find(r => r.id === id);
+    if (p) this.attemptMove(p, station);
+  }
+  protected onDragEnd(): void {
+    this.draggedId.set(null);
+    this.dragOverStation.set(null);
+  }
+
+  /** True while this card is the one being dragged (for ghost styling). */
+  protected isDragging(id: string): boolean { return this.draggedId() === id; }
+
+  // ── Move validation + confirmation ──────────────────────────────────────────
+  protected readonly pendingMove = signal<{ patient: PatientFlowRecord; to: FlowStation; toLabel: string; skipped: string[] } | null>(null);
+  protected readonly moveReason  = signal('');
+  protected readonly moveReasons = [
+    'Clinically appropriate', 'Stage already completed elsewhere',
+    'Urgent — expedited by provider', 'Patient declined intermediate step',
+  ];
+
+  protected stationLabelFor(id: FlowStation): string {
+    return this.boardStations.find(s => s.id === id)?.label ?? this.stationLabel(id);
+  }
+
+  protected attemptMove(p: PatientFlowRecord, to: FlowStation): void {
+    if (p.station === to) return;
+    const fromIdx = this.stationOrder.indexOf(p.station);
+    const toIdx   = this.stationOrder.indexOf(to);
+
+    // Forward jump past intermediate stages → confirmation with reason.
+    if (toIdx - fromIdx > 1) {
+      const skipped = this.stationOrder.slice(fromIdx + 1, toIdx).map(s => this.stationLabelFor(s));
+      this.pendingMove.set({ patient: p, to, toLabel: this.stationLabelFor(to), skipped });
+      this.moveReason.set('');
+      return;
+    }
+    this.store.movePatientStation(p.id, to);
+    this.syncDrawer(p.id);
+  }
+
+  protected confirmPendingMove(): void {
+    const m = this.pendingMove();
+    if (!m) return;
+    this.store.movePatientStation(m.patient.id, m.to, {
+      skipped: true,
+      reason: this.moveReason() || 'Clinically appropriate',
+    });
+    this.syncDrawer(m.patient.id);
+    this.pendingMove.set(null);
+  }
+  protected cancelPendingMove(): void { this.pendingMove.set(null); }
+
+  private syncDrawer(id: string): void {
+    if (this.selectedPatient()?.id === id) {
+      this.selectedPatient.set(this.store.patientFlow().find(r => r.id === id) ?? null);
+    }
+  }
+
+  // ── Tap fallback: "Move to stage" menu ──────────────────────────────────────
+  protected toggleMoveMenu(id: string, ev: Event): void {
+    ev.stopPropagation();
+    this.moveMenuFor.update(c => (c === id ? null : id));
+  }
+  protected moveViaMenu(p: PatientFlowRecord, to: FlowStation, ev: Event): void {
+    ev.stopPropagation();
+    this.moveMenuFor.set(null);
+    this.attemptMove(p, to);
   }
 }

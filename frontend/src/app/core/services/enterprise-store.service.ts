@@ -21,6 +21,8 @@ import {
   AiBriefingItem,
   ClaimRecord,
   CockpitImagingItem,
+  FlowMove,
+  FlowStation,
   ImagingStudy,
   InjectionSafetyRecord,
   InventoryRecord,
@@ -157,10 +159,35 @@ export class EnterpriseStoreService {
   readonly injectionSafety = signal<InjectionSafetyRecord[]>([...INJECTION_SAFETY]);
   readonly aiDailyBriefing = signal<AiBriefingItem[]>([...AI_DAILY_BRIEFING]);
 
-  updatePatientFlowStation(id: string, station: PatientFlowRecord['station']): void {
+  // ── Live Patient Flow: stage movement + audit trail ────────────────────────
+  private readonly flowHistoryBase = signal<Record<string, FlowMove[]>>({});
+  readonly flowHistory = this.flowHistoryBase.asReadonly();
+
+  /**
+   * Move a patient to a new stage. Resets their elapsed time in stage,
+   * stamps an arrival time, and records an immutable audit entry.
+   * KPIs (avg wait, delayed, bottlenecks, clinic load) recompute reactively.
+   */
+  movePatientStation(id: string, to: FlowStation, opts?: { skipped?: boolean; reason?: string }): void {
+    const at = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    let move: FlowMove | null = null;
+
     this.patientFlowBase.update((list) =>
-      list.map((p) => (p.id === id ? { ...p, station } : p))
+      list.map((p) => {
+        if (p.id !== id || p.station === to) return p;
+        move = { at, from: p.station, to, skipped: opts?.skipped ?? false, reason: opts?.reason };
+        return { ...p, station: to, waitMinutes: 0, arrivedAt: at };
+      })
     );
+
+    if (move) {
+      this.flowHistoryBase.update((h) => ({ ...h, [id]: [...(h[id] ?? []), move!] }));
+    }
+  }
+
+  /** Backwards-compatible single-step update — now also logs to the audit trail. */
+  updatePatientFlowStation(id: string, station: FlowStation): void {
+    this.movePatientStation(id, station);
   }
 
   // ── Compliance ─────────────────────────────────────────────────────────────

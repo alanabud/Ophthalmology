@@ -41,10 +41,10 @@
         }
       </p>
       <div class="cmd__chips">
-        <button class="bchip" type="button" (click)="setFlowFilter('all')">
+        <button class="bchip" type="button" (click)="setBoardFilter('all')">
           <strong>{{ checkedInCount() }}</strong> active
         </button>
-        <button class="bchip bchip--warn" type="button" (click)="setFlowFilter('delayed')">
+        <button class="bchip bchip--warn" type="button" (click)="setBoardFilter('delayed')">
           <strong>{{ delayedCount() }}</strong> delayed
         </button>
         <button class="bchip bchip--crit" type="button" (click)="navigate('/encounters')">
@@ -53,7 +53,7 @@
         <button class="bchip bchip--gold" type="button" (click)="navigate('/billing')">
           <strong>{{ claimsPendingCount() }}</strong> claims
         </button>
-        <button class="bchip" type="button" (click)="setFlowFilter('critical')">
+        <button class="bchip" type="button" (click)="setBoardFilter('critical')">
           <strong>{{ bottleneckCount() }}</strong> bottlenecks
         </button>
       </div>
@@ -105,7 +105,7 @@
       }
       <div class="ccard__foot">
         <span class="ccard__sub">{{ seenCount() }} seen · {{ waitingCount() }} waiting</span>
-        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); setFlowFilter('delayed')">View board</button>
+        <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); setBoardFilter('delayed')">View board</button>
       </div>
     </div>
 
@@ -183,72 +183,98 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       LIVE PATIENT FLOW MAP — the centerpiece, larger cards
+       LIVE PATIENT FLOW BOARD — drag-and-drop operational workflow
   ═══════════════════════════════════════════════════════════════════ -->
   <section class="flow">
     <div class="flow__hd">
       <div>
         <h2 class="flow__title">Live Patient Flow</h2>
-        <p class="flow__sub">{{ checkedInCount() }} active patients moving through {{ flowBoard().length }} stages</p>
+        <p class="flow__sub">Drag a patient between stages — or use the move menu. Moves update state, timers &amp; KPIs live.</p>
       </div>
-      <span class="livechip"><span class="livechip__dot"></span>Real-time</span>
-    </div>
-
-    <div class="flowfilters">
-      @for (f of flowFilters; track f.id) {
-        <button class="ffchip" [class.ffchip--on]="flowFilter() === f.id" type="button" (click)="setFlowFilter(f.id)">
-          {{ f.label }}
-        </button>
-      }
-    </div>
-
-    <div class="track">
-      @for (stage of filteredBoard(); track stage.id; let idx = $index; let last = $last) {
-        <div class="lane">
-          <div class="lane__hd">
-            <span class="lane__idx">{{ idx + 1 }}</span>
-            <span class="lane__name">{{ stage.label }}</span>
-            <span class="lane__n lane__n--{{ stage.color }}">{{ stage.count }}</span>
-          </div>
-          <div class="lane__rail lane__rail--{{ stage.color }}"></div>
-
-          <div class="lane__body">
-            @for (p of stage.patients; track p.id) {
-              <button class="pchip pchip--{{ p.tone }}" type="button" (click)="openPatient(p)">
-                <span class="pchip__row">
-                  <span class="pchip__ring pchip__ring--{{ p.tone }}">
-                    <span class="pchip__av">{{ p.name.charAt(0) }}</span>
-                  </span>
-                  <span class="pchip__main">
-                    <strong>{{ p.name }}</strong>
-                    <span class="pchip__meta">
-                      <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
-                      {{ p.visitType }}
-                    </span>
-                  </span>
-                  <span class="pchip__wait"
-                    [class.pchip__wait--warm]="p.waitMinutes > 15"
-                    [class.pchip__wait--hot]="p.waitMinutes > 30">{{ p.waitMinutes }}m</span>
-                </span>
-                <span class="pchip__foot">
-                  <span class="pchip__prov">{{ p.provider }}</span>
-                  <span class="slatag slatag--{{ sla(p.waitMinutes).tone }}">{{ sla(p.waitMinutes).label }}</span>
-                </span>
-              </button>
-            }
-            @if (stage.patients.length === 0) {
-              <div class="lane__empty">—</div>
-            }
-            @if (flowFilter() === 'all' && stage.count > stage.patients.length) {
-              <button class="lane__more" type="button" (click)="setFlowFilter('all'); viewPatient()">+{{ stage.count - stage.patients.length }} more</button>
-            }
-          </div>
-
-          @if (!last) {
-            <div class="lane__connector" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
+      <div class="flow__hd-right">
+        <div class="flowfilters">
+          @for (f of boardFilters; track f.id) {
+            <button class="ffchip" [class.ffchip--on]="boardFilter() === f.id" type="button" (click)="setBoardFilter(f.id)">{{ f.label }}</button>
           }
+        </div>
+        <span class="livechip"><span class="livechip__dot"></span>Real-time</span>
+      </div>
+    </div>
+
+    <div class="board">
+      @for (col of boardColumns(); track col.id; let idx = $index) {
+        <div class="bcol"
+             [class.bcol--over]="dragOverStation() === col.id"
+             (dragover)="onDragOver(col.id, $event)"
+             (dragleave)="onDragLeaveCol(col.id)"
+             (drop)="onDrop(col.id, $event)">
+          <div class="bcol__hd">
+            <span class="bcol__idx">{{ idx + 1 }}</span>
+            <span class="bcol__name">{{ col.label }}</span>
+            <span class="bcol__n">{{ col.count }}</span>
+            @if (col.alertCount > 0) {
+              <span class="bcol__alert" [title]="col.alertCount + ' over SLA'">{{ col.alertCount }}</span>
+            }
+          </div>
+
+          <div class="bcol__body">
+            @for (p of col.patients; track p.id) {
+              <div class="bcard bcard--{{ slaForStage(p).tone }}"
+                   [class.bcard--dragging]="isDragging(p.id)"
+                   draggable="true"
+                   (dragstart)="onDragStart(p, $event)"
+                   (dragend)="onDragEnd()"
+                   (click)="openPatient(p)">
+                <span class="bcard__grip" aria-hidden="true">
+                  <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+                    <circle cx="2.5" cy="2.5" r="1.2" fill="currentColor"/><circle cx="7.5" cy="2.5" r="1.2" fill="currentColor"/>
+                    <circle cx="2.5" cy="7" r="1.2" fill="currentColor"/><circle cx="7.5" cy="7" r="1.2" fill="currentColor"/>
+                    <circle cx="2.5" cy="11.5" r="1.2" fill="currentColor"/><circle cx="7.5" cy="11.5" r="1.2" fill="currentColor"/>
+                  </svg>
+                </span>
+                <span class="bcard__ring bcard__ring--{{ slaForStage(p).tone }}">
+                  <span class="bcard__av">{{ p.name.charAt(0) }}</span>
+                </span>
+                <span class="bcard__main">
+                  <strong>{{ p.name }}</strong>
+                  <span class="bcard__meta">
+                    <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
+                    {{ p.visitType }}
+                  </span>
+                  <span class="bcard__sub">
+                    <span class="bcard__wait bcard__wait--{{ slaForStage(p).tone }}">{{ p.waitMinutes }}m · {{ slaForStage(p).label }}</span>
+                    <span class="bcard__prov">{{ p.provider }}</span>
+                  </span>
+                </span>
+
+                <button class="bcard__move" type="button" (click)="toggleMoveMenu(p.id, $event)" aria-label="Move to stage">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>
+                </button>
+
+                @if (moveMenuFor() === p.id) {
+                  <div class="movemenu" (click)="$event.stopPropagation()">
+                    <p class="movemenu__hd">Move to stage</p>
+                    @for (s of boardStations; track s.id) {
+                      <button class="movemenu__item" type="button"
+                        [disabled]="s.id === p.station"
+                        (click)="moveViaMenu(p, s.id, $event)">
+                        <span class="movemenu__dot" [class.movemenu__dot--current]="s.id === p.station"></span>
+                        {{ s.label }}
+                        @if (s.id === p.station) { <span class="movemenu__here">current</span> }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (col.count === 0) {
+              <div class="bcol__empty" [class.bcol__empty--over]="dragOverStation() === col.id">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <span>Drop a patient here</span>
+              </div>
+            }
+          </div>
         </div>
       }
     </div>
@@ -538,17 +564,69 @@
             }
           </div>
         }
+
+        <!-- Movement audit trail -->
+        <div class="drawer__history">
+          <span class="drawer__sec">Stage history</span>
+          @if (selectedHistory().length) {
+            <ol class="timeline">
+              @for (m of selectedHistory(); track $index) {
+                <li class="tline" [class.tline--skip]="m.skipped">
+                  <span class="tline__dot"></span>
+                  <div class="tline__body">
+                    <span class="tline__move">{{ stationLabelFor(m.from) }} → <strong>{{ stationLabelFor(m.to) }}</strong></span>
+                    <span class="tline__at">{{ m.at }}@if (m.skipped) { · skipped stages }</span>
+                    @if (m.reason) { <span class="tline__reason">"{{ m.reason }}"</span> }
+                  </div>
+                </li>
+              }
+            </ol>
+          } @else {
+            <p class="drawer__muted">No movements yet this visit.</p>
+          }
+        </div>
       </div>
 
       <footer class="drawer__foot">
         <button class="dbtn dbtn--primary" type="button" (click)="advancePatient(p)"
           [disabled]="p.station === 'checkout'">
-          @if (p.station === 'checkout') { Completed } @else { Advance stage → }
+          @if (p.station === 'checkout') { Visit complete } @else { Advance stage → }
         </button>
         <button class="dbtn" type="button" (click)="openEncounter()">Open encounter</button>
         <button class="dbtn" type="button" (click)="openPatientChart()">Patient chart</button>
       </footer>
     </aside>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       SKIP-STAGE CONFIRMATION MODAL
+  ═══════════════════════════════════════════════════════════════════ -->
+  @if (pendingMove(); as m) {
+    <div class="cmodal-scrim" (click)="cancelPendingMove()"></div>
+    <div class="cmodal" role="dialog" aria-label="Confirm stage skip">
+      <div class="cmodal__icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 3.5h.01M10.3 4l-8 13.8A1.8 1.8 0 0 0 3.9 20.5h16.2a1.8 1.8 0 0 0 1.6-2.7L13.7 4a1.8 1.8 0 0 0-3.4 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3 class="cmodal__title">Skip required stages?</h3>
+      <p class="cmodal__body">
+        Moving <strong>{{ m.patient.name }}</strong> to <strong>{{ m.toLabel }}</strong> skips:
+      </p>
+      <div class="cmodal__skips">
+        @for (s of m.skipped; track s) { <span class="skippill">{{ s }}</span> }
+      </div>
+      <span class="cmodal__sec">Reason (required for audit)</span>
+      <div class="cmodal__reasons">
+        @for (r of moveReasons; track r) {
+          <button class="reasonchip" [class.reasonchip--on]="moveReason() === r" type="button" (click)="moveReason.set(r)">{{ r }}</button>
+        }
+      </div>
+      <div class="cmodal__foot">
+        <button class="dbtn" type="button" (click)="cancelPendingMove()">Cancel</button>
+        <button class="dbtn dbtn--primary" type="button" [disabled]="!moveReason()" (click)="confirmPendingMove()">
+          Confirm move
+        </button>
+      </div>
+    </div>
   }
 
 </section>
