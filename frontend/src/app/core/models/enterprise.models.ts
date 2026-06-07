@@ -710,11 +710,20 @@ export interface ReadinessItem {
 
 /** Audit entry for a patient stage movement on the Live Patient Flow board. */
 export interface FlowMove {
+  id?: string;           // storage id (patientId + sequence)
+  patientId?: string;    // owning patient (for Firestore grouping)
   at: string;            // timestamp label, e.g. "9:42 AM"
   from: FlowStation;
   to: FlowStation;
   skipped: boolean;      // true if the move jumped past required stages
   reason?: string;       // required justification when skipping
+}
+
+/** A clinical note appended to a patient's encounter from the drawer. */
+export interface ClinicalNote {
+  at: string;
+  author: string;
+  text: string;
 }
 
 export interface PatientFlowRecord {
@@ -747,6 +756,9 @@ export interface PatientFlowRecord {
   consentSigned?: boolean;
   clearanceReceived?: boolean;
   iolOrdered?: boolean;
+  // ── Encounter-level state (persisted) ──
+  urgent?: boolean;
+  notes?: ClinicalNote[];
 }
 
 export interface CockpitImagingItem {

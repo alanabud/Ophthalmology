@@ -162,32 +162,78 @@ export class EnterpriseStoreService {
   // ── Live Patient Flow: stage movement + audit trail ────────────────────────
   private readonly flowHistoryBase = signal<Record<string, FlowMove[]>>({});
   readonly flowHistory = this.flowHistoryBase.asReadonly();
+  private moveSeq = 0;
+
+  /** Drop undefined keys so Firestore (which rejects undefined) accepts the doc. */
+  private sanitize<T extends object>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  }
+
+  /** Best-effort Firestore persistence — never blocks or throws into the UI. */
+  private persistFlowRecord(rec: PatientFlowRecord): void {
+    void this.fs.upsert('patientFlow', rec.id, this.sanitize(rec))
+      .catch((e) => console.warn('[Store] flow persist failed', e?.message ?? e));
+  }
+  private persistFlowMove(move: FlowMove): void {
+    void this.fs.upsert('flowMoves', move.id!, this.sanitize(move))
+      .catch((e) => console.warn('[Store] move persist failed', e?.message ?? e));
+  }
 
   /**
    * Move a patient to a new stage. Resets their elapsed time in stage,
-   * stamps an arrival time, and records an immutable audit entry.
-   * KPIs (avg wait, delayed, bottlenecks, clinic load) recompute reactively.
+   * stamps an arrival time, records an immutable audit entry, and persists
+   * both the record and the move to Firestore. KPIs recompute reactively.
    */
   movePatientStation(id: string, to: FlowStation, opts?: { skipped?: boolean; reason?: string }): void {
     const at = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     let move: FlowMove | null = null;
+    let moved: PatientFlowRecord | null = null;
 
     this.patientFlowBase.update((list) =>
       list.map((p) => {
         if (p.id !== id || p.station === to) return p;
-        move = { at, from: p.station, to, skipped: opts?.skipped ?? false, reason: opts?.reason };
-        return { ...p, station: to, waitMinutes: 0, arrivedAt: at };
+        move = {
+          id: `${id}-${Date.now()}-${++this.moveSeq}`, patientId: id,
+          at, from: p.station, to, skipped: opts?.skipped ?? false, reason: opts?.reason,
+        };
+        moved = { ...p, station: to, waitMinutes: 0, arrivedAt: at };
+        return moved;
       })
     );
 
-    if (move) {
+    if (move && moved) {
       this.flowHistoryBase.update((h) => ({ ...h, [id]: [...(h[id] ?? []), move!] }));
+      this.persistFlowRecord(moved);
+      this.persistFlowMove(move);
     }
   }
 
   /** Backwards-compatible single-step update — now also logs to the audit trail. */
   updatePatientFlowStation(id: string, station: FlowStation): void {
     this.movePatientStation(id, station);
+  }
+
+  /** Toggle a patient's urgent flag (persisted). */
+  setPatientUrgent(id: string, urgent: boolean): void {
+    let updated: PatientFlowRecord | null = null;
+    this.patientFlowBase.update((list) =>
+      list.map((p) => (p.id === id ? (updated = { ...p, urgent }) : p))
+    );
+    if (updated) this.persistFlowRecord(updated);
+  }
+
+  /** Append a clinical note to a patient's encounter (persisted). */
+  addClinicalNote(id: string, text: string, author = 'Sandbox User'): void {
+    const at = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    let updated: PatientFlowRecord | null = null;
+    this.patientFlowBase.update((list) =>
+      list.map((p) => {
+        if (p.id !== id) return p;
+        updated = { ...p, notes: [...(p.notes ?? []), { at, author, text }] };
+        return updated;
+      })
+    );
+    if (updated) this.persistFlowRecord(updated);
   }
 
   // ── Compliance ─────────────────────────────────────────────────────────────
@@ -365,6 +411,17 @@ export class EnterpriseStoreService {
     if (patientFlow.length)      this.patientFlowBase.set(patientFlow);
     if (surgicalReadiness.length) this.surgicalReadiness.set(surgicalReadiness);
     if (injectionSafety.length)   this.injectionSafety.set(injectionSafety);
+
+    // Rebuild the movement audit trail, grouped by patient.
+    const moves = await this.fs.getAll<FlowMove>('flowMoves');
+    if (moves.length) {
+      const grouped: Record<string, FlowMove[]> = {};
+      for (const m of moves) {
+        if (!m.patientId) continue;
+        (grouped[m.patientId] ??= []).push(m);
+      }
+      this.flowHistoryBase.set(grouped);
+    }
   }
 
   private attachRealtimeListeners(): void {

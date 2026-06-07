@@ -812,4 +812,135 @@ export class DashboardPageComponent {
     this.moveMenuFor.set(null);
     this.attemptMove(p, to);
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // EMR ENCOUNTER PANEL — derived clinical depth + real actions
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /** Stable pseudo-random in [0,1) seeded by MRN — deterministic per patient. */
+  private hash(mrn: string, salt = 0): number {
+    let h = 2166136261 ^ salt;
+    for (let i = 0; i < mrn.length; i++) { h ^= mrn.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ((h >>> 0) % 1000) / 1000;
+  }
+  private pick<T>(arr: T[], mrn: string, salt: number): T {
+    return arr[Math.floor(this.hash(mrn, salt) * arr.length)];
+  }
+
+  private readonly complaints: Record<string, string> = {
+    cataract: 'Gradual blurred vision, glare with night driving',
+    glaucoma: 'Routine pressure check; intermittent peripheral haze',
+    retina: 'Distorted central vision, new floaters',
+    injection: 'Distorted central vision — anti-VEGF maintenance',
+    'post-op': 'Post-operative follow-up, mild irritation',
+    comprehensive: 'Annual comprehensive eye exam',
+    lasik: 'Refractive surgery evaluation',
+    optical: 'Vision correction update',
+  };
+  private readonly diagnoses: Record<string, string> = {
+    cataract: 'H25.13 — Age-related nuclear cataract, bilateral',
+    glaucoma: 'H40.11 — Primary open-angle glaucoma',
+    retina: 'H35.32 — Exudative age-related macular degeneration',
+    injection: 'H35.32 — Wet AMD, on anti-VEGF therapy',
+    'post-op': 'Z98.4 — Pseudophakia, post-operative status',
+    comprehensive: 'Z01.00 — Encounter for exam of eyes',
+    lasik: 'H52.13 — Myopia, evaluating for refractive surgery',
+    optical: 'H52.4 — Presbyopia',
+  };
+  private readonly histories: Record<string, string[]> = {
+    cataract: ['Nuclear sclerosis OU', 'Hypertension', 'No prior ocular surgery'],
+    glaucoma: ['POAG x6 yrs', 'Ocular hypertension', 'Family history of glaucoma'],
+    retina: ['Wet AMD OD', 'Prior anti-VEGF injections', 'Dry AMD OS'],
+    injection: ['Wet AMD OU', '14 prior intravitreal injections', 'Pseudophakia OU'],
+    'post-op': ['Phacoemulsification + IOL (recent)', 'Posterior capsule intact'],
+    comprehensive: ['Refractive error', 'No significant ocular history'],
+    lasik: ['Stable myopia x2 yrs', 'Contact lens intolerance'],
+    optical: ['Presbyopia', 'Progressive lens wearer'],
+  };
+
+  /** Derived clinical encounter profile (deterministic demo data per MRN). */
+  protected clinicalProfile(p: PatientFlowRecord) {
+    const vaScale = ['20/20', '20/25', '20/30', '20/40', '20/50', '20/60', '20/70', '20/80'];
+    const worseIdx = Math.min(vaScale.length - 1, 2 + Math.floor(this.hash(p.mrn, 1) * 5));
+    const betterIdx = Math.max(0, worseIdx - 2 - Math.floor(this.hash(p.mrn, 2) * 2));
+    const worseEye = p.laterality === 'OS' ? 'OS' : 'OD';
+    const vaOD = worseEye === 'OD' ? vaScale[worseIdx] : vaScale[betterIdx];
+    const vaOS = worseEye === 'OS' ? vaScale[worseIdx] : vaScale[betterIdx];
+
+    const glaucoma = p.visitCategory === 'glaucoma';
+    const iopBase = glaucoma ? 22 : 13;
+    const iopOD = iopBase + Math.floor(this.hash(p.mrn, 3) * (glaucoma ? 9 : 6));
+    const iopOS = iopBase + Math.floor(this.hash(p.mrn, 4) * (glaucoma ? 9 : 6));
+
+    const allergies = this.hash(p.mrn, 5) > 0.6
+      ? [this.pick(['Sulfa', 'Penicillin', 'Latex', 'Codeine'], p.mrn, 6)]
+      : ['NKDA'];
+
+    const meds: string[] = [];
+    if (glaucoma) meds.push('Latanoprost 0.005% OU qHS');
+    if (p.visitCategory === 'injection' || p.visitCategory === 'retina') meds.push('Eylea (aflibercept) — intravitreal');
+    if (p.age >= 65) meds.push('Lisinopril 10mg', this.hash(p.mrn, 7) > 0.5 ? 'Metformin 500mg' : 'Atorvastatin 20mg');
+    if (!meds.length) meds.push('Artificial tears PRN');
+
+    const pendingTests = p.readinessItems.filter(i => i.required && !i.done).map(i => i.label);
+
+    return {
+      chiefComplaint: this.complaints[p.visitCategory] ?? 'Eye evaluation',
+      vaOD, vaOS, iopOD, iopOS, worseEye,
+      allergies, medications: meds,
+      ocularHistory: this.histories[p.visitCategory] ?? ['No significant ocular history'],
+      pendingTests,
+      diagnosis: this.diagnoses[p.visitCategory] ?? 'Pending evaluation',
+    };
+  }
+
+  /** Clinical risk flags — derived from real + computed encounter data. */
+  protected riskFlags(p: PatientFlowRecord): { label: string; tone: 'critical' | 'warning' | 'info' }[] {
+    const c = this.clinicalProfile(p);
+    const flags: { label: string; tone: 'critical' | 'warning' | 'info' }[] = [];
+    if (p.urgent) flags.push({ label: 'Flagged urgent', tone: 'critical' });
+    const maxIop = Math.max(c.iopOD, c.iopOS);
+    if (maxIop > 21) flags.push({ label: `Elevated IOP ${maxIop} mmHg`, tone: 'critical' });
+    const worseVa = c.worseEye === 'OD' ? c.vaOD : c.vaOS;
+    if (Number(worseVa.split('/')[1]) >= 50) flags.push({ label: `Reduced acuity ${worseVa} ${c.worseEye}`, tone: 'warning' });
+    if (p.visitCategory === 'post-op') flags.push({ label: 'Post-operative — monitor', tone: 'info' });
+    if (p.visitCategory === 'glaucoma') flags.push({ label: 'Glaucoma monitoring', tone: 'warning' });
+    if (/diabet/i.test(p.visitType)) flags.push({ label: 'Diabetic eye exam', tone: 'warning' });
+    if (c.pendingTests.some(t => /imag|biometr|topograph|oct|field/i.test(t)))
+      flags.push({ label: 'Imaging / testing incomplete', tone: 'warning' });
+    if (p.authStatus === 'expired') flags.push({ label: 'Prior auth expired — blocker', tone: 'critical' });
+    else if (p.authStatus === 'pending') flags.push({ label: 'Prior auth pending', tone: 'warning' });
+    return flags;
+  }
+
+  // ── Note composer ──────────────────────────────────────────────────────────
+  protected readonly noteDraft = signal('');
+  protected addNote(p: PatientFlowRecord): void {
+    const text = this.noteDraft().trim();
+    if (!text) return;
+    this.store.addClinicalNote(p.id, text);
+    this.noteDraft.set('');
+    this.syncDrawer(p.id);
+  }
+
+  // ── Real drawer actions ─────────────────────────────────────────────────────
+  protected sendToImaging(p: PatientFlowRecord): void {
+    if (p.station === 'imaging') return;
+    this.attemptMove(p, 'imaging');
+    this.syncDrawer(p.id);
+  }
+  protected markReady(p: PatientFlowRecord): void {
+    if (p.station === 'ready') return;
+    this.attemptMove(p, 'ready');
+    this.syncDrawer(p.id);
+  }
+  protected closeToCheckout(p: PatientFlowRecord): void {
+    if (p.station === 'checkout') return;
+    this.attemptMove(p, 'checkout');
+    this.syncDrawer(p.id);
+  }
+  protected toggleUrgent(p: PatientFlowRecord): void {
+    this.store.setPatientUrgent(p.id, !p.urgent);
+    this.syncDrawer(p.id);
+  }
 }

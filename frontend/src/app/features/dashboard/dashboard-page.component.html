@@ -507,11 +507,14 @@
   @if (selectedPatient(); as p) {
     <div class="drawer-scrim" (click)="closePatient()"></div>
     <aside class="drawer" role="dialog" aria-label="Patient detail">
-      <header class="drawer__hd">
+      <header class="drawer__hd" [class.drawer__hd--urgent]="p.urgent">
         <div class="drawer__id">
           <span class="drawer__av drawer__av--{{ p.tone }}">{{ p.name.charAt(0) }}</span>
           <div>
-            <h3 class="drawer__name">{{ p.name }}</h3>
+            <h3 class="drawer__name">
+              {{ p.name }}
+              @if (p.urgent) { <span class="urgenttag">URGENT</span> }
+            </h3>
             <p class="drawer__meta">{{ p.age }} yrs · MRN {{ p.mrn }}@if (p.laterality) { · {{ p.laterality }} }</p>
           </div>
         </div>
@@ -521,36 +524,109 @@
       </header>
 
       <div class="drawer__body">
+
+        <!-- Visit context -->
         <div class="drawer__tags">
           <span class="cattag cattag--{{ p.visitCategory }}">{{ categoryTag(p.visitCategory) }}</span>
           <span class="drawer__visit">{{ p.visitType }}</span>
-          <span class="slatag slatag--{{ sla(p.waitMinutes).tone }}">{{ sla(p.waitMinutes).label }}</span>
+          <span class="slatag slatag--{{ slaForStage(p).tone }}">{{ p.waitMinutes }}m · {{ slaForStage(p).label }}</span>
         </div>
 
-        <div class="drawer__grid">
-          <div class="dfield"><span>Stage</span><strong>{{ stationLabel(p.station) }}</strong></div>
-          <div class="dfield"><span>Wait</span><strong>{{ p.waitMinutes }} min</strong></div>
-          <div class="dfield"><span>Provider</span><strong>{{ p.provider }}</strong></div>
-          <div class="dfield"><span>Scheduled</span><strong>{{ p.scheduledTime }}</strong></div>
-          @if (p.insurance) { <div class="dfield"><span>Insurance</span><strong>{{ p.insurance }}</strong></div> }
-          @if (p.authStatus) { <div class="dfield"><span>Auth</span><strong class="auth--{{ p.authStatus }}">{{ p.authStatus }}</strong></div> }
-        </div>
-
-        @if (p.aiFlag) {
-          <div class="drawer__ai">
-            <span class="ai-tag">AI</span>
-            <p>{{ p.aiFlag }}</p>
+        <!-- Risk flags -->
+        @if (riskFlags(p).length) {
+          <div class="esec">
+            <span class="drawer__sec">Clinical risk</span>
+            <div class="riskflags">
+              @for (f of riskFlags(p); track f.label) {
+                <span class="riskflag riskflag--{{ f.tone }}">
+                  <span class="riskflag__dot"></span>{{ f.label }}
+                </span>
+              }
+            </div>
           </div>
         }
 
-        <div class="drawer__next">
-          <span class="drawer__sec">Next action</span>
-          <p>{{ p.nextAction }}</p>
+        <!-- Chief complaint -->
+        <div class="esec">
+          <span class="drawer__sec">Chief complaint</span>
+          <p class="esec__text">{{ clinicalProfile(p).chiefComplaint }}</p>
         </div>
 
+        <!-- Vitals: VA + IOP -->
+        <div class="esec">
+          <span class="drawer__sec">Exam vitals</span>
+          <div class="vitals">
+            <div class="vital">
+              <span class="vital__k">Visual acuity</span>
+              <div class="vital__pair">
+                <span class="vital__eye">OD</span><strong>{{ clinicalProfile(p).vaOD }}</strong>
+                <span class="vital__eye">OS</span><strong>{{ clinicalProfile(p).vaOS }}</strong>
+              </div>
+            </div>
+            <div class="vital">
+              <span class="vital__k">IOP (mmHg)</span>
+              <div class="vital__pair">
+                <span class="vital__eye">OD</span>
+                <strong [class.vital--high]="clinicalProfile(p).iopOD > 21">{{ clinicalProfile(p).iopOD }}</strong>
+                <span class="vital__eye">OS</span>
+                <strong [class.vital--high]="clinicalProfile(p).iopOS > 21">{{ clinicalProfile(p).iopOS }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Encounter context grid -->
+        <div class="drawer__grid">
+          <div class="dfield"><span>Stage</span><strong>{{ stationLabel(p.station) }}</strong></div>
+          <div class="dfield"><span>Provider</span><strong>{{ p.provider }}</strong></div>
+          <div class="dfield"><span>Scheduled</span><strong>{{ p.scheduledTime }}</strong></div>
+          @if (p.insurance) { <div class="dfield"><span>Insurance</span><strong>{{ p.insurance }}</strong></div> }
+          @if (p.authStatus) { <div class="dfield"><span>Prior auth</span><strong class="auth--{{ p.authStatus }}">{{ p.authStatus }}</strong></div> }
+          <div class="dfield"><span>Diagnosis</span><strong>{{ clinicalProfile(p).diagnosis }}</strong></div>
+        </div>
+
+        <!-- Allergies + meds -->
+        <div class="drawer__cols2">
+          <div class="esec">
+            <span class="drawer__sec">Allergies</span>
+            <div class="chiplist">
+              @for (a of clinicalProfile(p).allergies; track a) {
+                <span class="medchip" [class.medchip--allergy]="a !== 'NKDA'">{{ a }}</span>
+              }
+            </div>
+          </div>
+          <div class="esec">
+            <span class="drawer__sec">Medications</span>
+            <div class="chiplist">
+              @for (m of clinicalProfile(p).medications; track m) { <span class="medchip">{{ m }}</span> }
+            </div>
+          </div>
+        </div>
+
+        <!-- Ocular history -->
+        <div class="esec">
+          <span class="drawer__sec">Prior ocular history</span>
+          <ul class="hxlist">
+            @for (h of clinicalProfile(p).ocularHistory; track h) { <li>{{ h }}</li> }
+          </ul>
+        </div>
+
+        <!-- Pending imaging / tests (from real readiness items) -->
+        <div class="esec">
+          <span class="drawer__sec">Pending imaging &amp; tests</span>
+          @if (clinicalProfile(p).pendingTests.length) {
+            <div class="chiplist">
+              @for (t of clinicalProfile(p).pendingTests; track t) { <span class="testchip">{{ t }}</span> }
+            </div>
+          } @else {
+            <p class="drawer__muted">All required testing complete.</p>
+          }
+        </div>
+
+        <!-- Readiness checklist -->
         @if (p.readinessItems.length) {
-          <div class="drawer__ready">
-            <span class="drawer__sec">Readiness checklist</span>
+          <div class="drawer__ready esec">
+            <span class="drawer__sec">Diagnosis / procedure readiness</span>
             @for (item of p.readinessItems; track item.label) {
               <div class="ritem" [class.ritem--done]="item.done">
                 <span class="ritem__box">
@@ -565,9 +641,47 @@
           </div>
         }
 
+        <!-- Provider notes -->
+        <div class="esec">
+          <span class="drawer__sec">Provider notes</span>
+          @if (p.notes?.length) {
+            <div class="notelist">
+              @for (n of p.notes; track $index) {
+                <div class="noteitem">
+                  <div class="noteitem__hd"><strong>{{ n.author }}</strong><span>{{ n.at }}</span></div>
+                  <p>{{ n.text }}</p>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="drawer__muted">No notes yet.</p>
+          }
+          <div class="notecompose">
+            <textarea class="noteinput" rows="2" placeholder="Add a clinical note…"
+              [value]="noteDraft()" (input)="noteDraft.set($any($event.target).value)"></textarea>
+            <button class="dbtn dbtn--sm" type="button" [disabled]="!noteDraft().trim()" (click)="addNote(p)">Add note</button>
+          </div>
+        </div>
+
+        <!-- Checkout / claim readiness -->
+        <div class="esec">
+          <span class="drawer__sec">Checkout &amp; claim readiness</span>
+          <div class="readybar">
+            <div class="readybar__item" [class.readybar__item--ok]="clinicalProfile(p).pendingTests.length === 0">
+              <span class="readybar__dot"></span>Testing {{ clinicalProfile(p).pendingTests.length === 0 ? 'complete' : 'pending' }}
+            </div>
+            <div class="readybar__item" [class.readybar__item--ok]="p.authStatus !== 'expired'">
+              <span class="readybar__dot"></span>Auth {{ p.authStatus === 'expired' ? 'blocked' : 'clear' }}
+            </div>
+            <div class="readybar__item" [class.readybar__item--ok]="p.station === 'checkout'">
+              <span class="readybar__dot"></span>{{ p.station === 'checkout' ? 'Ready to bill' : 'Encounter open' }}
+            </div>
+          </div>
+        </div>
+
         <!-- Movement audit trail -->
-        <div class="drawer__history">
-          <span class="drawer__sec">Stage history</span>
+        <div class="drawer__history esec">
+          <span class="drawer__sec">Movement audit trail</span>
           @if (selectedHistory().length) {
             <ol class="timeline">
               @for (m of selectedHistory(); track $index) {
@@ -587,13 +701,20 @@
         </div>
       </div>
 
-      <footer class="drawer__foot">
-        <button class="dbtn dbtn--primary" type="button" (click)="advancePatient(p)"
-          [disabled]="p.station === 'checkout'">
-          @if (p.station === 'checkout') { Visit complete } @else { Advance stage → }
-        </button>
-        <button class="dbtn" type="button" (click)="openEncounter()">Open encounter</button>
-        <button class="dbtn" type="button" (click)="openPatientChart()">Patient chart</button>
+      <footer class="drawer__foot drawer__foot--emr">
+        <div class="drawer__actrow">
+          <button class="dbtn dbtn--primary" type="button" (click)="advancePatient(p)" [disabled]="p.station === 'checkout'">
+            @if (p.station === 'checkout') { Visit complete } @else { Advance stage → }
+          </button>
+          <button class="dbtn dbtn--danger" type="button" (click)="toggleUrgent(p)">
+            @if (p.urgent) { Clear urgent } @else { Flag urgent }
+          </button>
+        </div>
+        <div class="drawer__actrow">
+          <button class="dbtn" type="button" (click)="sendToImaging(p)" [disabled]="p.station === 'imaging'">Send to imaging</button>
+          <button class="dbtn" type="button" (click)="markReady(p)" [disabled]="p.station === 'ready'">Mark ready</button>
+          <button class="dbtn" type="button" (click)="closeToCheckout(p)" [disabled]="p.station === 'checkout'">Checkout</button>
+        </div>
       </footer>
     </aside>
   }
