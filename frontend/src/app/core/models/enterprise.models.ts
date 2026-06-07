@@ -836,6 +836,35 @@ export interface PatientClinicalRecord {
   updatedBy?: string;
 }
 
+/**
+ * Canonical patient identity (Sprint 8) — unifies the demographic roster and
+ * the clinically-active encounter datasets behind one patient model.
+ */
+export type PatientMatchStatus =
+  | 'linked' | 'possible-match' | 'unmatched-roster' | 'unmatched-encounter' | 'merged';
+
+export interface CanonicalPatient {
+  id: string;                 // canonical id (flow id when clinical, else roster id)
+  canonicalMrn: string;
+  legacyMrns: string[];
+  name: string;
+  dob?: string;
+  age?: number;
+  insurance?: string;
+  flowId?: string;            // → clinical / encounter / imaging / billing / flow records
+  rosterId?: string;          // → demographic record
+  source: 'registry' | 'flow' | 'merged';
+  matchStatus: PatientMatchStatus;
+  hasEncounter: boolean;
+  possibleDuplicate?: boolean;
+  // demographic passthrough
+  status?: string;
+  lastEncounter?: string;
+  nextVisit?: string;
+  balance?: string;
+  careGap?: string;
+}
+
 /** Timestamped clinical change record for the unified patient history. */
 export interface ClinicalAuditEntry {
   id?: string;

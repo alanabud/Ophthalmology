@@ -5,13 +5,13 @@
     <div>
       <p class="reg__kicker">Patient Registry</p>
       <h1 class="reg__title">Longitudinal Patient Chart</h1>
-      <p class="reg__sub">Clinically-active patients — VA, IOP, diagnosis, encounter stage, imaging &amp; billing, all from one record.</p>
+      <p class="reg__sub">One canonical identity per patient across roster, encounters, clinical records, imaging &amp; billing — {{ totalCount() }} patients.</p>
     </div>
     <div class="reg__kpis">
       <button class="rkpi" type="button" (click)="setFilter('active-encounter')"><strong>{{ activeCount() }}</strong><span>Active encounters</span></button>
+      <button class="rkpi rkpi--blue" type="button" (click)="setFilter('demographic')"><strong>{{ demographicCount() }}</strong><span>Demographic only</span></button>
       <button class="rkpi rkpi--warn" type="button" (click)="setFilter('needs-charting')"><strong>{{ needsChartingCount() }}</strong><span>Needs charting</span></button>
-      <button class="rkpi rkpi--gold" type="button" (click)="setFilter('imaging-pending')"><strong>{{ imagingPendingCount() }}</strong><span>Imaging pending</span></button>
-      <button class="rkpi rkpi--crit" type="button" (click)="setFilter('billing-blocker')"><strong>{{ billingBlockedCount() }}</strong><span>Billing blockers</span></button>
+      <button class="rkpi rkpi--crit" type="button" (click)="setFilter('possible-duplicate')"><strong>{{ duplicateCount() }}</strong><span>Possible duplicates</span></button>
     </div>
   </header>
 
@@ -19,7 +19,7 @@
   <div class="reg__controls">
     <div class="reg__search">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <input type="search" placeholder="Search name, MRN, provider…" [value]="query()" (input)="query.set($any($event.target).value)">
+      <input type="search" placeholder="Search name, MRN (incl. legacy)…" [value]="query()" (input)="query.set($any($event.target).value)">
     </div>
     <div class="reg__filters">
       @for (f of filterDefs; track f.id) {
@@ -28,64 +28,72 @@
     </div>
   </div>
 
+  <p class="reg__count">Showing {{ visibleRows().length }} of {{ rows().length }} matched · {{ totalCount() }} total</p>
+
   <!-- Patient cards -->
-  @if (rows().length) {
+  @if (visibleRows().length) {
     <div class="reg__grid">
-      @for (r of rows(); track r.p.id) {
-        <button class="pcardr" [class.pcardr--on]="selectedId() === r.p.id" type="button" (click)="openChart(r.p)">
+      @for (r of visibleRows(); track r.c.id) {
+        <button class="pcardr" [class.pcardr--on]="selectedId() === r.c.id" [class.pcardr--demo]="!r.p" type="button" (click)="openChart(r.c)">
           <div class="pcardr__top">
-            <span class="pcardr__av">{{ r.p.name.charAt(0) }}</span>
+            <span class="pcardr__av" [class.pcardr__av--demo]="!r.p">{{ r.c.name.charAt(0) }}</span>
             <div class="pcardr__id">
-              <strong>{{ r.p.name }}</strong>
-              <span>{{ r.p.age }} yrs · MRN {{ r.p.mrn }}</span>
+              <strong>{{ r.c.name }} @if (r.c.possibleDuplicate) { <span class="duptag">DUP?</span> }</strong>
+              <span>{{ r.c.age ? r.c.age + ' yrs · ' : '' }}MRN {{ r.c.canonicalMrn }}</span>
             </div>
             <div class="pcardr__badges">
-              @for (b of r.badges; track b.label) { <span class="cbadge cbadge--{{ b.tone }}">{{ b.label }}</span> }
+              @if (r.p) {
+                @for (b of r.badges; track b.label) { <span class="cbadge cbadge--{{ b.tone }}">{{ b.label }}</span> }
+              } @else {
+                <span class="cbadge cbadge--neutral">{{ identity.matchStatusLabel(r.c.matchStatus) }}</span>
+              }
             </div>
           </div>
 
-          <div class="pcardr__vitals">
-            <div class="pv"><span>VA</span><strong>{{ r.clinical?.visualAcuity?.od || '—' }} / {{ r.clinical?.visualAcuity?.os || '—' }}</strong></div>
-            <div class="pv"><span>IOP</span><strong [class.pv--high]="(r.clinical?.iop?.od ?? 0) > 21 || (r.clinical?.iop?.os ?? 0) > 21">{{ r.clinical?.iop?.od ?? '—' }} / {{ r.clinical?.iop?.os ?? '—' }}</strong></div>
-            <div class="pv pv--grow"><span>Dx</span><strong>{{ enc.primaryDx(r.clinical) || 'Not coded' }}</strong></div>
-          </div>
-
-          @if (r.risk.length) {
-            <div class="pcardr__risk">
-              @for (f of r.risk; track f.label) { <span class="rdot rdot--{{ f.tone }}">{{ f.label }}</span> }
+          @if (r.p) {
+            <div class="pcardr__vitals">
+              <div class="pv"><span>VA</span><strong>{{ r.clinical?.visualAcuity?.od || '—' }} / {{ r.clinical?.visualAcuity?.os || '—' }}</strong></div>
+              <div class="pv"><span>IOP</span><strong [class.pv--high]="(r.clinical?.iop?.od ?? 0) > 21 || (r.clinical?.iop?.os ?? 0) > 21">{{ r.clinical?.iop?.od ?? '—' }} / {{ r.clinical?.iop?.os ?? '—' }}</strong></div>
+              <div class="pv pv--grow"><span>Dx</span><strong>{{ enc.primaryDx(r.clinical) || 'Not coded' }}</strong></div>
+            </div>
+            @if (r.risk.length) {
+              <div class="pcardr__risk">@for (f of r.risk; track f.label) { <span class="rdot rdot--{{ f.tone }}">{{ f.label }}</span> }</div>
+            }
+            <div class="pcardr__foot">
+              <div class="pcardr__stage">
+                <div class="pbar"><div class="pbar__fill" [style.width.%]="r.progress"></div></div>
+                <span>{{ r.next ? r.next.label : 'Complete' }} · {{ r.progress }}%</span>
+              </div>
+              <div class="pcardr__ops">
+                @if (r.imaging) { <span class="optag optag--gold">Imaging</span> }
+                @if (r.billing && !r.billing.ready) { <span class="optag optag--crit">Billing</span> } @else if (r.billing) { <span class="optag optag--ok">Billable</span> }
+              </div>
+            </div>
+          } @else {
+            <div class="pcardr__demo">
+              <div class="demorow"><span>Last visit</span><strong>{{ r.c.lastEncounter || '—' }}</strong></div>
+              <div class="demorow"><span>Next visit</span><strong>{{ r.c.nextVisit || '—' }}</strong></div>
+              <div class="demorow"><span>Insurance</span><strong>{{ r.c.insurance || 'Self-pay' }}</strong></div>
+              <p class="pcardr__noenc">No active encounter yet</p>
             </div>
           }
-
-          <div class="pcardr__foot">
-            <div class="pcardr__stage">
-              <div class="pbar"><div class="pbar__fill" [style.width.%]="r.progress"></div></div>
-              <span>{{ r.next ? r.next.label : 'Complete' }} · {{ r.progress }}%</span>
-            </div>
-            <div class="pcardr__ops">
-              @if (r.imaging) { <span class="optag optag--gold">Imaging</span> }
-              @if (!r.billing.ready) { <span class="optag optag--crit">Billing</span> } @else { <span class="optag optag--ok">Billable</span> }
-            </div>
-          </div>
         </button>
       }
     </div>
   } @else {
-    <div class="reg__empty">
-      <strong>No patients match</strong>
-      <p>Try a different search or filter.</p>
-    </div>
+    <div class="reg__empty"><strong>No patients match</strong><p>Try a different search or filter.</p></div>
   }
 
   <!-- ═══ LONGITUDINAL CHART DRAWER ═══ -->
-  @if (selected(); as p) {
+  @if (selected(); as c) {
     <div class="chart-scrim" (click)="closeChart()"></div>
-    <aside class="chart" role="dialog" [attr.aria-label]="p.name + ' chart'">
+    <aside class="chart" role="dialog" [attr.aria-label]="c.name + ' chart'">
       <header class="chart__hd">
         <div class="chart__id">
-          <span class="chart__av">{{ p.name.charAt(0) }}</span>
+          <span class="chart__av">{{ c.name.charAt(0) }}</span>
           <div>
-            <h3>{{ p.name }} @if (p.urgent) { <span class="urgenttag">URGENT</span> }</h3>
-            <p>{{ p.age }} yrs · MRN {{ p.mrn }} · {{ p.provider }}</p>
+            <h3>{{ c.name }} @if (c.possibleDuplicate) { <span class="duptag">DUP?</span> }</h3>
+            <p>{{ c.age ? c.age + ' yrs · ' : '' }}MRN {{ c.canonicalMrn }} · {{ identity.matchStatusLabel(c.matchStatus) }}</p>
           </div>
         </div>
         <button class="chart__x" type="button" (click)="closeChart()" aria-label="Close">
@@ -93,107 +101,136 @@
         </button>
       </header>
 
-      <!-- Encounter status strip -->
-      <div class="chart__enc">
-        <div class="chart__encbar"><div class="chart__encfill" [style.width.%]="enc.encounterProgressPct(p)"></div></div>
-        <span class="chart__encnext">{{ enc.encounterNextAction(p) }}</span>
-        <button class="chart__open" type="button" (click)="openInCockpit(p)">Open encounter →</button>
-      </div>
+      @if (flowOf(c); as p) {
+        <div class="chart__enc">
+          <div class="chart__encbar"><div class="chart__encfill" [style.width.%]="enc.encounterProgressPct(p)"></div></div>
+          <span class="chart__encnext">{{ enc.encounterNextAction(p) }}</span>
+          <button class="chart__open" type="button" (click)="openInCockpit(c)">Open encounter →</button>
+        </div>
+      }
 
       <nav class="charttabs">
-        <button class="charttab" [class.charttab--on]="chartTab()==='summary'" type="button" (click)="setChartTab('summary')">Summary</button>
-        <button class="charttab" [class.charttab--on]="chartTab()==='clinical'" type="button" (click)="setChartTab('clinical')">Clinical</button>
-        <button class="charttab" [class.charttab--on]="chartTab()==='imaging'" type="button" (click)="setChartTab('imaging')">Imaging</button>
-        <button class="charttab" [class.charttab--on]="chartTab()==='billing'" type="button" (click)="setChartTab('billing')">Billing</button>
-        <button class="charttab" [class.charttab--on]="chartTab()==='history'" type="button" (click)="setChartTab('history')">History</button>
+        <button class="charttab" [class.charttab--on]="chartTab()==='identity'" type="button" (click)="setChartTab('identity')">Identity</button>
+        @if (c.hasEncounter) {
+          <button class="charttab" [class.charttab--on]="chartTab()==='summary'" type="button" (click)="setChartTab('summary')">Summary</button>
+          <button class="charttab" [class.charttab--on]="chartTab()==='clinical'" type="button" (click)="setChartTab('clinical')">Clinical</button>
+          <button class="charttab" [class.charttab--on]="chartTab()==='imaging'" type="button" (click)="setChartTab('imaging')">Imaging</button>
+          <button class="charttab" [class.charttab--on]="chartTab()==='billing'" type="button" (click)="setChartTab('billing')">Billing</button>
+          <button class="charttab" [class.charttab--on]="chartTab()==='history'" type="button" (click)="setChartTab('history')">History</button>
+        }
       </nav>
 
       <div class="chart__body">
         @switch (chartTab()) {
 
-          @case ('summary') {
-            @if (enc.riskFlags(p).length) {
-              <div class="csec"><span class="clbl">Clinical risk</span>
-                <div class="cflags">@for (f of enc.riskFlags(p); track f.label) { <span class="rdot rdot--{{ f.tone }}">{{ f.label }}</span> }</div>
+          <!-- ═══ IDENTITY & CHART STATUS ═══ -->
+          @case ('identity') {
+            <div class="csec"><span class="clbl">Identity &amp; chart status</span>
+              <div class="exgrid">
+                <div class="exrow"><span>Canonical MRN</span><strong>{{ c.canonicalMrn }}</strong></div>
+                <div class="exrow"><span>Legacy MRNs</span><strong>{{ c.legacyMrns.length ? c.legacyMrns.join(', ') : 'none' }}</strong></div>
+                <div class="exrow"><span>Chart status</span><strong>{{ c.hasEncounter ? 'Active encounter' : 'No encounter' }}</strong></div>
+                <div class="exrow"><span>Match status</span><strong class="match--{{ c.matchStatus }}">{{ identity.matchStatusLabel(c.matchStatus) }}</strong></div>
+                <div class="exrow"><span>Source</span><strong>{{ c.source }}</strong></div>
+                <div class="exrow"><span>Last encounter</span><strong>{{ c.lastEncounter || (c.hasEncounter ? 'Today' : '—') }}</strong></div>
+              </div>
+            </div>
+            @if (openIssues(c).length) {
+              <div class="csec"><span class="clbl">Open issues</span>
+                <div class="chiplist">@for (i of openIssues(c); track i) { <span class="testchip">{{ i }}</span> }</div>
               </div>
             }
-            <div class="summary-cards">
-              <div class="scard"><span>Vision</span><strong>OD {{ enc.clinicalFor(p.id)?.visualAcuity?.od || '—' }} · OS {{ enc.clinicalFor(p.id)?.visualAcuity?.os || '—' }}</strong><em>PH {{ enc.clinicalFor(p.id)?.visualAcuity?.pinholeOd || '—' }}/{{ enc.clinicalFor(p.id)?.visualAcuity?.pinholeOs || '—' }}</em></div>
-              <div class="scard"><span>Pressure</span><strong [class.pv--high]="(enc.clinicalFor(p.id)?.iop?.od ?? 0) > 21 || (enc.clinicalFor(p.id)?.iop?.os ?? 0) > 21">OD {{ enc.clinicalFor(p.id)?.iop?.od ?? '—' }} · OS {{ enc.clinicalFor(p.id)?.iop?.os ?? '—' }}</strong><em>{{ enc.clinicalFor(p.id)?.iop?.method || 'method —' }}</em></div>
-              <div class="scard"><span>Diagnosis</span><strong>{{ enc.primaryDx(enc.clinicalFor(p.id)) || 'Not coded' }}</strong></div>
-              <div class="scard"><span>Allergies</span><strong [class.pv--high]="enc.allergyText(enc.clinicalFor(p.id)) && enc.allergyText(enc.clinicalFor(p.id)) !== 'NKDA'">{{ enc.allergyText(enc.clinicalFor(p.id)) || 'NKDA' }}</strong></div>
-              <div class="scard"><span>Orders</span><strong>{{ encounterOrders(p).length }} open</strong></div>
-              <div class="scard"><span>Billing</span><strong [class.pv--high]="!enc.billingReady(p).ready">{{ enc.billingReady(p).ready ? 'Ready to bill' : enc.billingReady(p).blockers.length + ' blocker(s)' }}</strong></div>
-            </div>
-            @if (enc.clinicalFor(p.id)?.assessmentPlan) { <div class="csec"><span class="clbl">Assessment / plan</span><p class="ctext">{{ enc.clinicalFor(p.id)?.assessmentPlan }}</p></div> }
-            @if (enc.encounterFor(p.id)?.assessment?.followUpInterval) { <div class="csec"><span class="clbl">Follow-up</span><p class="ctext">{{ enc.encounterFor(p.id)?.assessment?.followUpInterval }}</p></div> }
-            @if (!enc.clinicalFor(p.id)) { <div class="cempty"><strong>No clinical chart yet</strong><p>Open the encounter to begin charting.</p></div> }
+            @if (c.matchStatus === 'unmatched-roster') {
+              <div class="idnote idnote--info"><strong>No active encounter yet</strong><p>This patient exists in the registry but has no clinical encounter history. Start an encounter from the Command Center.</p></div>
+            } @else if (c.matchStatus === 'unmatched-encounter') {
+              <div class="idnote idnote--warn"><strong>Clinical identity needs review</strong><p>This encounter has clinical activity but is not linked to a registry demographic record. Confirm the canonical identity to merge.</p></div>
+            } @else if (c.matchStatus === 'possible-match') {
+              <div class="idnote idnote--warn"><strong>Possible identity match</strong><p>A demographic record with a similar name was found ({{ c.legacyMrns.join(', ') }}). Review before merging.</p></div>
+            } @else if (c.matchStatus === 'linked') {
+              <div class="idnote idnote--ok"><strong>Linked identity</strong><p>Demographic and clinical records resolve to one canonical patient.</p></div>
+            }
+          }
+
+          <!-- ═══ CLINICAL TABS (only when an encounter exists) ═══ -->
+          @case ('summary') {
+            @if (flowOf(c); as p) {
+              @if (enc.riskFlags(p).length) {
+                <div class="csec"><span class="clbl">Clinical risk</span><div class="cflags">@for (f of enc.riskFlags(p); track f.label) { <span class="rdot rdot--{{ f.tone }}">{{ f.label }}</span> }</div></div>
+              }
+              <div class="summary-cards">
+                <div class="scard"><span>Vision</span><strong>OD {{ enc.clinicalFor(p.id)?.visualAcuity?.od || '—' }} · OS {{ enc.clinicalFor(p.id)?.visualAcuity?.os || '—' }}</strong><em>PH {{ enc.clinicalFor(p.id)?.visualAcuity?.pinholeOd || '—' }}/{{ enc.clinicalFor(p.id)?.visualAcuity?.pinholeOs || '—' }}</em></div>
+                <div class="scard"><span>Pressure</span><strong [class.pv--high]="(enc.clinicalFor(p.id)?.iop?.od ?? 0) > 21 || (enc.clinicalFor(p.id)?.iop?.os ?? 0) > 21">OD {{ enc.clinicalFor(p.id)?.iop?.od ?? '—' }} · OS {{ enc.clinicalFor(p.id)?.iop?.os ?? '—' }}</strong><em>{{ enc.clinicalFor(p.id)?.iop?.method || 'method —' }}</em></div>
+                <div class="scard"><span>Diagnosis</span><strong>{{ enc.primaryDx(enc.clinicalFor(p.id)) || 'Not coded' }}</strong></div>
+                <div class="scard"><span>Allergies</span><strong [class.pv--high]="enc.allergyText(enc.clinicalFor(p.id)) && enc.allergyText(enc.clinicalFor(p.id)) !== 'NKDA'">{{ enc.allergyText(enc.clinicalFor(p.id)) || 'NKDA' }}</strong></div>
+                <div class="scard"><span>Orders</span><strong>{{ encounterOrders(p).length }} open</strong></div>
+                <div class="scard"><span>Billing</span><strong [class.pv--high]="!enc.billingReady(p).ready">{{ enc.billingReady(p).ready ? 'Ready to bill' : enc.billingReady(p).blockers.length + ' blocker(s)' }}</strong></div>
+              </div>
+              @if (enc.clinicalFor(p.id)?.assessmentPlan) { <div class="csec"><span class="clbl">Assessment / plan</span><p class="ctext">{{ enc.clinicalFor(p.id)?.assessmentPlan }}</p></div> }
+            }
           }
 
           @case ('clinical') {
-            @if (enc.clinicalFor(p.id); as cr) {
-              <div class="csec"><span class="clbl">Chief complaint</span><p class="ctext">{{ cr.chiefComplaint || '—' }}</p></div>
-              <div class="csec"><span class="clbl">Medications</span><p class="ctext">{{ enc.medsText(cr) || '—' }}</p></div>
-              <div class="csec"><span class="clbl">Ocular history</span><p class="ctext">{{ cr.ocularHistory.length ? cr.ocularHistory.join(', ') : '—' }}</p></div>
-              <div class="csec"><span class="clbl">Systemic history</span><p class="ctext">{{ cr.systemicHistory?.length ? cr.systemicHistory!.join(', ') : '—' }}</p></div>
-              <div class="csec"><span class="clbl">Exam findings</span>
-                <div class="exgrid">
-                  @for (x of enc.examFields; track x.key) {
-                    @if (cr.examFindings[x.key]) { <div class="exrow"><span>{{ x.label }}</span><strong>{{ cr.examFindings[x.key] }}</strong></div> }
-                  }
+            @if (flowOf(c); as p) {
+              @if (enc.clinicalFor(p.id); as cr) {
+                <div class="csec"><span class="clbl">Chief complaint</span><p class="ctext">{{ cr.chiefComplaint || '—' }}</p></div>
+                <div class="csec"><span class="clbl">Medications</span><p class="ctext">{{ enc.medsText(cr) || '—' }}</p></div>
+                <div class="csec"><span class="clbl">Ocular history</span><p class="ctext">{{ cr.ocularHistory.length ? cr.ocularHistory.join(', ') : '—' }}</p></div>
+                <div class="csec"><span class="clbl">Exam findings</span>
+                  <div class="exgrid">@for (x of enc.examFields; track x.key) { @if (cr.examFindings[x.key]) { <div class="exrow"><span>{{ x.label }}</span><strong>{{ cr.examFindings[x.key] }}</strong></div> } }</div>
                 </div>
-              </div>
-              @if (cr.updatedAt) { <p class="cupd">Last update {{ cr.updatedAt }} · {{ cr.updatedBy }}</p> }
-            } @else { <div class="cempty"><strong>Not charted</strong><p>Open the encounter to add clinical data.</p></div> }
+                @if (cr.updatedAt) { <p class="cupd">Last update {{ cr.updatedAt }} · {{ cr.updatedBy }}</p> }
+              } @else { <div class="cempty"><strong>Not charted</strong><p>Open the encounter to add clinical data.</p></div> }
+            }
           }
 
           @case ('imaging') {
-            <div class="csec"><span class="clbl">Imaging orders</span>
-              @if (encounterOrders(p).length) {
-                <div class="ordlist">@for (o of encounterOrders(p); track o.id) { @if (o.type === 'imaging') { <div class="orditem"><span class="ordtype ordtype--imaging">{{ o.type }}</span><span class="ordtext">{{ o.detail }}</span><span class="ordstatus">{{ o.status }}</span></div> } }</div>
-              } @else { <p class="ctext">No imaging orders.</p> }
-            </div>
-            <div class="csec"><span class="clbl">Imaging status</span>
-              <p class="ctext">{{ store.imagingWork()[p.id]?.status || (imagingPending(p) ? 'Pending readiness' : 'No active study') }}</p>
-            </div>
-            <div class="csec"><span class="clbl">Pending readiness</span>
-              <div class="chiplist">
-                @for (it of p.readinessItems; track it.label) { @if (it.required && !it.done) { <span class="testchip">{{ it.label }}</span> } }
+            @if (flowOf(c); as p) {
+              <div class="csec"><span class="clbl">Imaging orders</span>
+                @if (encounterOrders(p).length) {
+                  <div class="ordlist">@for (o of encounterOrders(p); track o.id) { @if (o.type === 'imaging') { <div class="orditem"><span class="ordtype ordtype--imaging">{{ o.type }}</span><span class="ordtext">{{ o.detail }}</span><span class="ordstatus">{{ o.status }}</span></div> } }</div>
+                } @else { <p class="ctext">No imaging orders.</p> }
               </div>
-            </div>
+              <div class="csec"><span class="clbl">Imaging status</span><p class="ctext">{{ store.imagingWork()[p.id]?.status || (imagingPending(p) ? 'Pending readiness' : 'No active study') }}</p></div>
+            }
           }
 
           @case ('billing') {
-            <div class="csec"><span class="clbl">Billing readiness</span>
-              @if (enc.billingReady(p).ready) { <p class="ck-ready">Ready to bill — all clinical prerequisites met.</p> }
-              @else { <div class="chiplist">@for (b of enc.billingReady(p).blockers; track b) { <span class="testchip">{{ b }}</span> }</div> }
-            </div>
-            <div class="csec"><span class="clbl">Coverage</span>
-              <div class="exgrid">
-                <div class="exrow"><span>Insurance</span><strong>{{ p.insurance || 'Self-pay' }}</strong></div>
-                <div class="exrow"><span>Prior auth</span><strong>{{ p.authStatus || 'n/a' }}</strong></div>
-                <div class="exrow"><span>Diagnosis</span><strong>{{ enc.primaryDx(enc.clinicalFor(p.id)) || 'Not coded' }}</strong></div>
-                <div class="exrow"><span>Claim status</span><strong>{{ store.claimWork()[p.id]?.status || 'Draft' }}</strong></div>
+            @if (flowOf(c); as p) {
+              <div class="csec"><span class="clbl">Billing readiness</span>
+                @if (enc.billingReady(p).ready) { <p class="ck-ready">Ready to bill — all clinical prerequisites met.</p> }
+                @else { <div class="chiplist">@for (b of enc.billingReady(p).blockers; track b) { <span class="testchip">{{ b }}</span> }</div> }
               </div>
-            </div>
+              <div class="csec"><span class="clbl">Coverage</span>
+                <div class="exgrid">
+                  <div class="exrow"><span>Insurance</span><strong>{{ p.insurance || 'Self-pay' }}</strong></div>
+                  <div class="exrow"><span>Prior auth</span><strong>{{ p.authStatus || 'n/a' }}</strong></div>
+                  <div class="exrow"><span>Diagnosis</span><strong>{{ enc.primaryDx(enc.clinicalFor(p.id)) || 'Not coded' }}</strong></div>
+                  <div class="exrow"><span>Claim status</span><strong>{{ store.claimWork()[p.id]?.status || 'Draft' }}</strong></div>
+                </div>
+              </div>
+            }
           }
 
           @case ('history') {
-            @if (enc.unifiedHistory(p.id).length) {
-              <ol class="timeline">
-                @for (h of enc.unifiedHistory(p.id); track $index) {
+            @if (flowOf(c); as p) {
+              @if (enc.unifiedHistory(p.id).length) {
+                <ol class="timeline">@for (h of enc.unifiedHistory(p.id); track $index) {
                   <li class="tline tline--{{ h.kind }}"><span class="tline__dot tline__dot--{{ h.kind }}"></span>
                     <div class="tline__body"><span class="tline__move"><span class="kindtag kindtag--{{ h.kind }}">{{ h.kind }}</span> {{ h.label }}</span><span class="tline__at">{{ h.at }}</span>@if (h.detail) { <span class="tline__reason">{{ h.detail }}</span> }</div>
                   </li>
-                }
-              </ol>
-            } @else { <div class="cempty"><strong>No activity yet</strong><p>This visit has no recorded history.</p></div> }
+                }</ol>
+              } @else { <div class="cempty"><strong>No activity yet</strong><p>This visit has no recorded history.</p></div> }
+            }
           }
         }
       </div>
 
       <footer class="chart__foot">
-        <button class="dbtn dbtn--primary" type="button" (click)="openInCockpit(p)">Open in cockpit →</button>
+        @if (c.hasEncounter) {
+          <button class="dbtn dbtn--primary" type="button" (click)="openInCockpit(c)">Open in cockpit →</button>
+        } @else {
+          <button class="dbtn" type="button" disabled>No active encounter — schedule a visit to begin</button>
+        }
       </footer>
     </aside>
   }
