@@ -26,6 +26,14 @@
 
   &__kpis { display: flex; gap: 10px; flex-wrap: wrap; }
 
+  &__new {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+    font-size: 12.5px; font-weight: 700; color: #fff;
+    background: linear-gradient(135deg, var(--r-teal), #0D9488); border: none; border-radius: 9px;
+    padding: 8px 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(15,118,110,0.26);
+    &:hover { background: #0c655e; }
+  }
+
   &__controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   &__search {
     display: flex; align-items: center; gap: 8px; background: var(--r-surface); border-radius: 10px;
@@ -244,7 +252,11 @@
     &:hover { background: #0c655e; } }
 
   &__body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
-  &__foot { padding: 14px 20px; border-top: 1px solid var(--r-hair); }
+  &__foot { padding: 14px 20px; border-top: 1px solid var(--r-hair);
+    &--row { display: flex; gap: 8px;
+      .dbtn { flex: 1; width: auto; }
+    }
+  }
 }
 @keyframes chin { from { transform: translateX(100%); } to { transform: translateX(0); } }
 

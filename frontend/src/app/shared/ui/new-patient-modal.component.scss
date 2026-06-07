@@ -89,6 +89,10 @@
   padding: 0.75rem 1.25rem 0.6rem;
   border-bottom: 1px solid var(--line-subtle);
   flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .npm-title {
@@ -97,6 +101,19 @@
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+
+  &__name { color: var(--accent-primary); font-weight: 700; }
+}
+
+.npm-mrn {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-control, #f1f4f2);
+  border-radius: 6px;
+  padding: 2px 8px;
 }
 
 /* ── Body (sidebar + content) ────────────────────────── */

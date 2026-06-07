@@ -13,7 +13,13 @@
 
       <!-- ── Title row ─────────────────────────────────── -->
       <div class="npm-title-row">
-        <h1 class="npm-title">{{ isEditMode() ? 'Edit patient record' : 'New patient record' }}</h1>
+        <h1 class="npm-title">
+          @if (isEditMode()) { Edit patient record<span class="npm-title__name"> · {{ patientToEdit()?.fullName }}</span> }
+          @else { New patient record }
+        </h1>
+        @if (isEditMode() && patientToEdit()?.mrn) {
+          <span class="npm-mrn">MRN {{ patientToEdit()?.mrn }} · locked</span>
+        }
       </div>
 
       <!-- ── Body ─────────────────────────────────────── -->
@@ -40,8 +46,13 @@
           @if (submitted()) {
             <div class="npm-success">
               <div class="npm-success__icon">✓</div>
-              <strong>Patient registered</strong>
-              <p>{{ firstName }} {{ lastName }} has been added to the patient roster.</p>
+              @if (isEditMode()) {
+                <strong>Changes saved</strong>
+                <p>{{ firstName }} {{ lastName }}'s record has been updated.</p>
+              } @else {
+                <strong>Patient registered</strong>
+                <p>{{ firstName }} {{ lastName }} has been added to the patient roster.</p>
+              }
             </div>
           } @else {
 
@@ -797,7 +808,8 @@
             [disabled]="!canSubmit || isSubmitting()"
             (click)="submit()"
           >
-            {{ isSubmitting() ? 'Registering...' : 'Register patient' }}
+            @if (isEditMode()) { {{ isSubmitting() ? 'Saving…' : 'Save changes' }} }
+            @else { {{ isSubmitting() ? 'Registering…' : 'Register patient' }} }
           </button>
         }
         <button class="npm-nav-btn npm-nav-btn--cancel" type="button" (click)="cancel()">Cancel</button>

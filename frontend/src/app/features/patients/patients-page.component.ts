@@ -2,11 +2,12 @@ import { LowerCasePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { CanonicalPatient, PatientFlowRecord } from '../../core/models/enterprise.models';
+import { CanonicalPatient, PatientFlowRecord, PatientRecord } from '../../core/models/enterprise.models';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { PatientIdentityService } from '../../core/services/patient-identity.service';
+import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 
 type RegFilter =
   | 'all' | 'active-encounter' | 'demographic' | 'possible-duplicate'
@@ -15,7 +16,7 @@ type RegFilter =
 
 @Component({
   selector: 'app-patients-page',
-  imports: [LowerCasePipe],
+  imports: [LowerCasePipe, NewPatientModalComponent],
   templateUrl: './patients-page.component.html',
   styleUrl: './patients-page.component.scss',
 })
@@ -137,6 +138,22 @@ export class PatientsPageComponent {
   }
 
   protected encounterOrders(p: PatientFlowRecord) { return this.enc.encounterFor(p.id)?.orders ?? []; }
+
+  // ── Patient maintenance — reuse the premium 12-tab wizard for edit ──────────
+  protected readonly editTarget = signal<PatientRecord | null>(null);
+  protected hasRosterRecord(c: CanonicalPatient): boolean { return !!c.rosterId; }
+  protected editPatient(c: CanonicalPatient): void {
+    const rec = c.rosterId ? this.store.patients().find(p => p.id === c.rosterId) ?? null : null;
+    if (rec) this.editTarget.set(rec);
+  }
+  protected closeEdit(): void { this.editTarget.set(null); }
+  protected openCreate(): void {
+    // Reuse the same wizard in create mode (header "New patient record").
+    this.editTarget.set(null);
+    this.createOpen.set(true);
+  }
+  protected readonly createOpen = signal(false);
+  protected closeCreate(): void { this.createOpen.set(false); }
 
   protected openIssues(c: CanonicalPatient): string[] {
     const p = this.flowOf(c);

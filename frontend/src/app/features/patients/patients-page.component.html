@@ -6,6 +6,10 @@
       <p class="reg__kicker">Patient Registry</p>
       <h1 class="reg__title">Longitudinal Patient Chart</h1>
       <p class="reg__sub">One canonical identity per patient across roster, encounters, clinical records, imaging &amp; billing — {{ totalCount() }} patients.</p>
+      <button class="reg__new" type="button" (click)="openCreate()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        New patient
+      </button>
     </div>
     <div class="reg__kpis">
       <button class="rkpi" type="button" (click)="setFilter('active-encounter')"><strong>{{ activeCount() }}</strong><span>Active encounters</span></button>
@@ -248,15 +252,25 @@
         }
       </div>
 
-      <footer class="chart__foot">
+      <footer class="chart__foot chart__foot--row">
+        @if (hasRosterRecord(c)) {
+          <button class="dbtn" type="button" (click)="editPatient(c)">Edit patient</button>
+        }
         @if (c.hasEncounter) {
           <button class="dbtn dbtn--primary" type="button" (click)="openInCockpit(c)">Open in cockpit →</button>
-        } @else {
-          <button class="dbtn" type="button" disabled>No active encounter — schedule a visit to begin</button>
+        } @else if (!hasRosterRecord(c)) {
+          <button class="dbtn" type="button" disabled>No demographic record on file</button>
         }
       </footer>
     </aside>
   }
+
+  <!-- Shared premium maintenance wizard — same component for create + edit -->
+  <app-new-patient-modal
+    [open]="createOpen() || !!editTarget()"
+    [patientToEdit]="editTarget()"
+    (closed)="closeCreate(); closeEdit()"
+  />
 
   <!-- ═══ IDENTITY REVIEW MODAL (side-by-side compare + confirm/reject) ═══ -->
   @if (reviewOpen() && reviewA(); as a) {
