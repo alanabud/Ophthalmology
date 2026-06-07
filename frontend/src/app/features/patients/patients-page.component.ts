@@ -1,7 +1,9 @@
+import { LowerCasePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { CanonicalPatient, PatientFlowRecord } from '../../core/models/enterprise.models';
+import { AuthStateService } from '../../core/services/auth-state.service';
 import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { PatientIdentityService } from '../../core/services/patient-identity.service';
@@ -13,7 +15,7 @@ type RegFilter =
 
 @Component({
   selector: 'app-patients-page',
-  imports: [],
+  imports: [LowerCasePipe],
   templateUrl: './patients-page.component.html',
   styleUrl: './patients-page.component.scss',
 })
@@ -21,7 +23,14 @@ export class PatientsPageComponent {
   protected readonly store = inject(EnterpriseStoreService);
   protected readonly enc = inject(EncounterService);
   protected readonly identity = inject(PatientIdentityService);
+  private readonly auth = inject(AuthStateService);
   private readonly router = inject(Router);
+
+  /** Identity governance is gated to supervisors / superusers. */
+  protected readonly canGovern = computed(() =>
+    this.auth.isSandboxSession() || this.auth.context()?.user.is_superuser === true
+  );
+  private reviewer(): string { return this.auth.displayName() || 'Supervisor'; }
 
   protected readonly query = signal('');
   protected readonly filter = signal<RegFilter>('all');
@@ -138,5 +147,75 @@ export class PatientsPageComponent {
     out.push(b.ready ? 'Billing ready' : `Billing: ${b.blockers.length} blocker(s)`);
     if (p.urgent) out.push('Flagged urgent');
     return out;
+  }
+
+  // ── Identity governance: review / confirm / reject ──────────────────────────
+  protected readonly reviewOpen = signal(false);
+  protected readonly reviewA = signal<CanonicalPatient | null>(null);
+  protected readonly reviewB = signal<CanonicalPatient | null>(null);
+  protected readonly reviewReason = signal('');
+  protected readonly candidateQuery = signal('');
+
+  protected openReview(a: CanonicalPatient): void {
+    this.reviewA.set(a);
+    this.reviewB.set(a.rosterId && a.flowId ? null : null);
+    this.reviewReason.set('');
+    this.candidateQuery.set('');
+    this.reviewOpen.set(true);
+  }
+  protected closeReview(): void { this.reviewOpen.set(false); this.reviewA.set(null); this.reviewB.set(null); }
+
+  protected readonly candidates = computed(() => {
+    const a = this.reviewA();
+    if (!a) return [];
+    const q = this.candidateQuery().trim().toLowerCase();
+    return this.identity.candidatesFor(a).filter(b => !q || `${b.name} ${b.canonicalMrn}`.toLowerCase().includes(q)).slice(0, 30);
+  });
+  protected pickCandidate(b: CanonicalPatient): void { this.reviewB.set(b); }
+  protected readonly reviewScore = computed(() => {
+    const a = this.reviewA(), b = this.reviewB();
+    return a && b ? this.identity.scoreMatch(a, b) : null;
+  });
+
+  private resolvePair(a: CanonicalPatient, b: CanonicalPatient): { flowP: CanonicalPatient; rosterP: CanonicalPatient } | null {
+    const flowP = a.hasEncounter ? a : b;
+    const rosterP = a.hasEncounter ? b : a;
+    if (!flowP.flowId || !rosterP.rosterId) return null;
+    return { flowP, rosterP };
+  }
+
+  protected confirmLink(): void {
+    const a = this.reviewA(), b = this.reviewB();
+    if (!a || !b || !this.canGovern() || !this.reviewReason().trim()) return;
+    const pr = this.resolvePair(a, b);
+    if (!pr) return;
+    const iso = new Date().toISOString();
+    const score = this.identity.scoreMatch(pr.flowP, pr.rosterP).score;
+    this.store.confirmIdentityLink(
+      {
+        id: `map-${pr.flowP.flowId}-${pr.rosterP.rosterId}`,
+        canonicalPatientId: pr.flowP.flowId!, sourceType: 'roster', sourcePatientId: pr.rosterP.rosterId!,
+        legacyMrn: pr.rosterP.canonicalMrn, confidence: score, confirmedBy: this.reviewer(), confirmedAt: iso, auditReason: this.reviewReason().trim(),
+      },
+      {
+        id: this.identity.pairKey(pr.flowP.flowId!, pr.rosterP.rosterId!),
+        candidateA: pr.flowP.flowId!, candidateB: pr.rosterP.rosterId!, decision: 'confirmed',
+        reason: this.reviewReason().trim(), confidence: score, reviewedBy: this.reviewer(), reviewedAt: iso,
+      },
+    );
+    this.closeReview();
+  }
+
+  protected rejectMatch(): void {
+    const a = this.reviewA(), b = this.reviewB();
+    if (!a || !b || !this.canGovern() || !this.reviewReason().trim()) return;
+    const pr = this.resolvePair(a, b);
+    if (!pr) return;
+    this.store.rejectIdentityMatch({
+      id: this.identity.pairKey(pr.flowP.flowId!, pr.rosterP.rosterId!),
+      candidateA: pr.flowP.flowId!, candidateB: pr.rosterP.rosterId!, decision: 'rejected',
+      reason: this.reviewReason().trim(), reviewedBy: this.reviewer(), reviewedAt: new Date().toISOString(),
+    });
+    this.closeReview();
   }
 }

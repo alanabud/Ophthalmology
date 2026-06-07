@@ -865,6 +865,31 @@ export interface CanonicalPatient {
   careGap?: string;
 }
 
+/** Confirmed canonical identity link (non-destructive — never mutates sources). */
+export interface CanonicalIdentityMapping {
+  id: string;
+  canonicalPatientId: string;          // the clinical (flow) patient id
+  sourceType: 'roster' | 'encounter' | 'billing' | 'imaging';
+  sourcePatientId: string;             // the demographic (roster) record id
+  legacyMrn?: string;
+  confidence?: number;
+  confirmedBy?: string;
+  confirmedAt?: string;                // ISO
+  auditReason?: string;
+}
+
+/** A reviewed identity-match decision so false matches don't resurface. */
+export interface IdentityMatchDecision {
+  id: string;                          // deterministic pair key
+  candidateA: string;
+  candidateB: string;
+  decision: 'confirmed' | 'rejected';
+  reason?: string;
+  confidence?: number;
+  reviewedBy?: string;
+  reviewedAt?: string;                 // ISO
+}
+
 /** Timestamped clinical change record for the unified patient history. */
 export interface ClinicalAuditEntry {
   id?: string;

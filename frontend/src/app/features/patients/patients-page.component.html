@@ -28,6 +28,19 @@
     </div>
   </div>
 
+  <!-- Identity resolution panel -->
+  <div class="idres">
+    <span class="idres__lbl">Identity resolution</span>
+    <div class="idres__items">
+      <span class="idres__kpi"><strong>{{ totalCount() }}</strong> canonical</span>
+      <span class="idres__kpi idres__kpi--ok"><strong>{{ identity.linkedCount() }}</strong> linked</span>
+      <span class="idres__kpi"><strong>{{ identity.demographicOnlyCount() }}</strong> demographic</span>
+      <span class="idres__kpi idres__kpi--warn"><strong>{{ identity.needsReviewCount() }}</strong> needs review</span>
+      <span class="idres__kpi idres__kpi--warn"><strong>{{ identity.possibleMatchCount() }}</strong> possible matches</span>
+      <span class="idres__kpi"><strong>{{ identity.rejectedCount() }}</strong> rejected</span>
+    </div>
+  </div>
+
   <p class="reg__count">Showing {{ visibleRows().length }} of {{ rows().length }} matched · {{ totalCount() }} total</p>
 
   <!-- Patient cards -->
@@ -149,6 +162,16 @@
             } @else if (c.matchStatus === 'linked') {
               <div class="idnote idnote--ok"><strong>Linked identity</strong><p>Demographic and clinical records resolve to one canonical patient.</p></div>
             }
+
+            @if (c.matchStatus !== 'linked') {
+              <div class="csec">
+                @if (canGovern()) {
+                  <button class="dbtn dbtn--primary" type="button" (click)="openReview(c)">Review &amp; link identity →</button>
+                } @else {
+                  <p class="idnote idnote--info">Identity linking requires supervisor access.</p>
+                }
+              </div>
+            }
           }
 
           <!-- ═══ CLINICAL TABS (only when an encounter exists) ═══ -->
@@ -233,6 +256,75 @@
         }
       </footer>
     </aside>
+  }
+
+  <!-- ═══ IDENTITY REVIEW MODAL (side-by-side compare + confirm/reject) ═══ -->
+  @if (reviewOpen() && reviewA(); as a) {
+    <div class="rev-scrim" (click)="closeReview()"></div>
+    <div class="revmodal" role="dialog" aria-label="Identity review">
+      <header class="revmodal__hd">
+        <h3>Identity review</h3>
+        <button class="chart__x" type="button" (click)="closeReview()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </header>
+
+      <div class="revmodal__body">
+        @if (!reviewB()) {
+          <p class="clbl">Select a candidate {{ a.hasEncounter ? 'demographic' : 'clinical' }} record to compare</p>
+          <div class="reg__search reg__search--sm">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="search" placeholder="Search candidates…" [value]="candidateQuery()" (input)="candidateQuery.set($any($event.target).value)">
+          </div>
+          @if (candidates().length) {
+            <div class="candlist">
+              @for (b of candidates(); track b.id) {
+                <button class="cand" type="button" (click)="pickCandidate(b)">
+                  <span class="cand__name">{{ b.name }}</span>
+                  <span class="cand__mrn">{{ b.canonicalMrn }}</span>
+                  <span class="cand__score cand__score--{{ identity.scoreMatch(a, b).band | lowercase }}">{{ identity.scoreMatch(a, b).score }}%</span>
+                </button>
+              }
+            </div>
+          } @else { <p class="ctext">No candidate records available to link.</p> }
+        } @else {
+          <!-- Side-by-side comparison -->
+          <div class="compare">
+            <div class="compare__col">
+              <span class="compare__hd">{{ a.hasEncounter ? 'Clinical (A)' : 'Demographic (A)' }}</span>
+              <div class="crow"><span>Name</span><strong>{{ a.name }}</strong></div>
+              <div class="crow"><span>MRN</span><strong>{{ a.canonicalMrn }}</strong></div>
+              <div class="crow"><span>DOB</span><strong>{{ a.dob || '—' }}</strong></div>
+              <div class="crow"><span>Encounter</span><strong>{{ a.hasEncounter ? 'Active' : 'None' }}</strong></div>
+              <div class="crow"><span>Last visit</span><strong>{{ a.lastEncounter || (a.hasEncounter ? 'Today' : '—') }}</strong></div>
+            </div>
+            <div class="compare__col">
+              <span class="compare__hd">{{ reviewB()!.hasEncounter ? 'Clinical (B)' : 'Demographic (B)' }}</span>
+              <div class="crow"><span>Name</span><strong>{{ reviewB()!.name }}</strong></div>
+              <div class="crow"><span>MRN</span><strong>{{ reviewB()!.canonicalMrn }}</strong></div>
+              <div class="crow"><span>DOB</span><strong>{{ reviewB()!.dob || '—' }}</strong></div>
+              <div class="crow"><span>Encounter</span><strong>{{ reviewB()!.hasEncounter ? 'Active' : 'None' }}</strong></div>
+              <div class="crow"><span>Last visit</span><strong>{{ reviewB()!.lastEncounter || (reviewB()!.hasEncounter ? 'Today' : '—') }}</strong></div>
+            </div>
+          </div>
+
+          @if (reviewScore(); as s) {
+            <div class="confscore confscore--{{ s.band | lowercase }}">
+              <strong>Match confidence: {{ s.score }}% · {{ s.band }}</strong>
+              <ul>@for (r of s.reasons; track r) { <li>{{ r }}</li> }</ul>
+            </div>
+            @if (s.band === 'Low') { <p class="idnote idnote--warn">⚠ Low confidence — confirm only if you are certain these are the same patient.</p> }
+          }
+
+          <label class="ef ef--full"><span>Reason (required for audit)</span>
+            <input type="text" [value]="reviewReason()" (input)="reviewReason.set($any($event.target).value)" placeholder="e.g. Verified name + DOB at front desk"></label>
+
+          <div class="revmodal__foot">
+            <button class="dbtn" type="button" (click)="reviewB.set(null)">Back</button>
+            <button class="dbtn dbtn--danger" type="button" [disabled]="!reviewReason().trim()" (click)="rejectMatch()">Reject match</button>
+            <button class="dbtn dbtn--primary" type="button" [disabled]="!reviewReason().trim()" (click)="confirmLink()">Confirm link</button>
+          </div>
+        }
+      </div>
+    </div>
   }
 
 </section>

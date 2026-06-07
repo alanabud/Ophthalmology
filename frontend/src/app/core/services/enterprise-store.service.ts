@@ -20,10 +20,12 @@ import { FirestoreService } from './firestore.service';
 import {
   AiBriefingItem,
   ClaimRecord,
+  CanonicalIdentityMapping,
   ClinicalAuditEntry,
   CockpitImagingItem,
   EncounterOrder,
   EncounterRecord,
+  IdentityMatchDecision,
   FlowMove,
   FlowStation,
   PatientClinicalRecord,
@@ -355,6 +357,29 @@ export class EnterpriseStoreService {
     this.updateEncounter(patientId, mrn, { orders: [...(cur.orders ?? []), full] }, `Order placed · ${order.type}`, order.detail);
   }
 
+  // ── Identity governance (Sprint 9): non-destructive links + decisions ──────
+  private readonly identityMappingsBase = signal<CanonicalIdentityMapping[]>([]);
+  readonly identityMappings = this.identityMappingsBase.asReadonly();
+  private readonly identityDecisionsBase = signal<IdentityMatchDecision[]>([]);
+  readonly identityDecisions = this.identityDecisionsBase.asReadonly();
+
+  /** Confirm a canonical identity link — writes a mapping + an audited decision. */
+  confirmIdentityLink(m: CanonicalIdentityMapping, decision: IdentityMatchDecision): void {
+    this.identityMappingsBase.update((l) => [...l.filter((x) => x.id !== m.id), m]);
+    this.identityDecisionsBase.update((l) => [...l.filter((x) => x.id !== decision.id), decision]);
+    void this.fs.upsert('canonicalIdentityMappings', m.id, this.sanitize(m))
+      .catch((e) => console.warn('[Store] identity mapping persist failed', e?.message ?? e));
+    void this.fs.upsert('identityMatchDecisions', decision.id, this.sanitize(decision))
+      .catch((e) => console.warn('[Store] identity decision persist failed', e?.message ?? e));
+  }
+
+  /** Reject a possible match — remembered so it never resurfaces. */
+  rejectIdentityMatch(decision: IdentityMatchDecision): void {
+    this.identityDecisionsBase.update((l) => [...l.filter((x) => x.id !== decision.id), decision]);
+    void this.fs.upsert('identityMatchDecisions', decision.id, this.sanitize(decision))
+      .catch((e) => console.warn('[Store] identity decision persist failed', e?.message ?? e));
+  }
+
   // ── Compliance ─────────────────────────────────────────────────────────────
   readonly complianceEvents = computed(() => COMPLIANCE_EVENTS.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
 
@@ -573,6 +598,14 @@ export class EnterpriseStoreService {
     if (encounters.length) {
       this.encounterBase.set(Object.fromEntries(encounters.map((e) => [e.patientId, e])));
     }
+
+    // Identity governance: confirmed links + match decisions.
+    const [mappings, decisions] = await Promise.all([
+      this.fs.getAll<CanonicalIdentityMapping>('canonicalIdentityMappings'),
+      this.fs.getAll<IdentityMatchDecision>('identityMatchDecisions'),
+    ]);
+    if (mappings.length) this.identityMappingsBase.set(mappings);
+    if (decisions.length) this.identityDecisionsBase.set(decisions);
   }
 
   private attachRealtimeListeners(): void {

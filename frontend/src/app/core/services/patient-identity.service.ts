@@ -3,6 +3,8 @@ import { computed, inject, Injectable } from '@angular/core';
 import { CanonicalPatient } from '../models/enterprise.models';
 import { EnterpriseStoreService } from './enterprise-store.service';
 
+export interface MatchScore { score: number; band: 'High' | 'Medium' | 'Low'; reasons: string[]; }
+
 /**
  * PatientIdentityService (Sprint 8)
  * ─────────────────────────────────────────────────────────────────────────────
@@ -27,7 +29,9 @@ export class PatientIdentityService {
     return lastA === lastB && pa[0][0] === pb[0][0];
   }
 
-  /** The unified canonical patient list across both datasets. */
+  pairKey(a: string, b: string): string { return [a, b].sort().join('|'); }
+
+  /** The unified canonical patient list — applies confirmed links + rejections. */
   readonly canonicalPatients = computed<CanonicalPatient[]>(() => {
     const roster = this.store.patients();
     const flow = this.store.patientFlow();
@@ -35,20 +39,28 @@ export class PatientIdentityService {
     const usedRoster = new Set<string>();
     const out: CanonicalPatient[] = [];
 
+    // Governance state.
+    const confirmed = new Map<string, string>(); // flowId -> rosterId
+    for (const m of this.store.identityMappings()) if (m.sourceType === 'roster') confirmed.set(m.canonicalPatientId, m.sourcePatientId);
+    const rejected = new Set(
+      this.store.identityDecisions().filter(d => d.decision === 'rejected').map(d => this.pairKey(d.candidateA, d.candidateB))
+    );
+
     // 1) Clinically-active patients first — these carry encounter data.
     for (const f of flow) {
-      const exact = rosterByName.get(this.norm(f.name));
-      if (exact) {
-        usedRoster.add(exact.id);
+      const confirmRosterId = confirmed.get(f.id);
+      const linkRoster = confirmRosterId ? roster.find(r => r.id === confirmRosterId) : rosterByName.get(this.norm(f.name));
+      if (linkRoster) {
+        usedRoster.add(linkRoster.id);
         out.push({
-          id: f.id, canonicalMrn: f.mrn, legacyMrns: [exact.mrn], name: f.name, age: f.age,
-          insurance: f.insurance ?? exact.insurance, flowId: f.id, rosterId: exact.id,
+          id: f.id, canonicalMrn: f.mrn, legacyMrns: [linkRoster.mrn], name: f.name, age: f.age,
+          insurance: f.insurance ?? linkRoster.insurance, flowId: f.id, rosterId: linkRoster.id,
           source: 'merged', matchStatus: 'linked', hasEncounter: true,
-          dob: exact.dob, status: exact.status, lastEncounter: exact.lastEncounter,
-          nextVisit: exact.nextVisit, balance: exact.balance, careGap: exact.careGap,
+          dob: linkRoster.dob, status: linkRoster.status, lastEncounter: linkRoster.lastEncounter,
+          nextVisit: linkRoster.nextVisit, balance: linkRoster.balance, careGap: linkRoster.careGap,
         });
       } else {
-        const maybe = roster.find(r => !usedRoster.has(r.id) && this.similar(r.fullName, f.name));
+        const maybe = roster.find(r => !usedRoster.has(r.id) && this.similar(r.fullName, f.name) && !rejected.has(this.pairKey(f.id, r.id)));
         out.push({
           id: f.id, canonicalMrn: f.mrn, legacyMrns: maybe ? [maybe.mrn] : [], name: f.name, age: f.age,
           insurance: f.insurance, flowId: f.id, rosterId: maybe?.id,
@@ -77,12 +89,47 @@ export class PatientIdentityService {
     return out;
   });
 
+  /** Deterministic, explainable merge-confidence score. */
+  scoreMatch(a: CanonicalPatient, b: CanonicalPatient): MatchScore {
+    let score = 0; const reasons: string[] = [];
+    if (this.norm(a.name) === this.norm(b.name)) { score += 40; reasons.push('Exact name match (+40)'); }
+    else if (this.similar(a.name, b.name)) { score += 10; reasons.push('Same surname + first initial (+10)'); }
+    else reasons.push('Name differs (0)');
+    if (a.dob && b.dob) {
+      if (a.dob === b.dob) { score += 30; reasons.push('DOB match (+30)'); }
+      else { score -= 60; reasons.push('DOB conflict (−60)'); }
+    }
+    if (a.legacyMrns.includes(b.canonicalMrn) || b.legacyMrns.includes(a.canonicalMrn)) { score += 50; reasons.push('MRN cross-reference (+50)'); }
+    score = Math.max(0, Math.min(100, score));
+    return { score, band: score >= 70 ? 'High' : score >= 40 ? 'Medium' : 'Low', reasons };
+  }
+
+  /** Candidate records from the opposite dataset to review for linking. */
+  candidatesFor(a: CanonicalPatient): CanonicalPatient[] {
+    const all = this.canonicalPatients();
+    const rejected = new Set(
+      this.store.identityDecisions().filter(d => d.decision === 'rejected').map(d => this.pairKey(d.candidateA, d.candidateB))
+    );
+    const wantEncounter = !a.hasEncounter; // demographic → look for clinical, and vice-versa
+    return all
+      .filter(b => b.id !== a.id && b.hasEncounter === wantEncounter && b.matchStatus !== 'linked')
+      .filter(b => !rejected.has(this.pairKey(a.flowId ?? a.id, b.rosterId ?? b.flowId ?? b.id)))
+      .sort((x, y) => this.scoreMatch(a, y).score - this.scoreMatch(a, x).score);
+  }
+
   getCanonicalPatient(key: string): CanonicalPatient | null {
     return this.canonicalPatients().find(c =>
       c.id === key || c.canonicalMrn === key || c.flowId === key ||
       c.rosterId === key || c.legacyMrns.includes(key)
     ) ?? null;
   }
+
+  // ── Identity resolution KPIs ────────────────────────────────────────────────
+  readonly linkedCount = computed(() => this.canonicalPatients().filter(c => c.matchStatus === 'linked').length);
+  readonly demographicOnlyCount = computed(() => this.canonicalPatients().filter(c => c.matchStatus === 'unmatched-roster').length);
+  readonly needsReviewCount = computed(() => this.canonicalPatients().filter(c => c.matchStatus === 'unmatched-encounter').length);
+  readonly possibleMatchCount = computed(() => this.canonicalPatients().filter(c => c.matchStatus === 'possible-match').length);
+  readonly rejectedCount = computed(() => this.store.identityDecisions().filter(d => d.decision === 'rejected').length);
 
   /** Patients flagged as possible duplicate identities. */
   readonly possibleDuplicates = computed(() => this.canonicalPatients().filter(c => c.possibleDuplicate));
