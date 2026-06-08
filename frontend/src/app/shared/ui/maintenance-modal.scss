@@ -57,6 +57,9 @@
   &--locked input { background: var(--mm-bg); color: var(--mm-ink3); cursor: not-allowed; }
 }
 .mf--locked { background: var(--mm-bg) !important; color: var(--mm-ink3) !important; cursor: not-allowed; }
+.mf--check { flex-direction: row; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; color: var(--mm-ink2); cursor: pointer; align-self: end; padding-bottom: 8px;
+  input { width: 16px; height: 16px; accent-color: var(--mm-teal); flex-shrink: 0; }
+}
 
 .mm-foot { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-top: 1px solid var(--mm-hair); flex-shrink: 0;
   &__ind { font-size: 12px; font-weight: 600; color: var(--mm-ink3); }

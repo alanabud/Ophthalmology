@@ -228,7 +228,56 @@
 
   </div><!-- /billing-grid -->
 
+  <!-- ── Payers & Guarantors maintenance ─────────────────── -->
+  <div class="pg-grid">
+    <div class="pg-card">
+      <div class="pg-card__hd">
+        <h2>Insurance Payers</h2>
+        <button class="billing-btn billing-btn--primary" type="button" (click)="newInsurance()">+ New payer</button>
+      </div>
+      <table class="pg-table">
+        <thead><tr><th>Payer</th><th>Payer ID</th><th>Type</th><th>Auth</th><th></th></tr></thead>
+        <tbody>
+          @for (p of payers(); track p.id) {
+            <tr>
+              <td><strong>{{ p.payerName }}</strong></td>
+              <td class="pg-mono">{{ p.payerId }}</td>
+              <td>{{ p.payerType || '—' }} · {{ p.planType || '—' }}</td>
+              <td>{{ p.authRequired ? 'Required' : 'No' }}</td>
+              <td><button class="row-action-btn" type="button" (click)="editInsurance(p)">Edit</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pg-card">
+      <div class="pg-card__hd">
+        <h2>Guarantors</h2>
+        <button class="billing-btn billing-btn--primary" type="button" (click)="newGuarantor()">+ New guarantor</button>
+      </div>
+      <table class="pg-table">
+        <thead><tr><th>Guarantor</th><th>Relationship</th><th>Linked patient</th><th>Resp.</th><th></th></tr></thead>
+        <tbody>
+          @for (g of guarantorList(); track g.id) {
+            <tr>
+              <td><strong>{{ g.firstName }} {{ g.lastName }}</strong></td>
+              <td>{{ g.relationship || '—' }}</td>
+              <td>{{ g.linkedPatient || '—' }}</td>
+              <td>{{ g.responsibilityPct || '—' }}%</td>
+              <td><button class="row-action-btn" type="button" (click)="editGuarantor(g)">Edit</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </section>
+
+<!-- ── New / Edit insurance + guarantor modals (shared premium shell) ── -->
+<app-insurance-modal [open]="insOpen() || !!insToEdit()" [recordToEdit]="insToEdit()" (closed)="closeInsurance()" />
+<app-guarantor-modal [open]="garOpen() || !!garToEdit()" [recordToEdit]="garToEdit()" (closed)="closeGuarantor()" />
 
 <!-- ── Claim detail view ────────────────────────────────── -->
 @if (viewOpen() && selectedClaim()) {

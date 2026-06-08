@@ -865,6 +865,64 @@ export interface CanonicalPatient {
   careGap?: string;
 }
 
+/** Insurance payer maintenance record (Sprint 9A). */
+export interface InsuranceRecord {
+  id: string;
+  clinicId: string;
+  payerName: string;
+  payerId: string;
+  payerType?: string;        // Commercial / Government / Vision / Self-pay
+  planType?: string;         // HMO / PPO / Medicare / Medicaid
+  ediPayerId?: string;
+  // Eligibility
+  eligibilityPhone?: string;
+  eligibilityStatus?: string;
+  eligibilityVerified?: string;
+  // Rules / Authorization
+  authRequired?: boolean;
+  authPhone?: string;
+  timelyFilingDays?: string;
+  referralRequired?: boolean;
+  // Billing defaults
+  claimsAddress?: string;
+  feeSchedule?: string;
+  defaultPlaceOfService?: string;
+  acceptsElectronic?: boolean;
+  // Audit
+  active?: boolean;
+  notes?: string;
+  createdBy?: string; createdOn?: string; updatedBy?: string; updatedOn?: string;
+}
+
+/** Guarantor (financially responsible party) maintenance record (Sprint 9A). */
+export interface GuarantorRecord {
+  id: string;
+  clinicId: string;
+  firstName: string;
+  lastName: string;
+  // Relationship
+  relationship?: string;
+  linkedPatient?: string;
+  linkedPatientMrn?: string;
+  dob?: string;
+  ssnLast4?: string;
+  // Contact
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  // Financial responsibility
+  responsibilityPct?: string;
+  billingPreference?: string;
+  statementDelivery?: string;
+  // Audit
+  active?: boolean;
+  notes?: string;
+  createdBy?: string; createdOn?: string; updatedBy?: string; updatedOn?: string;
+}
+
 /** Confirmed canonical identity link (non-destructive — never mutates sources). */
 export interface CanonicalIdentityMapping {
   id: string;

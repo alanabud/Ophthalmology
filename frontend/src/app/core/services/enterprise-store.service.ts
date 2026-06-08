@@ -25,7 +25,9 @@ import {
   CockpitImagingItem,
   EncounterOrder,
   EncounterRecord,
+  GuarantorRecord,
   IdentityMatchDecision,
+  InsuranceRecord,
   FlowMove,
   FlowStation,
   PatientClinicalRecord,
@@ -438,6 +440,39 @@ export class EnterpriseStoreService {
     if (submitted) this.fs.upsert('claims', toDocId(claimId), submitted).catch(console.warn);
   }
 
+  // ── Insurance payers (Sprint 9A) ────────────────────────────────────────────
+  private readonly insuranceBase = signal<InsuranceRecord[]>([
+    { id: 'ins-001', clinicId: 'winter-park', payerName: 'Medicare Part B', payerId: 'MCR-FL-01', payerType: 'Government', planType: 'Medicare', ediPayerId: '00590', eligibilityPhone: '1-800-555-0100', eligibilityStatus: 'Active', authRequired: false, timelyFilingDays: '365', claimsAddress: 'PO Box 100, Jacksonville FL', feeSchedule: 'Medicare FL 2026', defaultPlaceOfService: '11 — Office', acceptsElectronic: true, active: true },
+    { id: 'ins-002', clinicId: 'winter-park', payerName: 'BCBS Florida', payerId: 'BCBS-FL-22', payerType: 'Commercial', planType: 'PPO', ediPayerId: '00590', eligibilityPhone: '1-800-555-0222', eligibilityStatus: 'Active', authRequired: true, authPhone: '1-800-555-0234', timelyFilingDays: '180', referralRequired: false, claimsAddress: 'PO Box 1798, Jacksonville FL', feeSchedule: 'BCBS PPO 2026', defaultPlaceOfService: '11 — Office', acceptsElectronic: true, active: true },
+    { id: 'ins-003', clinicId: 'clermont', payerName: 'Aetna', payerId: 'AET-90', payerType: 'Commercial', planType: 'HMO', ediPayerId: '60054', eligibilityStatus: 'Active', authRequired: true, timelyFilingDays: '120', referralRequired: true, feeSchedule: 'Aetna HMO 2026', acceptsElectronic: true, active: true },
+    { id: 'ins-004', clinicId: 'winter-park', payerName: 'VSP Vision', payerId: 'VSP-12', payerType: 'Vision', planType: 'PPO', eligibilityStatus: 'Active', authRequired: false, timelyFilingDays: '90', feeSchedule: 'VSP 2026', acceptsElectronic: true, active: true },
+  ]);
+  readonly insurancePayers = computed(() => this.insuranceBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createInsurance(rec: InsuranceRecord): void {
+    this.insuranceBase.update((l) => [...l, rec]);
+    void this.fs.upsert('insurancePayers', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] insurance persist failed', e?.message ?? e));
+  }
+  updateInsurance(rec: InsuranceRecord): void {
+    this.insuranceBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('insurancePayers', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] insurance persist failed', e?.message ?? e));
+  }
+
+  // ── Guarantors (Sprint 9A) ──────────────────────────────────────────────────
+  private readonly guarantorBase = signal<GuarantorRecord[]>([
+    { id: 'gar-001', clinicId: 'winter-park', firstName: 'Robert', lastName: 'Hart', relationship: 'Spouse', linkedPatient: 'Mila Hart', linkedPatientMrn: 'WP-100234', dob: '1950-06-02', phone: '(407) 555-0101', email: 'r.hart@example.com', address: '12 Oak St', city: 'Winter Park', state: 'FL', zip: '32789', responsibilityPct: '100', billingPreference: 'Statement', statementDelivery: 'Mail', active: true },
+    { id: 'gar-002', clinicId: 'clermont', firstName: 'Dana', lastName: 'Morales', relationship: 'Self', linkedPatient: 'Dana Morales', dob: '1972-09-14', phone: '(352) 555-0144', email: 'd.morales@example.com', responsibilityPct: '100', billingPreference: 'E-statement', statementDelivery: 'Email', active: true },
+    { id: 'gar-003', clinicId: 'winter-park', firstName: 'Walter', lastName: 'Briggs', relationship: 'Self', linkedPatient: 'Walter Briggs', responsibilityPct: '100', billingPreference: 'Statement', statementDelivery: 'Mail', active: true },
+  ]);
+  readonly guarantors = computed(() => this.guarantorBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createGuarantor(rec: GuarantorRecord): void {
+    this.guarantorBase.update((l) => [...l, rec]);
+    void this.fs.upsert('guarantors', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] guarantor persist failed', e?.message ?? e));
+  }
+  updateGuarantor(rec: GuarantorRecord): void {
+    this.guarantorBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('guarantors', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] guarantor persist failed', e?.message ?? e));
+  }
+
   // ── Imaging CRUD ───────────────────────────────────────────────────────────
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
@@ -606,6 +641,14 @@ export class EnterpriseStoreService {
     ]);
     if (mappings.length) this.identityMappingsBase.set(mappings);
     if (decisions.length) this.identityDecisionsBase.set(decisions);
+
+    // Insurance payers + guarantors (Sprint 9A).
+    const [insurance, guarantors] = await Promise.all([
+      this.fs.getAll<InsuranceRecord>('insurancePayers'),
+      this.fs.getAll<GuarantorRecord>('guarantors'),
+    ]);
+    if (insurance.length) this.insuranceBase.set(insurance);
+    if (guarantors.length) this.guarantorBase.set(guarantors);
   }
 
   private attachRealtimeListeners(): void {

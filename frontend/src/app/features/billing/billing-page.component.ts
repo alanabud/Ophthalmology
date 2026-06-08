@@ -2,8 +2,10 @@ import { AfterViewInit, Component, computed, inject, signal, viewChild } from '@
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
-import { ClaimRecord, PatientFlowRecord } from '../../core/models/enterprise.models';
+import { ClaimRecord, GuarantorRecord, InsuranceRecord, PatientFlowRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
+import { GuarantorModalComponent } from '../../shared/ui/guarantor-modal.component';
+import { InsuranceModalComponent } from '../../shared/ui/insurance-modal.component';
 import { NewClaimModalComponent } from '../../shared/ui/new-claim-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 import { WorkFilter, WorkItem, WorkQueueComponent, WorkTone } from '../../shared/ui/work-queue.component';
@@ -12,7 +14,7 @@ type WorkQueue = 'all' | 'denial' | 'follow-up' | 'ready' | 'drafts';
 
 @Component({
   selector: 'app-billing-page',
-  imports: [FormsModule, NewClaimModalComponent, StatusChipComponent, WorkQueueComponent],
+  imports: [FormsModule, GuarantorModalComponent, InsuranceModalComponent, NewClaimModalComponent, StatusChipComponent, WorkQueueComponent],
   templateUrl: './billing-page.component.html',
   styleUrl: './billing-page.component.scss'
 })
@@ -281,4 +283,20 @@ export class BillingPageComponent implements AfterViewInit {
   protected setQueue(q: WorkQueue): void {
     this.activeQueue.set(q);
   }
+
+  // ── Insurance + Guarantor maintenance (shared premium shell) ────────────────
+  protected readonly payers = this.store.insurancePayers;
+  protected readonly guarantorList = this.store.guarantors;
+
+  protected readonly insOpen = signal(false);
+  protected readonly insToEdit = signal<InsuranceRecord | null>(null);
+  protected newInsurance(): void { this.insToEdit.set(null); this.insOpen.set(true); }
+  protected editInsurance(r: InsuranceRecord): void { this.insToEdit.set(r); }
+  protected closeInsurance(): void { this.insOpen.set(false); this.insToEdit.set(null); }
+
+  protected readonly garOpen = signal(false);
+  protected readonly garToEdit = signal<GuarantorRecord | null>(null);
+  protected newGuarantor(): void { this.garToEdit.set(null); this.garOpen.set(true); }
+  protected editGuarantor(r: GuarantorRecord): void { this.garToEdit.set(r); }
+  protected closeGuarantor(): void { this.garOpen.set(false); this.garToEdit.set(null); }
 }

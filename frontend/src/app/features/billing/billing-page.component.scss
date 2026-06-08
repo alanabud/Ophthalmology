@@ -721,3 +721,21 @@
   .kpi-strip { grid-template-columns: repeat(2, 1fr); }
   .worklist-filters { display: none; }
 }
+
+/* ── Payers & Guarantors maintenance lists ───────────── */
+.pg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+.pg-card {
+  background: #fff; border-radius: 14px; box-shadow: 0 1px 2px rgba(22,36,43,0.03), 0 8px 24px rgba(22,36,43,0.06); overflow: hidden;
+  &__hd { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid rgba(22,36,43,0.07);
+    h2 { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: #16242B; } }
+}
+.pg-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px;
+  thead th { text-align: left; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #87949C; padding: 9px 18px; background: #FBFCFB; }
+  td { padding: 11px 18px; border-top: 1px solid rgba(22,36,43,0.06); color: #16242B; vertical-align: middle;
+    strong { font-weight: 700; } }
+  tbody tr:hover td { background: #FBFCFB; }
+}
+.pg-mono { font-variant-numeric: tabular-nums; color: #46555E; }
+
+@media (max-width: 900px) { .pg-grid { grid-template-columns: 1fr; } }
