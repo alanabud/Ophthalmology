@@ -249,6 +249,30 @@
 
   } <!-- end view switch -->
 
+  <!-- ── Appointments list (maintenance) ─────────────────── -->
+  <div class="appt-card">
+    <div class="appt-card__hd">
+      <h2>Appointments</h2>
+      <button class="sched-btn sched-btn--primary" type="button" (click)="openCreate()">+ New appointment</button>
+    </div>
+    <table class="appt-table">
+      <thead><tr><th>ID</th><th>Patient</th><th>Date / time</th><th>Provider</th><th>Type</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        @for (a of appointments(); track a.id) {
+          <tr>
+            <td class="appt-mono">{{ a.id }}</td>
+            <td><strong>{{ a.patient }}</strong></td>
+            <td>{{ a.date }} {{ a.startTime }}</td>
+            <td>{{ a.provider }}</td>
+            <td>{{ a.appointmentType }} · {{ a.visitCategory }}</td>
+            <td><span class="appt-status appt-status--{{ a.tone }}">{{ a.status }}</span></td>
+            <td><button class="row-action-btn" type="button" (click)="editAppointment(a)">Edit</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
 </section>
 
 <!-- ── Waitlist detail drawer ──────────────────────────── -->
@@ -322,7 +346,8 @@
 
 <!-- ── New appointment modal ───────────────────────────── -->
 <app-new-appointment-modal
-  [open]="apptModalOpen()"
+  [open]="apptModalOpen() || !!apptToEdit()"
   [waitlistEntry]="prefillEntry()"
-  (closed)="apptModalOpen.set(false)"
+  [appointmentToEdit]="apptToEdit()"
+  (closed)="closeAppt()"
 />

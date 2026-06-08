@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { WaitlistRecord } from '../../core/models/enterprise.models';
+import { AppointmentRecord, WaitlistRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
@@ -59,11 +59,19 @@ export class SchedulingPageComponent {
   protected readonly prefillEntry = signal<WaitlistRecord | null>(null);
   protected readonly viewOpen = signal(false);
 
+  /* ── Appointments (Sprint 9A) ─────────────────────── */
+  protected readonly appointments = this.store.appointments;
+  protected readonly apptToEdit = signal<AppointmentRecord | null>(null);
+
   protected openCreate(): void {
     this.prefillEntry.set(null);
     this.selectedEntry.set(null);
+    this.apptToEdit.set(null);
     this.apptModalOpen.set(true);
   }
+
+  protected editAppointment(a: AppointmentRecord): void { this.apptToEdit.set(a); }
+  protected closeAppt(): void { this.apptModalOpen.set(false); this.apptToEdit.set(null); this.prefillEntry.set(null); }
 
   protected openBookFromWaitlist(entry: WaitlistRecord): void {
     this.prefillEntry.set(entry);

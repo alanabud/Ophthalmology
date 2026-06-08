@@ -17,7 +17,13 @@
       <!-- ── Title row ────────────────────────────────── -->
       <div class="nam-title-row">
         <div class="nam-title-row__left">
-          <h1 class="nam-title">{{ isEditMode() ? 'Edit appointment' : 'New appointment' }}</h1>
+          <h1 class="nam-title">
+            @if (isEditMode()) { Edit appointment<span class="nam-title__name"> · {{ patientSearch || appointmentToEdit()?.patient }}</span> }
+            @else { New appointment }
+          </h1>
+          @if (isEditMode() && appointmentToEdit()?.id) {
+            <span class="nam-locked">{{ appointmentToEdit()?.id }} · locked</span>
+          }
           @if (apptStatus) {
             <span class="nam-status-pill nam-status-pill--{{ statusTone }}">{{ apptStatus }}</span>
           }

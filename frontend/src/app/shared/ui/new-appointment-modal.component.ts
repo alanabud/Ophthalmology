@@ -377,24 +377,23 @@ export class NewAppointmentModalComponent {
       internalNotes: this.internalNotes,
     };
 
-    /* Update waitlist entry into a booked appointment via store */
-    this.store.createWaitlistEntry({
-      clinicId,
-      patient: record.patient,
-      request: record.visitReason || record.visitCategory || record.appointmentType,
-      preferredWindow: record.date ? `${record.date} ${record.startTime}`.trim() : 'Flexible',
-      fitScore: this.apptStatus === 'Scheduled' ? 'Confirmed' : 'Booked',
-      tone: 'accent',
-      mrn: record.mrn,
-      dob: record.dob,
-      phone: record.phone,
-      insurance: record.primaryPayer,
-      referringProvider: record.referringProvider,
-      laterality: record.laterality,
-      visitType: record.visitCategory,
-      chiefComplaint: record.chiefComplaint,
-      eligibilityStatus: record.eligibilityStatus,
-      notes: record.internalNotes,
-    });
+    // Persist the appointment by id — update existing, or create new (no duplicate).
+    if (this.isEditMode() && this.appointmentToEdit()) {
+      this.store.updateAppointment({ ...this.appointmentToEdit()!, ...record });
+    } else {
+      this.store.createAppointment(record);
+      this.store.createWaitlistEntry({
+        clinicId,
+        patient: record.patient,
+        request: record.visitReason || record.visitCategory || record.appointmentType,
+        preferredWindow: record.date ? `${record.date} ${record.startTime}`.trim() : 'Flexible',
+        fitScore: this.apptStatus === 'Scheduled' ? 'Confirmed' : 'Booked',
+        tone: 'accent',
+        mrn: record.mrn, dob: record.dob, phone: record.phone, insurance: record.primaryPayer,
+        referringProvider: record.referringProvider, laterality: record.laterality,
+        visitType: record.visitCategory, chiefComplaint: record.chiefComplaint,
+        eligibilityStatus: record.eligibilityStatus, notes: record.internalNotes,
+      });
+    }
   }
 }

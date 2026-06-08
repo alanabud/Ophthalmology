@@ -19,6 +19,7 @@ import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLO
 import { FirestoreService } from './firestore.service';
 import {
   AiBriefingItem,
+  AppointmentRecord,
   ClaimRecord,
   CanonicalIdentityMapping,
   ClinicalAuditEntry,
@@ -47,6 +48,21 @@ import {
 
 function clinicMatches(clinicId: string, activeClinicId: string): boolean {
   return activeClinicId === 'network' || clinicId === activeClinicId;
+}
+
+/** Build a full AppointmentRecord from a partial (wide model — defaults the rest). */
+function mkAppt(p: Partial<AppointmentRecord> & Pick<AppointmentRecord, 'id' | 'clinicId' | 'patient'>): AppointmentRecord {
+  return {
+    appointmentType: '', visitCategory: '', status: 'Scheduled', tone: 'neutral', priority: 'Routine',
+    date: '', startTime: '', endTime: '', duration: '30 min', provider: '', secondaryProvider: '', room: '', lane: '', specialty: '',
+    mrn: '', dob: '', phone: '', email: '', laterality: '', visitReason: '', chiefComplaint: '', referringProvider: '',
+    recallType: '', recallInterval: '', linkedEncounterId: '', preOpNotes: '', primaryPayer: '', memberId: '',
+    eligibilityStatus: '', eligibilityVerifiedDate: '', authRequired: false, authNumber: '', authValidFrom: '', authValidTo: '', referralNumber: '',
+    copayCollected: false, copayAmount: '', consentSigned: false, hipaaAcknowledged: false, idVerified: false, insuranceCardCopied: false,
+    medicalHistoryReviewed: false, medicationsReviewed: false, allergiesReviewed: false, specialPrep: '', patientArrivalTime: '',
+    createdBy: '', createdOn: '', confirmedBy: '', confirmedOn: '', cancelReason: '', noShowReason: '', internalNotes: '',
+    ...p,
+  };
 }
 
 /** Derive a safe Firestore document ID from any string (strip illegal chars). */
@@ -473,6 +489,23 @@ export class EnterpriseStoreService {
     void this.fs.upsert('guarantors', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] guarantor persist failed', e?.message ?? e));
   }
 
+  // ── Appointments (Sprint 9A) ────────────────────────────────────────────────
+  private readonly appointmentsBase = signal<AppointmentRecord[]>([
+    mkAppt({ id: 'APT-100201', clinicId: 'winter-park', patient: 'Mila Hart', mrn: 'WP-100234', appointmentType: 'Office visit', visitCategory: 'Glaucoma', status: 'Confirmed', tone: 'accent', date: '2026-06-09', startTime: '09:00', endTime: '09:30', duration: '30 min', provider: 'Dr. Alina Cho', specialty: 'Glaucoma', visitReason: 'IOP check', primaryPayer: 'Medicare Part B' }),
+    mkAppt({ id: 'APT-100202', clinicId: 'winter-park', patient: 'Walter Briggs', mrn: 'WP-882301', appointmentType: 'Pre-op', visitCategory: 'Cataract', status: 'Scheduled', tone: 'neutral', date: '2026-06-09', startTime: '10:00', endTime: '10:45', duration: '45 min', provider: 'Dr. Marcus Vale', specialty: 'Cataract', visitReason: 'Cataract eval', primaryPayer: 'BCBS Florida' }),
+    mkAppt({ id: 'APT-100203', clinicId: 'clermont', patient: 'Dana Morales', mrn: 'CL-202188', appointmentType: 'Injection', visitCategory: 'Retina', status: 'Checked-in', tone: 'accent', date: '2026-06-09', startTime: '11:15', endTime: '11:45', duration: '30 min', provider: 'Dr. Evelyn Sato', specialty: 'Retina', visitReason: 'Anti-VEGF', primaryPayer: 'Aetna' }),
+    mkAppt({ id: 'APT-100204', clinicId: 'winter-park', patient: 'Anita Cole', mrn: 'CL-741552', appointmentType: 'Follow-up', visitCategory: 'Comprehensive', status: 'Scheduled', tone: 'neutral', date: '2026-06-10', startTime: '14:00', endTime: '14:30', duration: '30 min', provider: 'Dr. Alina Cho', specialty: 'Comprehensive', visitReason: 'Annual exam', primaryPayer: 'VSP Vision' }),
+  ]);
+  readonly appointments = computed(() => this.appointmentsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createAppointment(rec: AppointmentRecord): void {
+    this.appointmentsBase.update((l) => [...l, rec]);
+    void this.fs.upsert('appointments', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
+  }
+  updateAppointment(rec: AppointmentRecord): void {
+    this.appointmentsBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('appointments', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
+  }
+
   // ── Imaging CRUD ───────────────────────────────────────────────────────────
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
@@ -649,6 +682,9 @@ export class EnterpriseStoreService {
     ]);
     if (insurance.length) this.insuranceBase.set(insurance);
     if (guarantors.length) this.guarantorBase.set(guarantors);
+
+    const appointments = await this.fs.getAll<AppointmentRecord>('appointments');
+    if (appointments.length) this.appointmentsBase.set(appointments);
   }
 
   private attachRealtimeListeners(): void {
