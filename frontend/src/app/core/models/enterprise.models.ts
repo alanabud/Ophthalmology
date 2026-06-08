@@ -865,6 +865,69 @@ export interface CanonicalPatient {
   careGap?: string;
 }
 
+/** Referral maintenance record (Sprint 9C). */
+export interface ReferralRecord {
+  id: string;
+  clinicId: string;
+  referralNumber: string;
+  // Patient / source
+  patient?: string;
+  patientMrn?: string;
+  referralSource?: string;          // referring provider / practice (required)
+  referringProvider?: string;
+  referringPractice?: string;
+  sourcePhone?: string;
+  // Provider routing
+  toProvider?: string;
+  toLocation?: string;
+  specialty?: string;
+  // Authorization / insurance
+  authRequired?: boolean;
+  authNumber?: string;
+  insurance?: string;
+  validFrom?: string;
+  validTo?: string;
+  visitsAuthorized?: string;
+  // Clinical reason
+  reason?: string;
+  diagnosis?: string;
+  clinicalNotes?: string;
+  // Status
+  status?: string;                  // New / Pending / Scheduled / Completed / Declined / Expired
+  priority?: string;
+  notes?: string;
+  active?: boolean;
+  createdBy?: string; createdOn?: string; updatedBy?: string; updatedOn?: string;
+}
+
+/** General Ledger account maintenance record (Sprint 9C). */
+export interface GLAccountRecord {
+  id: string;
+  clinicId: string;
+  accountCode: string;              // locked identifier
+  accountName: string;
+  accountType?: 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense';
+  normalBalance?: 'Debit' | 'Credit';
+  // Classification
+  subType?: string;
+  category?: string;
+  // Posting rules
+  allowManualPosting?: boolean;
+  requireDepartment?: boolean;
+  defaultDepartment?: string;
+  // Tax / reporting
+  taxCode?: string;
+  reportingCategory?: string;
+  statementLine?: string;
+  // System protection
+  systemAccount?: boolean;          // core account — code/type/balance locked
+  // Status
+  active?: boolean;
+  description?: string;
+  notes?: string;
+  createdBy?: string; createdOn?: string; updatedBy?: string; updatedOn?: string;
+}
+
 /** Provider / staff maintenance record (Sprint 9B). */
 export interface ProviderRecord {
   id: string;

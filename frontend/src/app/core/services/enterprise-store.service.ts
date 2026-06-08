@@ -26,7 +26,9 @@ import {
   CockpitImagingItem,
   EncounterOrder,
   EncounterRecord,
+  GLAccountRecord,
   GuarantorRecord,
+  ReferralRecord,
   IdentityMatchDecision,
   InsuranceRecord,
   LocationRecord,
@@ -541,6 +543,40 @@ export class EnterpriseStoreService {
     void this.fs.upsert('locations', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] location persist failed', e?.message ?? e));
   }
 
+  // ── Referrals (Sprint 9C) ───────────────────────────────────────────────────
+  private readonly referralBase = signal<ReferralRecord[]>([
+    { id: 'ref-001', clinicId: 'winter-park', referralNumber: 'REF-100455', patient: 'Mila Hart', patientMrn: 'WP-100234', referralSource: 'Dr. Helen Park — Family Medicine', referringProvider: 'Dr. Helen Park', referringPractice: 'Orlando Primary Care', toProvider: 'Dr. Alina Cho', toLocation: 'Winter Park Main', specialty: 'Glaucoma', authRequired: true, authNumber: 'AUTH-88231', insurance: 'Medicare Part B', validFrom: '2026-05-01', validTo: '2026-08-01', visitsAuthorized: '3', reason: 'Elevated IOP, suspected glaucoma', diagnosis: 'H40.11', status: 'Scheduled', priority: 'Routine', active: true },
+    { id: 'ref-002', clinicId: 'clermont', referralNumber: 'REF-100456', patient: 'Dana Morales', patientMrn: 'CL-202188', referralSource: 'Dr. Omar Reyes — Endocrinology', referringProvider: 'Dr. Omar Reyes', referringPractice: 'Clermont Diabetes Center', toProvider: 'Dr. Evelyn Sato', toLocation: 'Clermont ASC', specialty: 'Retina', authRequired: false, insurance: 'Aetna', reason: 'Diabetic retinopathy screening', diagnosis: 'E11.319', status: 'Pending', priority: 'Today', active: true },
+    { id: 'ref-003', clinicId: 'winter-park', referralNumber: 'REF-100457', patient: 'Walter Briggs', patientMrn: 'WP-882301', referralSource: 'Self-referral', toProvider: 'Dr. Marcus Vale', toLocation: 'Winter Park Main', specialty: 'Cataract', authRequired: false, reason: 'Cataract evaluation', status: 'New', priority: 'Routine', active: true },
+  ]);
+  readonly referralsList = computed(() => this.referralBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createReferral(rec: ReferralRecord): void {
+    this.referralBase.update((l) => [...l, rec]);
+    void this.fs.upsert('referrals', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] referral persist failed', e?.message ?? e));
+  }
+  updateReferral(rec: ReferralRecord): void {
+    this.referralBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('referrals', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] referral persist failed', e?.message ?? e));
+  }
+
+  // ── GL Accounts (Sprint 9C) ─────────────────────────────────────────────────
+  private readonly glAccountBase = signal<GLAccountRecord[]>([
+    { id: 'gl-1000', clinicId: 'winter-park', accountCode: '1000', accountName: 'Cash — Operating', accountType: 'Asset', normalBalance: 'Debit', subType: 'Current asset', category: 'Cash & equivalents', allowManualPosting: false, systemAccount: true, active: true, description: 'Primary operating cash account' },
+    { id: 'gl-1200', clinicId: 'winter-park', accountCode: '1200', accountName: 'Accounts Receivable — Patient', accountType: 'Asset', normalBalance: 'Debit', subType: 'Current asset', category: 'Receivables', allowManualPosting: false, systemAccount: true, active: true, description: 'Patient AR control account' },
+    { id: 'gl-4000', clinicId: 'winter-park', accountCode: '4000', accountName: 'Service Revenue — Professional', accountType: 'Revenue', normalBalance: 'Credit', subType: 'Operating revenue', category: 'Patient services', allowManualPosting: false, requireDepartment: true, systemAccount: true, reportingCategory: 'Net patient revenue', active: true, description: 'Professional service fee revenue' },
+    { id: 'gl-4100', clinicId: 'winter-park', accountCode: '4100', accountName: 'Optical Sales', accountType: 'Revenue', normalBalance: 'Credit', subType: 'Operating revenue', category: 'Optical', allowManualPosting: true, systemAccount: false, active: true },
+    { id: 'gl-6000', clinicId: 'winter-park', accountCode: '6000', accountName: 'Salaries & Wages', accountType: 'Expense', normalBalance: 'Debit', subType: 'Operating expense', category: 'Payroll', allowManualPosting: true, requireDepartment: true, systemAccount: false, active: true },
+  ]);
+  readonly glAccounts = computed(() => this.glAccountBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createGLAccount(rec: GLAccountRecord): void {
+    this.glAccountBase.update((l) => [...l, rec]);
+    void this.fs.upsert('glAccounts', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] GL persist failed', e?.message ?? e));
+  }
+  updateGLAccount(rec: GLAccountRecord): void {
+    this.glAccountBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('glAccounts', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] GL persist failed', e?.message ?? e));
+  }
+
   // ── Imaging CRUD ───────────────────────────────────────────────────────────
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
@@ -726,6 +762,13 @@ export class EnterpriseStoreService {
     if (appointments.length) this.appointmentsBase.set(appointments);
     if (providers.length) this.providerBase.set(providers);
     if (locations.length) this.locationBase.set(locations);
+
+    const [referrals, glAccounts] = await Promise.all([
+      this.fs.getAll<ReferralRecord>('referrals'),
+      this.fs.getAll<GLAccountRecord>('glAccounts'),
+    ]);
+    if (referrals.length) this.referralBase.set(referrals);
+    if (glAccounts.length) this.glAccountBase.set(glAccounts);
   }
 
   private attachRealtimeListeners(): void {

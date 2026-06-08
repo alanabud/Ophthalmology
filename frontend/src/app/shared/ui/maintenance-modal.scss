@@ -23,7 +23,10 @@
 .mm-title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 14px 22px 12px; border-bottom: 1px solid var(--mm-hair); flex-shrink: 0; }
 .mm-title { margin: 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em;
   &__name { color: var(--mm-teal); } }
-.mm-locked { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mm-ink3); background: var(--mm-bg); border-radius: 6px; padding: 3px 9px; }
+.mm-locked { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mm-ink3); background: var(--mm-bg); border-radius: 6px; padding: 3px 9px;
+  &--sys { color: var(--mm-red); background: rgba(192,71,60,0.10); }
+}
+.mm-hint { font-size: 11.5px; line-height: 1.5; color: var(--mm-ink2); background: rgba(182,121,31,0.08); border-radius: 9px; padding: 10px 12px; margin: 14px 0 0; }
 
 .mm-body { display: flex; flex: 1; min-height: 0; }
 .mm-rail { width: 220px; flex-shrink: 0; border-right: 1px solid var(--mm-hair); padding: 14px 10px; overflow-y: auto; background: linear-gradient(180deg, #FCFDFC, var(--mm-surface) 30%); }

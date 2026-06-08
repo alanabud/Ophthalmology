@@ -54,7 +54,37 @@
       </div>
     </article>
   </section>
+
+  <!-- ── GL Accounts (chart of accounts) ─────────────────── -->
+  <div class="gl-card">
+    <div class="gl-card__hd">
+      <div>
+        <h2>General Ledger Accounts</h2>
+        <p>Chart of accounts — system accounts protect code, type &amp; normal balance.</p>
+      </div>
+      <button class="gl-new" type="button" (click)="newGLAccount()">+ New account</button>
+    </div>
+    <table class="gl-table">
+      <thead><tr><th>Code</th><th>Account</th><th>Type</th><th>Normal</th><th>Protection</th><th></th></tr></thead>
+      <tbody>
+        @for (a of glAccounts(); track a.id) {
+          <tr>
+            <td class="gl-mono">{{ a.accountCode }}</td>
+            <td><strong>{{ a.accountName }}</strong></td>
+            <td>{{ a.accountType }}</td>
+            <td>{{ a.normalBalance }}</td>
+            <td>@if (a.systemAccount) { <span class="gl-sys">System</span> } @else { <span class="gl-std">Standard</span> }</td>
+            <td><button class="gl-edit" type="button" (click)="editGLAccount(a)">Edit</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
 </section>
+
+<!-- GL account maintenance modal (shared premium shell) -->
+<app-gl-account-modal [open]="glOpen() || !!glToEdit()" [recordToEdit]="glToEdit()" (closed)="closeGL()" />
 
 <!-- View modal -->
 <app-modal [open]="viewOpen()" title="Role details" (closed)="closeView()">

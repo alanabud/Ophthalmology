@@ -1,14 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { RoleMatrixItem } from '../../core/models/enterprise.models';
+import { GLAccountRecord, RoleMatrixItem } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { AppModalComponent } from '../../shared/ui/app-modal.component';
+import { GLAccountModalComponent } from '../../shared/ui/gl-account-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
 @Component({
   selector: 'app-admin-page',
-  imports: [FormsModule, AppModalComponent, StatusChipComponent],
+  imports: [FormsModule, AppModalComponent, GLAccountModalComponent, StatusChipComponent],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })
@@ -16,6 +17,14 @@ export class AdminPageComponent {
   protected readonly store = inject(EnterpriseStoreService);
   protected readonly roleMatrix = this.store.roleMatrix;
   protected readonly clinics = this.store.clinicComparison;
+
+  // ── GL Accounts maintenance (Sprint 9C) ─────────────────────────────────────
+  protected readonly glAccounts = this.store.glAccounts;
+  protected readonly glOpen = signal(false);
+  protected readonly glToEdit = signal<GLAccountRecord | null>(null);
+  protected newGLAccount(): void { this.glToEdit.set(null); this.glOpen.set(true); }
+  protected editGLAccount(a: GLAccountRecord): void { this.glToEdit.set(a); }
+  protected closeGL(): void { this.glOpen.set(false); this.glToEdit.set(null); }
 
   // Modal state
   protected readonly selectedRole = signal<RoleMatrixItem | null>(null);

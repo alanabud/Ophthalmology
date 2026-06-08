@@ -101,6 +101,29 @@
     <div class="reg__empty"><strong>No patients match</strong><p>Try a different search or filter.</p></div>
   }
 
+  <!-- ── Referrals maintenance ───────────────────────────── -->
+  <div class="ref-card">
+    <div class="ref-card__hd">
+      <h2>Referrals</h2>
+      <button class="reg__new" type="button" (click)="newReferral()">+ New referral</button>
+    </div>
+    <table class="ref-table">
+      <thead><tr><th>Referral #</th><th>Patient</th><th>Source</th><th>Route to</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        @for (rf of referrals(); track rf.id) {
+          <tr>
+            <td class="ref-mono">{{ rf.referralNumber }}</td>
+            <td><strong>{{ rf.patient }}</strong></td>
+            <td>{{ rf.referralSource || '—' }}</td>
+            <td>{{ rf.toProvider || '—' }}</td>
+            <td><span class="rdot rdot--{{ rf.status === 'Declined' || rf.status === 'Expired' ? 'critical' : rf.status === 'Completed' || rf.status === 'Scheduled' ? 'info' : 'warning' }}">{{ rf.status }}</span></td>
+            <td><button class="reg-edit" type="button" (click)="editReferral(rf)">Edit</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
   <!-- ═══ LONGITUDINAL CHART DRAWER ═══ -->
   @if (selected(); as c) {
     <div class="chart-scrim" (click)="closeChart()"></div>
@@ -271,6 +294,8 @@
     [patientToEdit]="editTarget()"
     (closed)="closeCreate(); closeEdit()"
   />
+
+  <app-referral-modal [open]="refOpen() || !!refToEdit()" [recordToEdit]="refToEdit()" (closed)="closeReferral()" />
 
   <!-- ═══ IDENTITY REVIEW MODAL (side-by-side compare + confirm/reject) ═══ -->
   @if (reviewOpen() && reviewA(); as a) {

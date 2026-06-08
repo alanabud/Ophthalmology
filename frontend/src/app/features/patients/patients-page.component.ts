@@ -2,12 +2,13 @@ import { LowerCasePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { CanonicalPatient, PatientFlowRecord, PatientRecord } from '../../core/models/enterprise.models';
+import { CanonicalPatient, PatientFlowRecord, PatientRecord, ReferralRecord } from '../../core/models/enterprise.models';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { PatientIdentityService } from '../../core/services/patient-identity.service';
 import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
+import { ReferralModalComponent } from '../../shared/ui/referral-modal.component';
 
 type RegFilter =
   | 'all' | 'active-encounter' | 'demographic' | 'possible-duplicate'
@@ -16,7 +17,7 @@ type RegFilter =
 
 @Component({
   selector: 'app-patients-page',
-  imports: [LowerCasePipe, NewPatientModalComponent],
+  imports: [LowerCasePipe, NewPatientModalComponent, ReferralModalComponent],
   templateUrl: './patients-page.component.html',
   styleUrl: './patients-page.component.scss',
 })
@@ -147,6 +148,14 @@ export class PatientsPageComponent {
     if (rec) this.editTarget.set(rec);
   }
   protected closeEdit(): void { this.editTarget.set(null); }
+
+  // ── Referrals maintenance (Sprint 9C) ───────────────────────────────────────
+  protected readonly referrals = this.store.referralsList;
+  protected readonly refOpen = signal(false);
+  protected readonly refToEdit = signal<ReferralRecord | null>(null);
+  protected newReferral(): void { this.refToEdit.set(null); this.refOpen.set(true); }
+  protected editReferral(r: ReferralRecord): void { this.refToEdit.set(r); }
+  protected closeReferral(): void { this.refOpen.set(false); this.refToEdit.set(null); }
   protected openCreate(): void {
     // Reuse the same wizard in create mode (header "New patient record").
     this.editTarget.set(null);
