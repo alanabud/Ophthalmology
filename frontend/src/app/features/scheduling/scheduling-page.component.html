@@ -273,7 +273,58 @@
     </table>
   </div>
 
+  <!-- ── Providers + Locations maintenance ───────────────── -->
+  <div class="pl-grid">
+    <div class="appt-card">
+      <div class="appt-card__hd">
+        <h2>Providers</h2>
+        <button class="sched-btn sched-btn--primary" type="button" (click)="newProvider()">+ New provider</button>
+      </div>
+      <table class="appt-table">
+        <thead><tr><th>Provider</th><th>NPI</th><th>Specialty</th><th>Role</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (p of providers(); track p.id) {
+            <tr>
+              <td><strong>{{ p.displayName }}</strong></td>
+              <td class="appt-mono">{{ p.npi || '—' }}</td>
+              <td>{{ p.specialty || '—' }}</td>
+              <td>{{ p.role || '—' }}</td>
+              <td><span class="appt-status appt-status--{{ p.active ? 'success' : 'neutral' }}">{{ p.active ? 'Active' : 'Inactive' }}</span></td>
+              <td><button class="row-action-btn" type="button" (click)="editProvider(p)">Edit</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="appt-card">
+      <div class="appt-card__hd">
+        <h2>Locations</h2>
+        <button class="sched-btn sched-btn--primary" type="button" (click)="newLocation()">+ New location</button>
+      </div>
+      <table class="appt-table">
+        <thead><tr><th>Location</th><th>Type</th><th>City</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (l of locations(); track l.id) {
+            <tr>
+              <td><strong>{{ l.name }}</strong></td>
+              <td>{{ l.type || '—' }}</td>
+              <td>{{ l.city || '—' }}</td>
+              <td>{{ l.defaultCapacity || '—' }}</td>
+              <td><span class="appt-status appt-status--{{ l.active ? 'success' : 'neutral' }}">{{ l.active ? 'Active' : 'Inactive' }}</span></td>
+              <td><button class="row-action-btn" type="button" (click)="editLocation(l)">Edit</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </section>
+
+<!-- ── Provider + Location modals (shared premium shell) ── -->
+<app-provider-modal [open]="provOpen() || !!provToEdit()" [recordToEdit]="provToEdit()" (closed)="closeProvider()" />
+<app-location-modal [open]="locOpen() || !!locToEdit()" [recordToEdit]="locToEdit()" (closed)="closeLocation()" />
 
 <!-- ── Waitlist detail drawer ──────────────────────────── -->
 @if (viewOpen() && selectedEntry()) {

@@ -1,16 +1,18 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { AppointmentRecord, WaitlistRecord } from '../../core/models/enterprise.models';
+import { AppointmentRecord, LocationRecord, ProviderRecord, WaitlistRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
+import { LocationModalComponent } from '../../shared/ui/location-modal.component';
 import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-modal.component';
+import { ProviderModalComponent } from '../../shared/ui/provider-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
 type ScheduleView = 'board' | 'waitlist';
 
 @Component({
   selector: 'app-scheduling-page',
-  imports: [FormsModule, NewAppointmentModalComponent, StatusChipComponent],
+  imports: [FormsModule, LocationModalComponent, NewAppointmentModalComponent, ProviderModalComponent, StatusChipComponent],
   templateUrl: './scheduling-page.component.html',
   styleUrl: './scheduling-page.component.scss'
 })
@@ -72,6 +74,22 @@ export class SchedulingPageComponent {
 
   protected editAppointment(a: AppointmentRecord): void { this.apptToEdit.set(a); }
   protected closeAppt(): void { this.apptModalOpen.set(false); this.apptToEdit.set(null); this.prefillEntry.set(null); }
+
+  /* ── Providers + Locations maintenance (Sprint 9B) ──── */
+  protected readonly providers = this.store.providersList;
+  protected readonly locations = this.store.locationsList;
+
+  protected readonly provOpen = signal(false);
+  protected readonly provToEdit = signal<ProviderRecord | null>(null);
+  protected newProvider(): void { this.provToEdit.set(null); this.provOpen.set(true); }
+  protected editProvider(p: ProviderRecord): void { this.provToEdit.set(p); }
+  protected closeProvider(): void { this.provOpen.set(false); this.provToEdit.set(null); }
+
+  protected readonly locOpen = signal(false);
+  protected readonly locToEdit = signal<LocationRecord | null>(null);
+  protected newLocation(): void { this.locToEdit.set(null); this.locOpen.set(true); }
+  protected editLocation(l: LocationRecord): void { this.locToEdit.set(l); }
+  protected closeLocation(): void { this.locOpen.set(false); this.locToEdit.set(null); }
 
   protected openBookFromWaitlist(entry: WaitlistRecord): void {
     this.prefillEntry.set(entry);

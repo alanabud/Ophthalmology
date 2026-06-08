@@ -29,6 +29,8 @@ import {
   GuarantorRecord,
   IdentityMatchDecision,
   InsuranceRecord,
+  LocationRecord,
+  ProviderRecord,
   FlowMove,
   FlowStation,
   PatientClinicalRecord,
@@ -506,6 +508,39 @@ export class EnterpriseStoreService {
     void this.fs.upsert('appointments', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
   }
 
+  // ── Providers (Sprint 9B) ───────────────────────────────────────────────────
+  private readonly providerBase = signal<ProviderRecord[]>([
+    { id: 'prov-001', clinicId: 'winter-park', displayName: 'Dr. Alina Cho', firstName: 'Alina', lastName: 'Cho', credentials: 'MD', npi: '1234567890', specialty: 'Glaucoma', role: 'Physician', defaultLocation: 'Winter Park Main', licenseNumber: 'ME-118203', taxonomy: '207WX0009X', defaultStartTime: '08:00', defaultEndTime: '17:00', slotMinutes: '20', workingDays: 'Mon–Fri', billingProvider: true, renderingProvider: true, referringProvider: false, phone: '(407) 555-0190', email: 'a.cho@acuityeye.local', active: true },
+    { id: 'prov-002', clinicId: 'winter-park', displayName: 'Dr. Marcus Vale', firstName: 'Marcus', lastName: 'Vale', credentials: 'MD', npi: '2345678901', specialty: 'Cataract', role: 'Physician', defaultLocation: 'Winter Park Main', licenseNumber: 'ME-99421', defaultStartTime: '07:30', defaultEndTime: '16:00', slotMinutes: '30', workingDays: 'Mon–Thu', billingProvider: true, renderingProvider: true, active: true },
+    { id: 'prov-003', clinicId: 'clermont', displayName: 'Dr. Evelyn Sato', firstName: 'Evelyn', lastName: 'Sato', credentials: 'MD', npi: '3456789012', specialty: 'Retina', role: 'Physician', defaultLocation: 'Clermont ASC', billingProvider: true, renderingProvider: true, active: true },
+    { id: 'prov-004', clinicId: 'winter-park', displayName: 'Jordan Pike', firstName: 'Jordan', lastName: 'Pike', credentials: 'COA', specialty: 'Comprehensive', role: 'Technician', defaultLocation: 'Winter Park Main', defaultStartTime: '08:00', defaultEndTime: '17:00', billingProvider: false, active: true },
+  ]);
+  readonly providersList = computed(() => this.providerBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createProvider(rec: ProviderRecord): void {
+    this.providerBase.update((l) => [...l, rec]);
+    void this.fs.upsert('providers', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] provider persist failed', e?.message ?? e));
+  }
+  updateProvider(rec: ProviderRecord): void {
+    this.providerBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('providers', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] provider persist failed', e?.message ?? e));
+  }
+
+  // ── Locations (Sprint 9B) ───────────────────────────────────────────────────
+  private readonly locationBase = signal<LocationRecord[]>([
+    { id: 'loc-001', clinicId: 'winter-park', name: 'Winter Park Main', type: 'Clinic', address: '1200 Orange Ave', city: 'Winter Park', state: 'FL', zip: '32789', phone: '(407) 555-0100', timeZone: 'America/New_York', hours: 'Mon–Fri 8:00–17:00', defaultCapacity: '60', rooms: 'Exam 1, Exam 2, Exam 3, Imaging A, Prep 1', facilityNpi: '1980808080', taxId: '59-1234567', placeOfService: '11 — Office', active: true },
+    { id: 'loc-002', clinicId: 'clermont', name: 'Clermont ASC', type: 'Surgery Center', address: '450 Citrus Tower Blvd', city: 'Clermont', state: 'FL', zip: '34711', phone: '(352) 555-0140', timeZone: 'America/New_York', hours: 'Mon–Thu 6:30–15:00', defaultCapacity: '24', rooms: 'OR 1, OR 2, PACU, Pre-op', facilityNpi: '1980901090', taxId: '59-7654321', placeOfService: '24 — ASC', active: true },
+    { id: 'loc-003', clinicId: 'winter-park', name: 'Winter Park Optical', type: 'Optical', address: '1200 Orange Ave Ste B', city: 'Winter Park', state: 'FL', zip: '32789', phone: '(407) 555-0177', timeZone: 'America/New_York', hours: 'Mon–Sat 9:00–18:00', defaultCapacity: '20', rooms: 'Dispensing 1, Dispensing 2', placeOfService: '11 — Office', active: true },
+  ]);
+  readonly locationsList = computed(() => this.locationBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  createLocation(rec: LocationRecord): void {
+    this.locationBase.update((l) => [...l, rec]);
+    void this.fs.upsert('locations', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] location persist failed', e?.message ?? e));
+  }
+  updateLocation(rec: LocationRecord): void {
+    this.locationBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
+    void this.fs.upsert('locations', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] location persist failed', e?.message ?? e));
+  }
+
   // ── Imaging CRUD ───────────────────────────────────────────────────────────
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
@@ -683,8 +718,14 @@ export class EnterpriseStoreService {
     if (insurance.length) this.insuranceBase.set(insurance);
     if (guarantors.length) this.guarantorBase.set(guarantors);
 
-    const appointments = await this.fs.getAll<AppointmentRecord>('appointments');
+    const [appointments, providers, locations] = await Promise.all([
+      this.fs.getAll<AppointmentRecord>('appointments'),
+      this.fs.getAll<ProviderRecord>('providers'),
+      this.fs.getAll<LocationRecord>('locations'),
+    ]);
     if (appointments.length) this.appointmentsBase.set(appointments);
+    if (providers.length) this.providerBase.set(providers);
+    if (locations.length) this.locationBase.set(locations);
   }
 
   private attachRealtimeListeners(): void {

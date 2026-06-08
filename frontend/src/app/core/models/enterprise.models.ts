@@ -865,6 +865,67 @@ export interface CanonicalPatient {
   careGap?: string;
 }
 
+/** Provider / staff maintenance record (Sprint 9B). */
+export interface ProviderRecord {
+  id: string;
+  clinicId: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  credentials?: string;        // MD / OD / COA …
+  npi?: string;
+  // Specialty / role
+  specialty?: string;
+  role?: 'Physician' | 'OD' | 'Technician' | 'Billing' | 'Scheduler' | 'Admin';
+  defaultLocation?: string;
+  // Credentials
+  licenseNumber?: string;
+  deaNumber?: string;
+  taxonomy?: string;
+  // Schedule defaults
+  defaultStartTime?: string;
+  defaultEndTime?: string;
+  slotMinutes?: string;
+  workingDays?: string;
+  // Billing flags
+  billingProvider?: boolean;
+  renderingProvider?: boolean;
+  referringProvider?: boolean;
+  // Contact / status
+  phone?: string;
+  email?: string;
+  active?: boolean;
+  notes?: string;
+  createdBy?: string; createdOn?: string; updatedBy?: string; updatedOn?: string;
+}
+
+/** Location / facility maintenance record (Sprint 9B). */
+export interface LocationRecord {
+  id: string;
+  clinicId: string;
+  name: string;
+  type?: 'Clinic' | 'Surgery Center' | 'Optical' | 'Admin' | 'Imaging';
+  // Address
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  timeZone?: string;
+  // Operating hours / capacity
+  hours?: string;
+  defaultCapacity?: string;
+  rooms?: string;              // comma-separated resource list
+  // Billing / facility
+  facilityNpi?: string;
+  taxId?: string;
+  placeOfService?: string;
+  // Status
+  active?: boolean;
+  notes?: string;
+  createdBy?: string; createdOn?: string; updatedBy?: string; updatedOn?: string;
+}
+
 /** Insurance payer maintenance record (Sprint 9A). */
 export interface InsuranceRecord {
   id: string;
