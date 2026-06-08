@@ -2,13 +2,14 @@ import { LowerCasePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { CanonicalPatient, PatientFlowRecord, PatientRecord, ReferralRecord } from '../../core/models/enterprise.models';
+import { CanonicalPatient, DocumentRecord, PatientFlowRecord, PatientRecord, ReferralRecord } from '../../core/models/enterprise.models';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { PatientIdentityService } from '../../core/services/patient-identity.service';
 import { NewPatientModalComponent } from '../../shared/ui/new-patient-modal.component';
 import { ReferralModalComponent } from '../../shared/ui/referral-modal.component';
+import { DocumentModalComponent } from '../../shared/ui/document-modal.component';
 
 type RegFilter =
   | 'all' | 'active-encounter' | 'demographic' | 'possible-duplicate'
@@ -17,7 +18,7 @@ type RegFilter =
 
 @Component({
   selector: 'app-patients-page',
-  imports: [LowerCasePipe, NewPatientModalComponent, ReferralModalComponent],
+  imports: [LowerCasePipe, NewPatientModalComponent, ReferralModalComponent, DocumentModalComponent],
   templateUrl: './patients-page.component.html',
   styleUrl: './patients-page.component.scss',
 })
@@ -156,6 +157,18 @@ export class PatientsPageComponent {
   protected newReferral(): void { this.refToEdit.set(null); this.refOpen.set(true); }
   protected editReferral(r: ReferralRecord): void { this.refToEdit.set(r); }
   protected closeReferral(): void { this.refOpen.set(false); this.refToEdit.set(null); }
+
+  // ── Documents maintenance (Sprint 9D) ───────────────────────────────────────
+  protected readonly documents = this.store.documents;
+  protected readonly docOpen = signal(false);
+  protected readonly docToEdit = signal<DocumentRecord | null>(null);
+  protected newDocument(): void { this.docToEdit.set(null); this.docOpen.set(true); }
+  protected editDocument(d: DocumentRecord): void { this.docToEdit.set(d); }
+  protected closeDocument(): void { this.docOpen.set(false); this.docToEdit.set(null); }
+  protected async downloadDocument(d: DocumentRecord): Promise<void> {
+    try { const url = await this.store.resolveDocumentUrl(d); window.open(url, '_blank'); }
+    catch (e) { console.warn('download failed', e); }
+  }
   protected openCreate(): void {
     // Reuse the same wizard in create mode (header "New patient record").
     this.editTarget.set(null);

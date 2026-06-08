@@ -24,6 +24,8 @@ import {
   CanonicalIdentityMapping,
   ClinicalAuditEntry,
   CockpitImagingItem,
+  DocumentAudit,
+  DocumentRecord,
   EncounterOrder,
   EncounterRecord,
   GLAccountRecord,
@@ -577,6 +579,70 @@ export class EnterpriseStoreService {
     void this.fs.upsert('glAccounts', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] GL persist failed', e?.message ?? e));
   }
 
+  // ── Documents (Sprint 9D) — metadata in Firestore, file in Storage ──────────
+  private readonly documentBase = signal<DocumentRecord[]>([
+    { id: 'DOC-100010', clinicId: 'winter-park', title: 'Glaucoma referral letter', category: 'Referral', status: 'Active', linkedEntityType: 'referral', linkedEntityId: 'REF-100455', patientId: 'WP-100234', fileName: 'referral-letter.pdf', fileType: 'application/pdf', fileSize: 184320, storagePath: 'documents/referral/REF-100455/DOC-100010/referral-letter.pdf', uploadStatus: 'uploaded', uploadedBy: 'Front desk', uploadedAt: '2026-05-02', updatedAt: '2026-05-02', privacyLevel: 'Restricted', description: 'PCP referral for elevated IOP' },
+    { id: 'DOC-100011', clinicId: 'winter-park', title: 'Signed surgical consent', category: 'Consent', status: 'Active', linkedEntityType: 'patient', linkedEntityId: 'WP-882301', patientId: 'WP-882301', fileName: 'consent-cataract.pdf', fileType: 'application/pdf', fileSize: 96000, storagePath: 'documents/patient/WP-882301/DOC-100011/consent-cataract.pdf', uploadStatus: 'uploaded', uploadedBy: 'Dr. Marcus Vale', uploadedAt: '2026-05-20', updatedAt: '2026-05-20', privacyLevel: 'Confidential', description: 'Phaco + IOL OD consent' },
+    { id: 'DOC-100012', clinicId: 'winter-park', title: 'Insurance card — front', category: 'Insurance', status: 'Active', linkedEntityType: 'patient', linkedEntityId: 'WP-100234', patientId: 'WP-100234', fileName: 'insurance-front.jpg', fileType: 'image/jpeg', fileSize: 240000, storagePath: 'documents/patient/WP-100234/DOC-100012/insurance-front.jpg', uploadStatus: 'uploaded', uploadedBy: 'Front desk', uploadedAt: '2026-04-18', updatedAt: '2026-04-18', privacyLevel: 'Restricted' },
+  ]);
+  readonly documents = computed(() => this.documentBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  private readonly documentAuditBase = signal<Record<string, DocumentAudit[]>>({});
+  readonly documentAudit = this.documentAuditBase.asReadonly();
+
+  private safeFileName(name: string): string { return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80); }
+
+  private logDocAudit(documentId: string, action: DocumentAudit['action'], by?: string, detail?: string): void {
+    const entry: DocumentAudit = { id: `${documentId}-${Date.now()}`, documentId, action, at: this.nowStamp(), iso: this.nowIso(), by, detail };
+    this.documentAuditBase.update((m) => ({ ...m, [documentId]: [...(m[documentId] ?? []), entry] }));
+    void this.fs.upsert('documentAudit', entry.id!, this.sanitize(entry)).catch((e) => console.warn('[Store] doc audit failed', e?.message ?? e));
+  }
+
+  /** Create a document: upload the file to a structured path, then persist metadata + audit. */
+  async createDocument(meta: Omit<DocumentRecord, 'storagePath' | 'fileName' | 'fileType' | 'fileSize' | 'uploadStatus' | 'uploadedAt' | 'updatedAt'>, file: File): Promise<DocumentRecord> {
+    const safe = this.safeFileName(file.name);
+    const storagePath = `documents/${meta.linkedEntityType}/${meta.linkedEntityId || 'general'}/${meta.id}/${safe}`;
+    let uploadStatus: DocumentRecord['uploadStatus'] = 'uploaded';
+    try { await this.fs.uploadFile(storagePath, file); }
+    catch (e: any) { uploadStatus = 'failed'; console.warn('[Store] file upload failed', e?.message ?? e); }
+    const now = new Date().toISOString().slice(0, 10);
+    const rec: DocumentRecord = {
+      ...meta, fileName: safe, fileType: file.type || 'application/octet-stream', fileSize: file.size,
+      storagePath, uploadStatus, uploadedAt: now, updatedAt: now,
+    };
+    this.documentBase.update((l) => [...l, rec]);
+    void this.fs.upsert('documents', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] document persist failed', e?.message ?? e));
+    this.logDocAudit(rec.id, uploadStatus === 'uploaded' ? 'uploaded' : 'updated', meta.uploadedBy, uploadStatus === 'failed' ? 'Upload failed — metadata saved' : safe);
+    return rec;
+  }
+
+  /** Update document metadata by id; optionally replace the file. */
+  async updateDocument(rec: DocumentRecord, newFile?: File | null): Promise<void> {
+    let next = { ...rec, updatedAt: new Date().toISOString().slice(0, 10) };
+    if (newFile) {
+      const safe = this.safeFileName(newFile.name);
+      const storagePath = `documents/${rec.linkedEntityType}/${rec.linkedEntityId || 'general'}/${rec.id}/${safe}`;
+      try { await this.fs.uploadFile(storagePath, newFile); next = { ...next, fileName: safe, fileType: newFile.type || next.fileType, fileSize: newFile.size, storagePath, uploadStatus: 'uploaded' }; }
+      catch (e: any) { next = { ...next, uploadStatus: 'failed' }; console.warn('[Store] file replace failed', e?.message ?? e); }
+    }
+    this.documentBase.update((l) => l.map((d) => (d.id === next.id ? next : d)));
+    void this.fs.upsert('documents', next.id, this.sanitize(next)).catch((e) => console.warn('[Store] document persist failed', e?.message ?? e));
+    this.logDocAudit(next.id, 'updated', rec.uploadedBy, newFile ? 'File replaced' : 'Metadata updated');
+  }
+
+  /** Archive (soft) — never hard-delete clinical/financial documents. */
+  archiveDocument(id: string, by?: string): void {
+    let next: DocumentRecord | null = null;
+    this.documentBase.update((l) => l.map((d) => (d.id === id ? (next = { ...d, status: 'Archived', updatedAt: new Date().toISOString().slice(0, 10) }) : d)));
+    if (next) { void this.fs.upsert('documents', id, this.sanitize(next)).catch(() => {}); this.logDocAudit(id, 'archived', by); }
+  }
+
+  /** Resolve a token-scoped download URL on demand (never stored). */
+  async resolveDocumentUrl(doc: DocumentRecord, by?: string): Promise<string> {
+    const url = await this.fs.getFileUrl(doc.storagePath);
+    this.logDocAudit(doc.id, 'downloaded', by);
+    return url;
+  }
+
   // ── Imaging CRUD ───────────────────────────────────────────────────────────
   createImagingStudy(study: ImagingStudy): void {
     this.imagingStudiesBase.update((list) => [...list, study]);
@@ -763,12 +829,20 @@ export class EnterpriseStoreService {
     if (providers.length) this.providerBase.set(providers);
     if (locations.length) this.locationBase.set(locations);
 
-    const [referrals, glAccounts] = await Promise.all([
+    const [referrals, glAccounts, documents, docAudit] = await Promise.all([
       this.fs.getAll<ReferralRecord>('referrals'),
       this.fs.getAll<GLAccountRecord>('glAccounts'),
+      this.fs.getAll<DocumentRecord>('documents'),
+      this.fs.getAll<DocumentAudit>('documentAudit'),
     ]);
     if (referrals.length) this.referralBase.set(referrals);
     if (glAccounts.length) this.glAccountBase.set(glAccounts);
+    if (documents.length) this.documentBase.set(documents);
+    if (docAudit.length) {
+      const grouped: Record<string, DocumentAudit[]> = {};
+      for (const a of docAudit) (grouped[a.documentId] ??= []).push(a);
+      this.documentAuditBase.set(grouped);
+    }
   }
 
   private attachRealtimeListeners(): void {

@@ -23,7 +23,9 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 
-import { firebaseDb } from '../config/firebase.config';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+
+import { firebaseDb, firebaseStorage } from '../config/firebase.config';
 
 /** Function that extracts a stable string document-ID from a data record. */
 export type DocIdFn<T> = (item: T) => string;
@@ -31,6 +33,21 @@ export type DocIdFn<T> = (item: T) => string;
 @Injectable({ providedIn: 'root' })
 export class FirestoreService {
   private readonly db = firebaseDb;
+  private readonly storage = firebaseStorage;
+
+  // ── Storage (documents) ──────────────────────────────────────────────────────
+  /** Upload a file to a deterministic, privacy-safe path. Returns the path. */
+  async uploadFile(path: string, file: File): Promise<string> {
+    await uploadBytes(ref(this.storage, path), file, { contentType: file.type });
+    return path;
+  }
+  /** Resolve an authenticated, token-scoped download URL on demand (never stored). */
+  async getFileUrl(path: string): Promise<string> {
+    return getDownloadURL(ref(this.storage, path));
+  }
+  async deleteFile(path: string): Promise<void> {
+    await deleteObject(ref(this.storage, path));
+  }
 
   // ── Seeding ────────────────────────────────────────────────────────────────
 

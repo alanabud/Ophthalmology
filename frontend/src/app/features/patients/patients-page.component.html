@@ -124,6 +124,34 @@
     </table>
   </div>
 
+  <!-- ── Documents maintenance (Sprint 9D) ───────────────── -->
+  <div class="ref-card">
+    <div class="ref-card__hd">
+      <h2>Documents</h2>
+      <button class="reg__new" type="button" (click)="newDocument()">+ New document</button>
+    </div>
+    <table class="ref-table">
+      <thead><tr><th>Document ID</th><th>Title</th><th>Category</th><th>Linked to</th><th>Privacy</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        @for (d of documents(); track d.id) {
+          <tr>
+            <td class="ref-mono">{{ d.id }}</td>
+            <td><strong>{{ d.title }}</strong><br><span class="ref-mono" style="opacity:.6">{{ d.fileName }}</span></td>
+            <td>{{ d.category }}</td>
+            <td>{{ d.linkedEntityType }} · {{ d.linkedEntityId }}</td>
+            <td><span class="rdot rdot--{{ d.privacyLevel === 'Confidential' ? 'critical' : d.privacyLevel === 'Restricted' ? 'warning' : 'info' }}">{{ d.privacyLevel }}</span></td>
+            <td><span class="rdot rdot--{{ d.status === 'Archived' ? 'critical' : d.status === 'Draft' ? 'warning' : 'info' }}">{{ d.status }}</span></td>
+            <td>
+              <button class="reg-edit" type="button" (click)="downloadDocument(d)">Download</button>
+              <button class="reg-edit" type="button" (click)="editDocument(d)">Edit</button>
+            </td>
+          </tr>
+        }
+        @if (!documents().length) { <tr><td colspan="7" style="opacity:.6">No documents yet.</td></tr> }
+      </tbody>
+    </table>
+  </div>
+
   <!-- ═══ LONGITUDINAL CHART DRAWER ═══ -->
   @if (selected(); as c) {
     <div class="chart-scrim" (click)="closeChart()"></div>
@@ -296,6 +324,7 @@
   />
 
   <app-referral-modal [open]="refOpen() || !!refToEdit()" [recordToEdit]="refToEdit()" (closed)="closeReferral()" />
+  <app-document-modal [open]="docOpen() || !!docToEdit()" [recordToEdit]="docToEdit()" (closed)="closeDocument()" />
 
   <!-- ═══ IDENTITY REVIEW MODAL (side-by-side compare + confirm/reject) ═══ -->
   @if (reviewOpen() && reviewA(); as a) {

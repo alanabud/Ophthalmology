@@ -865,6 +865,41 @@ export interface CanonicalPatient {
   careGap?: string;
 }
 
+/** Document maintenance record (Sprint 9D) — metadata only; file lives in Storage. */
+export interface DocumentRecord {
+  id: string;
+  clinicId: string;
+  title: string;
+  category: 'Clinical' | 'Insurance' | 'Referral' | 'Imaging' | 'Billing' | 'Consent' | 'Administrative' | 'Other';
+  status: 'Draft' | 'Active' | 'Archived';
+  linkedEntityType: 'patient' | 'referral' | 'claim' | 'imaging' | 'provider' | 'location' | 'general';
+  linkedEntityId: string;
+  patientId?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  storagePath: string;            // privacy-safe path; NO public URL persisted
+  uploadStatus?: 'uploaded' | 'pending' | 'failed';
+  uploadedBy?: string;
+  uploadedAt: string;
+  updatedAt: string;
+  description?: string;
+  tags?: string[];
+  privacyLevel: 'Standard' | 'Restricted' | 'Confidential';
+  notes?: string;
+}
+
+/** Document lifecycle audit event (Sprint 9D). */
+export interface DocumentAudit {
+  id?: string;
+  documentId: string;
+  action: 'uploaded' | 'updated' | 'archived' | 'restored' | 'viewed' | 'downloaded';
+  at: string;
+  iso: string;
+  by?: string;
+  detail?: string;
+}
+
 /** Referral maintenance record (Sprint 9C). */
 export interface ReferralRecord {
   id: string;
