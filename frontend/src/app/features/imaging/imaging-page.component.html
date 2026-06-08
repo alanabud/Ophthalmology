@@ -6,7 +6,7 @@
       <p class="page-subtitle">Structured for imaging technicians and physicians to clear backlogs without hiding review status.</p>
     </div>
     <div class="page-header-actions">
-      <button class="ph-btn ph-btn--primary" type="button" (click)="openCreate()">+ New study</button>
+      <button class="ph-btn ph-btn--primary" type="button" (click)="openNewOrder()">+ New imaging order</button>
     </div>
   </header>
 
@@ -110,7 +110,7 @@
               <td class="td-actions">
                 <div class="row-actions">
                   <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewStudy(study)">View</button>
-                  <button class="row-action-btn" type="button" (click)="openReview(study)">Review</button>
+                  <button class="row-action-btn" type="button" (click)="editStudy(study)">Edit</button>
                   <button class="row-action-more" type="button" title="More actions">···</button>
                 </div>
               </td>
@@ -194,71 +194,9 @@
   }
 </app-modal>
 
-<!-- New study modal -->
-<app-modal [open]="createOpen()" title="Order imaging study" (closed)="closeCreate()">
-  <div class="rec-form">
-    <p class="rec-form-section-header">Patient &amp; order</p>
-    <div class="rec-form-grid">
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Patient name *</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fPatient" placeholder="Full name" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Modality *</label>
-        <select class="rec-form-input" [(ngModel)]="fModality">
-          <option value="">Select modality</option>
-          @for (opt of modalityOptions; track opt) {
-            <option [value]="opt">{{ opt }}</option>
-          }
-        </select>
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Laterality</label>
-        <select class="rec-form-input" [(ngModel)]="fLaterality">
-          <option value="">Select eye</option>
-          @for (l of lateralityOptions; track l) {
-            <option [value]="l">{{ l }}</option>
-          }
-        </select>
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Ordered by</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fOrderedBy" placeholder="Provider name" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Study date</label>
-        <input class="rec-form-input" type="date" [(ngModel)]="fStudyDate" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Urgency</label>
-        <select class="rec-form-input" [(ngModel)]="fUrgency">
-          <option value="">Select urgency</option>
-          @for (u of urgencyOptions; track u) {
-            <option [value]="u">{{ u }}</option>
-          }
-        </select>
-      </div>
-    </div>
-
-    <p class="rec-form-section-header">Clinical details</p>
-    <div class="rec-form-grid">
-      <div class="rec-form-field rec-form-field--full">
-        <label class="rec-form-label">Clinical indication</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fClinicalIndication" placeholder="e.g. DME monitoring — established patient on Eylea therapy" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">Protocol</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fProtocol" placeholder="e.g. 5-line raster + volume cube" />
-      </div>
-      <div class="rec-form-field">
-        <label class="rec-form-label">CPT code</label>
-        <input class="rec-form-input" type="text" [(ngModel)]="fCptCode" placeholder="e.g. 92134" />
-      </div>
-    </div>
-
-    <div class="rec-form-actions">
-      <button class="rec-btn" type="button" (click)="closeCreate()">Cancel</button>
-      <button class="rec-btn rec-btn--primary" type="button" (click)="saveStudy()" [disabled]="!fPatient.trim() || !fModality">Order study</button>
-    </div>
-  </div>
-</app-modal>
+<!-- Unified premium imaging-order maintenance (create + edit) -->
+<app-imaging-order-modal
+  [open]="orderModalOpen() || !!orderToEdit()"
+  [studyToEdit]="orderToEdit()"
+  (closed)="closeOrderModal()"
+/>

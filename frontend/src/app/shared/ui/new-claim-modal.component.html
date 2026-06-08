@@ -17,7 +17,13 @@
       <!-- ── Title row ────────────────────────────────────── -->
       <div class="ncm-title-row">
         <div class="ncm-title-row__left">
-          <h1 class="ncm-title">{{ isEditMode() ? 'Edit claim' : 'New claim' }}</h1>
+          <h1 class="ncm-title">
+            @if (isEditMode()) { Edit claim<span class="ncm-title__name"> · {{ patientSearch || claimToEdit()?.patient }}</span> }
+            @else { New claim }
+          </h1>
+          @if (isEditMode() && claimToEdit()?.claim) {
+            <span class="ncm-locked">{{ claimToEdit()?.claim }} · locked</span>
+          }
           @if (claimStatus) {
             <span class="ncm-status-pill ncm-status-pill--{{ claimStatusTone }}">{{ claimStatus }}</span>
           }

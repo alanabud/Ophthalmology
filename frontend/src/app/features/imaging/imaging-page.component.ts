@@ -5,12 +5,13 @@ import { ActivatedRoute } from '@angular/router';
 import { ImagingStudy, PatientFlowRecord } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
 import { AppModalComponent } from '../../shared/ui/app-modal.component';
+import { ImagingOrderModalComponent } from '../../shared/ui/imaging-order-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 import { WorkFilter, WorkItem, WorkQueueComponent, WorkTone } from '../../shared/ui/work-queue.component';
 
 @Component({
   selector: 'app-imaging-page',
-  imports: [FormsModule, AppModalComponent, StatusChipComponent, WorkQueueComponent],
+  imports: [FormsModule, AppModalComponent, ImagingOrderModalComponent, StatusChipComponent, WorkQueueComponent],
   templateUrl: './imaging-page.component.html',
   styleUrl: './imaging-page.component.scss'
 })
@@ -284,4 +285,11 @@ export class ImagingPageComponent implements AfterViewInit {
   protected closeView(): void { this.viewOpen.set(false); this.selectedStudy.set(null); }
   protected closeReview(): void { this.reviewOpen.set(false); this.selectedStudy.set(null); }
   protected closeCreate(): void { this.createOpen.set(false); }
+
+  // ── Unified premium order maintenance (create + edit) ───────────────────────
+  protected readonly orderModalOpen = signal(false);
+  protected readonly orderToEdit = signal<ImagingStudy | null>(null);
+  protected openNewOrder(): void { this.orderToEdit.set(null); this.orderModalOpen.set(true); }
+  protected editStudy(s: ImagingStudy): void { this.orderToEdit.set(s); }
+  protected closeOrderModal(): void { this.orderModalOpen.set(false); this.orderToEdit.set(null); }
 }
