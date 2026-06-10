@@ -1665,3 +1665,7 @@
 
 /* Sprint 11 — persisted schedule chips */
 .appts__chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 10px; }
+
+/* Sprint 12 — activity module tag */
+.act-mod { display: inline-block; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  color: #0F766E; background: rgba(15,118,110,0.10); border-radius: 5px; padding: 1px 5px; margin-right: 2px; }

@@ -18,6 +18,7 @@ import { NAVIGATION_SECTIONS } from '../data/navigation.data';
 import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLOW, SURGICAL_READINESS } from '../data/clinic-today.data';
 import { FirestoreService } from './firestore.service';
 import {
+  ActivityEvent,
   AiBriefingItem,
   AppointmentAudit,
   AppointmentRecord,
@@ -447,10 +448,12 @@ export class EnterpriseStoreService {
   createClaim(claim: ClaimRecord): void {
     this.claimsBase.update((list) => [...list, claim]);
     this.fs.upsert('claims', toDocId(claim.claim), claim).catch(console.warn);
+    this.logActivity('billing', claim.claim, 'created', `${claim.patient} · ${claim.amount}`);
   }
   updateClaim(updated: ClaimRecord): void {
     this.claimsBase.update((list) => list.map((c) => (c.claim === updated.claim ? updated : c)));
     this.fs.upsert('claims', toDocId(updated.claim), updated).catch(console.warn);
+    this.logActivity('billing', updated.claim, 'updated', updated.status);
   }
   submitClaim(claimId: string): void {
     this.claimsBase.update((list) =>
@@ -458,6 +461,7 @@ export class EnterpriseStoreService {
     );
     const submitted = this.claimsBase().find(c => c.claim === claimId);
     if (submitted) this.fs.upsert('claims', toDocId(claimId), submitted).catch(console.warn);
+    this.logActivity('billing', claimId, 'submitted');
   }
 
   // ── Insurance payers (Sprint 9A) ────────────────────────────────────────────
@@ -503,6 +507,17 @@ export class EnterpriseStoreService {
   readonly appointments = computed(() => this.appointmentsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
   private readonly appointmentAuditBase = signal<Record<string, AppointmentAudit[]>>({});
   readonly appointmentAudit = this.appointmentAuditBase.asReadonly();
+
+  // ── Cross-module activity feed (Sprint 12) ──────────────────────────────────
+  private readonly activityBase = signal<ActivityEvent[]>([]);
+  readonly activityFeed = this.activityBase.asReadonly();
+
+  /** Log a cross-module event for the command-center activity rail. */
+  logActivity(module: ActivityEvent['module'], refId: string, action: string, detail?: string, by?: string): void {
+    const entry: ActivityEvent = { id: `${module}-${refId}-${Date.now()}`, module, refId, action, at: this.nowStamp(), iso: this.nowIso(), by, detail };
+    this.activityBase.update((l) => [...l, entry]);
+    void this.fs.upsert('activityFeed', entry.id!, this.sanitize(entry)).catch((e) => console.warn('[Store] activity persist failed', e?.message ?? e));
+  }
 
   private logApptAudit(appointmentId: string, action: AppointmentAudit['action'], by?: string, detail?: string): void {
     const entry: AppointmentAudit = { id: `${appointmentId}-${Date.now()}`, appointmentId, action, at: this.nowStamp(), iso: this.nowIso(), by, detail };
@@ -597,10 +612,12 @@ export class EnterpriseStoreService {
   createReferral(rec: ReferralRecord): void {
     this.referralBase.update((l) => [...l, rec]);
     void this.fs.upsert('referrals', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] referral persist failed', e?.message ?? e));
+    this.logActivity('referrals', rec.referralNumber, 'created', `${rec.patient} → ${rec.toProvider || rec.specialty || ''}`.trim());
   }
   updateReferral(rec: ReferralRecord): void {
     this.referralBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
     void this.fs.upsert('referrals', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] referral persist failed', e?.message ?? e));
+    this.logActivity('referrals', rec.referralNumber, 'updated', rec.status);
   }
 
   // ── GL Accounts (Sprint 9C) ─────────────────────────────────────────────────
@@ -702,16 +719,19 @@ export class EnterpriseStoreService {
     this.surgeryCasesBase.update((list) => [...list, surgeryCase]);
     const key = toDocId(surgeryCase.caseId ?? `${surgeryCase.clinicId}-${surgeryCase.patient}`);
     this.fs.upsert('surgeryCases', key, surgeryCase).catch(console.warn);
+    this.logActivity('surgery', surgeryCase.caseId ?? key, 'created', `${surgeryCase.patient} · ${surgeryCase.procedure}`);
   }
 
   // ── Optical CRUD ───────────────────────────────────────────────────────────
   createOpticalOrder(order: OpticalOrder): void {
     this.opticalOrdersBase.update((list) => [...list, order]);
     this.fs.upsert('opticalOrders', toDocId(order.order), order).catch(console.warn);
+    this.logActivity('optical', order.order, 'created', order.patient);
   }
   updateOpticalOrder(updated: OpticalOrder): void {
     this.opticalOrdersBase.update((list) => list.map((o) => (o.order === updated.order ? updated : o)));
     this.fs.upsert('opticalOrders', toDocId(updated.order), updated).catch(console.warn);
+    this.logActivity('optical', updated.order, 'updated', updated.status);
   }
 
   // ── Inventory CRUD ─────────────────────────────────────────────────────────
@@ -874,13 +894,15 @@ export class EnterpriseStoreService {
     if (providers.length) this.providerBase.set(this.mergeWithSeeds('providers', providers, this.providerBase()));
     if (locations.length) this.locationBase.set(this.mergeWithSeeds('locations', locations, this.locationBase()));
 
-    const [referrals, glAccounts, documents, docAudit, apptAudit] = await Promise.all([
+    const [referrals, glAccounts, documents, docAudit, apptAudit, activity] = await Promise.all([
       this.fs.getAll<ReferralRecord>('referrals'),
       this.fs.getAll<GLAccountRecord>('glAccounts'),
       this.fs.getAll<DocumentRecord>('documents'),
       this.fs.getAll<DocumentAudit>('documentAudit'),
       this.fs.getAll<AppointmentAudit>('appointmentAudit'),
+      this.fs.getAll<ActivityEvent>('activityFeed'),
     ]);
+    if (activity.length) this.activityBase.set(activity);
     if (referrals.length) this.referralBase.set(referrals);
     if (glAccounts.length) this.glAccountBase.set(glAccounts);
     if (documents.length) this.documentBase.set(documents);

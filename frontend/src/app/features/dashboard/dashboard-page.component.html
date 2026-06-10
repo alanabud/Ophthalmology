@@ -148,7 +148,7 @@
       </div>
       <p class="ccard__intel">Top issue · {{ topClaimIssue() }}</p>
       <div class="ccard__foot">
-        <span class="ccard__sub">Captured today {{ revenueSnapshot().todayRev }}</span>
+        <span class="ccard__sub">{{ revenueSnapshot().pendingValue }} pending · {{ revenueSnapshot().collected }} collected</span>
         <button class="ccard__btn" type="button" (click)="$event.stopPropagation(); navigateQ('/billing', { filter: 'ready-to-bill' })">Work claims</button>
       </div>
     </div>
@@ -470,15 +470,15 @@
       </div>
 
       <div class="ipanel">
-        <div class="ipanel__hd"><h3>Schedule Activity</h3><span class="ipanel__tag">Audit</span></div>
+        <div class="ipanel__hd"><h3>Activity</h3><span class="ipanel__tag">Audit</span></div>
         <div class="mini">
           @for (ev of scheduleActivity(); track ev.id) {
             <div class="mini__row">
-              <span class="mini__dot mini__dot--{{ ev.action === 'moved' ? 'warning' : ev.action === 'status-changed' ? 'ok' : 'critical' }}"></span>
-              <span><strong>{{ ev.appointmentId }}</strong> {{ ev.action }}{{ ev.detail ? ' ' + ev.detail : '' }}</span>
+              <span class="mini__dot mini__dot--{{ ev.action === 'moved' ? 'warning' : ev.action === 'archived' ? 'critical' : 'ok' }}"></span>
+              <span><span class="act-mod">{{ ev.module }}</span> <strong>{{ ev.refId }}</strong> {{ ev.action }}{{ ev.detail ? ' · ' + ev.detail : '' }}</span>
             </div>
           } @empty {
-            <div class="mini__row"><span class="mini__dot mini__dot--ok"></span><span>No schedule changes yet today</span></div>
+            <div class="mini__row"><span class="mini__dot mini__dot--ok"></span><span>No recorded activity yet</span></div>
           }
         </div>
       </div>

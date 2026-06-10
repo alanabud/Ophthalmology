@@ -900,6 +900,18 @@ export interface DocumentAudit {
   detail?: string;
 }
 
+/** Cross-module activity event (Sprint 12 — command-center activity rail). */
+export interface ActivityEvent {
+  id?: string;
+  module: 'scheduling' | 'documents' | 'referrals' | 'billing' | 'surgery' | 'optical';
+  refId: string;
+  action: string;
+  at: string;
+  iso: string;
+  by?: string;
+  detail?: string;
+}
+
 /** Appointment audit trail event (Sprint 10 — board moves / status changes). */
 export interface AppointmentAudit {
   id?: string;

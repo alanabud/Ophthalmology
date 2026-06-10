@@ -294,30 +294,16 @@ export class DashboardPageComponent {
 
   // ── Surgery pipeline ────────────────────────────────────────────────────
 
+  /** Derived 1:1 from persisted surgery cases — no placeholder counts. */
   protected readonly surgeryPipeline = computed((): SurgeryStage[] => {
     const cases = this.store.surgeryCases();
-    const ready   = cases.filter(c => c.tone === 'success').length;
-    const onHold  = cases.filter(c => c.tone === 'critical').length;
-    const pending = cases.filter(c => c.tone === 'warning').length;
     return [
-      { label: 'Evaluations',      count: 12,              icon: '◎', tone: 'neutral'  },
-      { label: 'Surgery Ready',    count: ready || 7,      icon: '✓', tone: 'success'  },
-      { label: 'Pending Clearance',count: onHold + pending,icon: '⏳', tone: 'warning'  },
-      { label: 'Scheduled This Wk',count: cases.length,    icon: '📅', tone: 'info'     },
-      { label: 'Post-op Follow-up',count: 15,              icon: '↻', tone: 'neutral'  },
+      { label: 'Surgery Ready',     count: cases.filter(c => c.tone === 'success').length,  icon: '✓', tone: 'success'  },
+      { label: 'Scheduled',         count: cases.filter(c => c.tone === 'info').length,     icon: '📅', tone: 'info'     },
+      { label: 'Pending Clearance', count: cases.filter(c => c.tone === 'warning').length,  icon: '⏳', tone: 'warning'  },
+      { label: 'On Hold',           count: cases.filter(c => c.tone === 'critical').length, icon: '⛔', tone: 'critical' },
+      { label: 'Total Cases',       count: cases.length,                                    icon: '◎', tone: 'neutral'  },
     ];
-  });
-
-  // ── Optical snapshot ────────────────────────────────────────────────────
-
-  protected readonly opticalSnapshot = computed(() => {
-    const orders = this.store.opticalOrders();
-    return {
-      inProgress:   orders.filter(o => o.status === 'In progress' || o.status === 'Pending').length,
-      readyPickup:  orders.filter(o => o.status === 'Ready').length,
-      revenueToday: '$4,280',
-      claimsPending: this.store.claims().filter(c => c.status !== 'Paid' && c.status !== 'Voided').length,
-    };
   });
 
   // ── AI recommendations ──────────────────────────────────────────────────
@@ -402,25 +388,38 @@ export class DashboardPageComponent {
       });
   });
 
-  /** Recent appointment moves / status changes — same audit feed Scheduling writes. */
-  protected readonly scheduleActivity = computed(() =>
-    Object.values(this.store.appointmentAudit())
-      .flat()
+  /** Cross-module activity: scheduling + document audits merged with the
+      shared activity feed (referrals, billing, surgery, optical). */
+  protected readonly scheduleActivity = computed(() => {
+    const appt = Object.values(this.store.appointmentAudit()).flat()
+      .map(a => ({ id: a.id ?? '', module: 'scheduling', refId: a.appointmentId, action: a.action, iso: a.iso, detail: a.detail }));
+    const docs = Object.values(this.store.documentAudit()).flat()
+      .map(a => ({ id: a.id ?? '', module: 'documents', refId: a.documentId, action: a.action, iso: a.iso, detail: a.detail }));
+    const rest = this.store.activityFeed()
+      .map(a => ({ id: a.id ?? '', module: a.module as string, refId: a.refId, action: a.action, iso: a.iso, detail: a.detail }));
+    return [...appt, ...docs, ...rest]
       .sort((a, b) => (b.iso || '').localeCompare(a.iso || ''))
-      .slice(0, 5)
-  );
+      .slice(0, 6);
+  });
 
-  // ── Revenue snapshot ──────────────────────────────────────────────────────
+  // ── Revenue snapshot — every figure derived from persisted claims ─────────
   protected readonly revenueSnapshot = computed(() => {
     const cl      = this.store.claims();
-    const paid    = cl.filter(c => c.status === 'Paid').length;
-    const denied  = cl.filter(c => c.status === 'Denied' || c.status === 'Rejected').length;
-    const pending = cl.filter(c =>
+    const dollars = (s?: string) => Number((s || '').replace(/[^0-9.]/g, '')) || 0;
+    const paidCl    = cl.filter(c => c.status === 'Paid');
+    const deniedCl  = cl.filter(c => c.status === 'Denied' || c.status === 'Rejected');
+    const pendingCl = cl.filter(c =>
       c.status !== 'Paid' && c.status !== 'Voided' &&
-      c.status !== 'Denied' && c.status !== 'Rejected').length;
-    const total   = Math.max(paid + pending + denied, 1);
-    return { paid, pending, denied, total,
-      todayRev: '$18,240', mtdRev: '$127,480', collectRate: 94, goalPct: 68 };
+      c.status !== 'Denied' && c.status !== 'Rejected');
+    const fmt = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
+    const collected    = paidCl.reduce((s, c) => s + (dollars(c.paidAmount) || dollars(c.amount)), 0);
+    const pendingValue = pendingCl.reduce((s, c) => s + dollars(c.amount), 0);
+    return {
+      paid: paidCl.length, pending: pendingCl.length, denied: deniedCl.length,
+      total: Math.max(cl.length, 1),
+      collected: fmt(collected),
+      pendingValue: fmt(pendingValue),
+    };
   });
 
   // Expose Math for template
