@@ -19,6 +19,7 @@ import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLO
 import { FirestoreService } from './firestore.service';
 import {
   AiBriefingItem,
+  AppointmentAudit,
   AppointmentRecord,
   ClaimRecord,
   CanonicalIdentityMapping,
@@ -503,13 +504,57 @@ export class EnterpriseStoreService {
     mkAppt({ id: 'APT-100204', clinicId: 'winter-park', patient: 'Anita Cole', mrn: 'CL-741552', appointmentType: 'Follow-up', visitCategory: 'Comprehensive', status: 'Scheduled', tone: 'neutral', date: '2026-06-10', startTime: '14:00', endTime: '14:30', duration: '30 min', provider: 'Dr. Alina Cho', specialty: 'Comprehensive', visitReason: 'Annual exam', primaryPayer: 'VSP Vision' }),
   ]);
   readonly appointments = computed(() => this.appointmentsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  private readonly appointmentAuditBase = signal<Record<string, AppointmentAudit[]>>({});
+  readonly appointmentAudit = this.appointmentAuditBase.asReadonly();
+
+  private logApptAudit(appointmentId: string, action: AppointmentAudit['action'], by?: string, detail?: string): void {
+    const entry: AppointmentAudit = { id: `${appointmentId}-${Date.now()}`, appointmentId, action, at: this.nowStamp(), iso: this.nowIso(), by, detail };
+    this.appointmentAuditBase.update((m) => ({ ...m, [appointmentId]: [...(m[appointmentId] ?? []), entry] }));
+    void this.fs.upsert('appointmentAudit', entry.id!, this.sanitize(entry)).catch((e) => console.warn('[Store] appt audit failed', e?.message ?? e));
+  }
+
   createAppointment(rec: AppointmentRecord): void {
     this.appointmentsBase.update((l) => [...l, rec]);
     void this.fs.upsert('appointments', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
+    this.logApptAudit(rec.id, 'created', rec.createdBy, `${rec.date} ${rec.startTime} · ${rec.provider}`);
   }
   updateAppointment(rec: AppointmentRecord): void {
     this.appointmentsBase.update((l) => l.map((r) => (r.id === rec.id ? rec : r)));
     void this.fs.upsert('appointments', rec.id, this.sanitize(rec)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
+    this.logApptAudit(rec.id, 'updated', rec.createdBy);
+  }
+
+  /** Board drag/drop — retime and/or reassign provider by id, with audit. */
+  moveAppointment(id: string, change: Partial<Pick<AppointmentRecord, 'date' | 'startTime' | 'endTime' | 'provider'>>, by?: string): void {
+    let next: AppointmentRecord | null = null;
+    this.appointmentsBase.update((l) => l.map((r) => (r.id === id ? (next = { ...r, ...change }) : r)));
+    if (!next) return;
+    const moved = next as AppointmentRecord;
+    void this.fs.upsert('appointments', id, this.sanitize(moved)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
+    this.logApptAudit(id, 'moved', by, `→ ${moved.date} ${moved.startTime} · ${moved.provider}`);
+  }
+
+  /** Board status change by id, with tone refresh + audit. */
+  setAppointmentStatus(id: string, status: string, by?: string): void {
+    const tone = (status === 'Cancelled' || status === 'No-show') ? 'critical'
+      : (status === 'Confirmed' || status === 'Checked-in' || status === 'Completed') ? 'accent'
+      : (status === 'In progress') ? 'warning' : 'neutral';
+    let next: AppointmentRecord | null = null;
+    this.appointmentsBase.update((l) => l.map((r) => (r.id === id ? (next = { ...r, status, tone }) : r)));
+    if (!next) return;
+    void this.fs.upsert('appointments', id, this.sanitize(next)).catch((e) => console.warn('[Store] appointment persist failed', e?.message ?? e));
+    this.logApptAudit(id, 'status-changed', by, `→ ${status}`);
+  }
+
+  /** Returns a conflicting appointment (same provider, same date, overlapping time), if any. */
+  appointmentConflict(candidate: { id: string; date: string; startTime: string; endTime: string; provider: string }): AppointmentRecord | null {
+    const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+    const s = toMin(candidate.startTime), e = Math.max(toMin(candidate.endTime), s + 1);
+    return this.appointmentsBase().find((r) =>
+      r.id !== candidate.id && r.provider === candidate.provider && r.date === candidate.date &&
+      r.status !== 'Cancelled' && r.status !== 'No-show' &&
+      toMin(r.startTime) < e && Math.max(toMin(r.endTime), toMin(r.startTime) + 1) > s
+    ) ?? null;
   }
 
   // ── Providers (Sprint 9B) ───────────────────────────────────────────────────
@@ -825,15 +870,19 @@ export class EnterpriseStoreService {
       this.fs.getAll<ProviderRecord>('providers'),
       this.fs.getAll<LocationRecord>('locations'),
     ]);
-    if (appointments.length) this.appointmentsBase.set(appointments);
-    if (providers.length) this.providerBase.set(providers);
-    if (locations.length) this.locationBase.set(locations);
+    // Merge with inline seeds by id: Firestore is the source of truth for any
+    // record it has; seed records missing from Firestore are backfilled once so
+    // partial early-QA collections don't silently hide the rest of the roster.
+    if (appointments.length) this.appointmentsBase.set(this.mergeWithSeeds('appointments', appointments, this.appointmentsBase()));
+    if (providers.length) this.providerBase.set(this.mergeWithSeeds('providers', providers, this.providerBase()));
+    if (locations.length) this.locationBase.set(this.mergeWithSeeds('locations', locations, this.locationBase()));
 
-    const [referrals, glAccounts, documents, docAudit] = await Promise.all([
+    const [referrals, glAccounts, documents, docAudit, apptAudit] = await Promise.all([
       this.fs.getAll<ReferralRecord>('referrals'),
       this.fs.getAll<GLAccountRecord>('glAccounts'),
       this.fs.getAll<DocumentRecord>('documents'),
       this.fs.getAll<DocumentAudit>('documentAudit'),
+      this.fs.getAll<AppointmentAudit>('appointmentAudit'),
     ]);
     if (referrals.length) this.referralBase.set(referrals);
     if (glAccounts.length) this.glAccountBase.set(glAccounts);
@@ -843,6 +892,20 @@ export class EnterpriseStoreService {
       for (const a of docAudit) (grouped[a.documentId] ??= []).push(a);
       this.documentAuditBase.set(grouped);
     }
+    if (apptAudit.length) {
+      const grouped: Record<string, AppointmentAudit[]> = {};
+      for (const a of apptAudit) (grouped[a.appointmentId] ??= []).push(a);
+      this.appointmentAuditBase.set(grouped);
+    }
+  }
+
+  /** Firestore records win by id; seeds not yet in Firestore are kept and backfilled. */
+  private mergeWithSeeds<T extends { id: string }>(collection: string, fromFs: T[], seeds: T[]): T[] {
+    const missing = seeds.filter((s) => !fromFs.some((f) => f.id === s.id));
+    for (const m of missing) {
+      void this.fs.upsert(collection, m.id, this.sanitize(m)).catch(() => {});
+    }
+    return [...fromFs, ...missing];
   }
 
   private attachRealtimeListeners(): void {

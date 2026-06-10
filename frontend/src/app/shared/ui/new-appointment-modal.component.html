@@ -670,6 +670,9 @@
       </div><!-- /nam-body -->
 
       <!-- ── Footer ──────────────────────────────────── -->
+      @if (conflictWarn() && !submitted()) {
+        <div class="nam-conflict" role="alert">⚠ Scheduling conflict: {{ conflictWarn() }}</div>
+      }
       @if (!submitted()) {
         <div class="nam-footer">
           <button type="button" class="nam-btn nam-btn--ghost" (click)="cancel()">Cancel</button>

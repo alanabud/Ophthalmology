@@ -30,16 +30,16 @@
       <p class="sched-kpi__label">Waitlist candidates</p>
     </article>
     <article class="sched-kpi sched-kpi--critical">
-      <p class="sched-kpi__value">{{ noShowRisk }}</p>
-      <p class="sched-kpi__label">No-show risk flags</p>
+      <p class="sched-kpi__value">{{ noShowCount() }}</p>
+      <p class="sched-kpi__label">No-shows / cancellations</p>
     </article>
     <article class="sched-kpi">
-      <p class="sched-kpi__value">{{ scheduleLanes().length }}</p>
+      <p class="sched-kpi__value">{{ boardLanes().length }}</p>
       <p class="sched-kpi__label">Active provider lanes</p>
     </article>
-    <article class="sched-kpi">
-      <p class="sched-kpi__value">3</p>
-      <p class="sched-kpi__label">Same-day conflicts</p>
+    <article class="sched-kpi" [class.sched-kpi--critical]="conflictCount() > 0">
+      <p class="sched-kpi__value">{{ conflictCount() }}</p>
+      <p class="sched-kpi__label">Provider time conflicts</p>
     </article>
   </div>
 
@@ -74,51 +74,125 @@
   <!-- ── Main content ─────────────────────────────────── -->
   @if (activeView() === 'board') {
 
-    <!-- Provider Board view -->
+    <!-- ── Board filters (persisted appointments) ────────── -->
+    <div class="board-filters">
+      <div class="board-filters__scope">
+        <button class="board-scope-btn" type="button" [class.board-scope-btn--on]="boardScope() === 'day'" (click)="boardScope.set('day')">Day</button>
+        <button class="board-scope-btn" type="button" [class.board-scope-btn--on]="boardScope() === 'week'" (click)="boardScope.set('week')">Week</button>
+      </div>
+      <div class="board-filters__date">
+        <button class="board-nav-btn" type="button" (click)="shiftDate(-1)" aria-label="Previous">‹</button>
+        <input class="board-date-input" type="date" [ngModel]="boardDate()" (ngModelChange)="boardDate.set($event)">
+        <button class="board-nav-btn" type="button" (click)="shiftDate(1)" aria-label="Next">›</button>
+      </div>
+      <select class="board-filter-select" [ngModel]="providerFilter()" (ngModelChange)="providerFilter.set($event)">
+        <option value="">All providers</option>
+        @for (p of providers(); track p.id) { <option [value]="p.displayName">{{ p.displayName }}</option> }
+      </select>
+      <select class="board-filter-select" [ngModel]="locationFilter()" (ngModelChange)="locationFilter.set($event)">
+        <option value="">All locations</option>
+        @for (l of locations(); track l.id) { <option [value]="l.id">{{ l.name }}</option> }
+      </select>
+      <span class="board-filter-count">{{ totalScheduled() }} appointment{{ totalScheduled() === 1 ? '' : 's' }} in view</span>
+    </div>
+
+    @if (conflictMsg()) {
+      <div class="board-conflict-banner" role="alert">⚠ {{ conflictMsg() }}</div>
+    }
+
+    <!-- Provider Board view — driven by the persisted appointments collection -->
     <div class="sched-board-grid">
 
-      <!-- Lane cards -->
-      <div class="sched-lanes">
-        @for (lane of scheduleLanes(); track lane.provider) {
-          <article class="sched-lane-card">
-            <div class="sched-lane-card__header">
-              <div class="sched-lane-card__provider">
-                <div class="sched-lane-card__avatar">{{ lane.provider[0] }}</div>
-                <div>
-                  <h3 class="sched-lane-card__name">{{ lane.provider }}</h3>
-                  <p class="sched-lane-card__meta">{{ lane.specialty }} · {{ lane.utilization }} utilization · {{ lane.lag }}</p>
+      @if (boardScope() === 'day') {
+        <!-- Day board: provider columns × hourly slots, drag to retime / reassign -->
+        <div class="board-lanes">
+          @for (lane of boardLanes(); track lane.provider) {
+            <article class="sched-lane-card">
+              <div class="sched-lane-card__header">
+                <div class="sched-lane-card__provider">
+                  <div class="sched-lane-card__avatar">{{ lane.provider[0] }}</div>
+                  <div>
+                    <h3 class="sched-lane-card__name">{{ lane.provider }}</h3>
+                    <p class="sched-lane-card__meta">{{ lane.specialty || 'Provider' }} · {{ dayLabel(boardDate()) }}</p>
+                  </div>
                 </div>
+                <app-status-chip [label]="lane.appointments.length + ' appts'" [tone]="lane.appointments.length ? 'accent' : 'neutral'" />
               </div>
-              <app-status-chip [label]="lane.blocks.length + ' appts'" tone="accent" />
-            </div>
 
-            <div class="sched-lane-card__blocks">
-              @for (block of lane.blocks; track block.time + block.patient) {
-                <div class="sched-block"
-                  [class.sched-block--critical]="block.tone === 'critical'"
-                  [class.sched-block--warning]="block.tone === 'warning'"
-                  [class.sched-block--accent]="block.tone === 'accent'"
-                  [class.sched-block--success]="block.tone === 'success'">
-                  <div class="sched-block__time-col">
-                    <span class="sched-block__time">{{ block.time }}</span>
-                    <span class="sched-block__dur">{{ block.duration }}</span>
+              <div class="board-slots">
+                @for (slot of daySlots; track slot) {
+                  <div class="board-slot"
+                    [class.board-slot--hot]="dropHot() === lane.provider + slot"
+                    (dragover)="onDragOver($event, lane.provider + slot)"
+                    (dragleave)="onDragLeave(lane.provider + slot)"
+                    (drop)="onDropSlot($event, lane.provider, slot)">
+                    <span class="board-slot__time">{{ slot }}</span>
+                    <div class="board-slot__cards">
+                      @for (a of apptsInSlot(lane, slot); track a.id) {
+                        <div class="board-appt board-appt--{{ a.tone }}" draggable="true"
+                          (dragstart)="onDragStart($event, a)" (click)="editAppointment(a)" title="{{ a.id }} — open in editor">
+                          <div class="board-appt__top">
+                            <span class="board-appt__time">{{ a.startTime }}–{{ a.endTime }}</span>
+                            @if (a.priority && a.priority !== 'Routine') { <span class="board-appt__priority">{{ a.priority }}</span> }
+                          </div>
+                          <strong class="board-appt__patient">{{ a.patient }}</strong>
+                          <span class="board-appt__type">{{ a.appointmentType }}@if (a.visitCategory) { · {{ a.visitCategory }} }</span>
+                          <select class="board-appt__status board-appt__status--{{ a.tone }}" [ngModel]="a.status"
+                            (ngModelChange)="onStatusChange(a, $event)" (click)="$event.stopPropagation()">
+                            @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+                          </select>
+                        </div>
+                      }
+                    </div>
                   </div>
-                  <div class="sched-block__info">
-                    <strong class="sched-block__patient">{{ block.patient }}</strong>
-                    <span class="sched-block__type">{{ block.visitType }}</span>
+                }
+                @if (!lane.appointments.length) {
+                  <div class="board-lane-empty">
+                    <span>No appointments for {{ lane.provider }} on {{ dayLabel(boardDate()) }}</span>
+                    <button type="button" class="sched-add-slot-btn" (click)="openCreate()">+ Add appointment</button>
                   </div>
-                  <app-status-chip [label]="block.status" [tone]="block.tone" />
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="board-lane-empty board-lane-empty--page">
+              <span>No active providers match the current filters.</span>
+            </div>
+          }
+        </div>
+      } @else {
+        <!-- Week board: day columns, drag to re-date -->
+        <div class="board-week">
+          @for (day of weekDays(); track day) {
+            <div class="board-day-col"
+              [class.board-day-col--today]="day === boardDate()"
+              [class.board-slot--hot]="dropHot() === 'day' + day"
+              (dragover)="onDragOver($event, 'day' + day)"
+              (dragleave)="onDragLeave('day' + day)"
+              (drop)="onDropDay($event, day)">
+              <div class="board-day-col__hd">{{ dayLabel(day) }}</div>
+              @for (a of apptsOnDay(day); track a.id) {
+                <div class="board-appt board-appt--{{ a.tone }}" draggable="true"
+                  (dragstart)="onDragStart($event, a)" (click)="editAppointment(a)" title="{{ a.id }} — open in editor">
+                  <div class="board-appt__top">
+                    <span class="board-appt__time">{{ a.startTime }}</span>
+                    @if (a.priority && a.priority !== 'Routine') { <span class="board-appt__priority">{{ a.priority }}</span> }
+                  </div>
+                  <strong class="board-appt__patient">{{ a.patient }}</strong>
+                  <span class="board-appt__type">{{ a.provider }}</span>
+                  <span class="board-appt__type">{{ a.appointmentType }}</span>
+                  <select class="board-appt__status board-appt__status--{{ a.tone }}" [ngModel]="a.status"
+                    (ngModelChange)="onStatusChange(a, $event)" (click)="$event.stopPropagation()">
+                    @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+                  </select>
                 </div>
               } @empty {
-                <div class="sched-block sched-block--empty">
-                  <span>No appointments scheduled</span>
-                  <button type="button" class="sched-add-slot-btn" (click)="openCreate()">+ Add slot</button>
-                </div>
+                <div class="board-day-empty">No appointments</div>
               }
             </div>
-          </article>
-        }
-      </div>
+          }
+        </div>
+      }
 
       <!-- Right: AI optimization + alerts -->
       <aside class="sched-board-aside">

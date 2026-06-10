@@ -900,6 +900,17 @@ export interface DocumentAudit {
   detail?: string;
 }
 
+/** Appointment audit trail event (Sprint 10 — board moves / status changes). */
+export interface AppointmentAudit {
+  id?: string;
+  appointmentId: string;
+  action: 'created' | 'updated' | 'moved' | 'status-changed';
+  at: string;
+  iso: string;
+  by?: string;
+  detail?: string;
+}
+
 /** Referral maintenance record (Sprint 9C). */
 export interface ReferralRecord {
   id: string;

@@ -159,6 +159,7 @@ export class NewAppointmentModalComponent {
     this.patientArrivalTime = '';
     /* Tab 6 */
     this.internalNotes = ''; this.cancelReason = ''; this.noShowReason = '';
+    this.conflictWarn.set('');
     this.currentTab.set(1);
   }
 
@@ -301,8 +302,23 @@ export class NewAppointmentModalComponent {
     this.closed.emit();
   }
 
+  /** Same provider + overlapping time guard — warn first, allow explicit override. */
+  protected readonly conflictWarn = signal('');
+
   protected submit(): void {
     if (!this.canSubmit || this.isSubmitting()) return;
+    if (this.apptDate && this.startTime && this.provider && !this.conflictWarn()) {
+      const clash = this.store.appointmentConflict({
+        id: this.appointmentToEdit()?.id ?? '',
+        date: this.apptDate, startTime: this.startTime,
+        endTime: this.endTime || this.startTime, provider: this.provider,
+      });
+      if (clash) {
+        this.conflictWarn.set(`${this.provider} already has ${clash.patient} (${clash.id}) at ${clash.startTime}–${clash.endTime} on ${this.apptDate}. Click again to book anyway.`);
+        return;
+      }
+    }
+    this.conflictWarn.set('');
     this.isSubmitting.set(true);
     setTimeout(() => {
       this.persist();
