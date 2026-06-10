@@ -9,7 +9,7 @@ import { INTEGRATIONS } from '../data/integrations.data';
 import { INVENTORY } from '../data/inventory.data';
 import { OPTICAL_ORDERS } from '../data/optical.data';
 import { PATIENTS, PATIENT_BRIEFINGS } from '../data/patients.data';
-import { SCHEDULE_LANES, WAITLIST } from '../data/scheduling.data';
+import { WAITLIST } from '../data/scheduling.data';
 import { SURGERY_CASES } from '../data/surgery.data';
 import { CLAIMS } from '../data/billing.data';
 import { COMPLIANCE_EVENTS } from '../data/compliance.data';
@@ -154,11 +154,8 @@ export class EnterpriseStoreService {
   readonly patients = computed(() => this.patientsBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
 
   // ── Scheduling ─────────────────────────────────────────────────────────────
-  readonly scheduleLanes = computed(() =>
-    SCHEDULE_LANES.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())).filter(
-      (r) => this.activeProviderId() === 'all' || r.provider === this.currentProvider().name
-    )
-  );
+  // The static SCHEDULE_LANES demo board was retired in Sprint 11 — every
+  // schedule surface now derives from the persisted `appointments` collection.
   private readonly waitlistBase = signal<WaitlistRecord[]>([...WAITLIST]);
   readonly waitlist = computed(() => this.waitlistBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
 

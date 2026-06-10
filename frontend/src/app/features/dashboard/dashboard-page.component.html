@@ -400,7 +400,13 @@
       <div class="appts">
         <div class="appts__hd">
           <h2 class="appts__title">Today's Schedule</h2>
-          <span class="appts__sub">{{ todayApptCount() }} appointments · all providers</span>
+          <span class="appts__sub">{{ todayApptCount() }} appointment{{ todayApptCount() === 1 ? '' : 's' }} · live from scheduling</span>
+        </div>
+        <div class="appts__chips">
+          <span class="pill pill--accent">{{ apptStatusSummary().completed }} completed</span>
+          <span class="pill pill--neutral">{{ apptStatusSummary().pending }} pending</span>
+          <span class="pill pill--critical">{{ apptStatusSummary().noShow }} no-show / cancelled</span>
+          <span class="pill pill--warning">{{ apptStatusSummary().urgent }} urgent</span>
         </div>
         <div class="appts__scroll">
           <table class="atable">
@@ -408,18 +414,21 @@
               <tr><th>Time</th><th>Patient</th><th>Visit</th><th>Provider</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-              @for (appt of todayAppointments(); track appt.patient + appt.time) {
+              @for (appt of todayAppointments(); track appt.id) {
                 <tr>
                   <td class="at-time">{{ appt.time }}</td>
                   <td class="at-patient">
                     <span class="at-av">{{ appt.patient.charAt(0) }}</span>
                     <strong>{{ appt.patient }}</strong>
+                    @if (appt.priority && appt.priority !== 'Routine') { <span class="pill pill--warning">{{ appt.priority }}</span> }
                   </td>
                   <td class="at-muted">{{ appt.visitType }}</td>
                   <td class="at-muted">{{ appt.provider }}</td>
                   <td><span class="pill pill--{{ appt.tone }}">{{ appt.status }}</span></td>
-                  <td><button class="at-view" type="button" (click)="viewAppointment()">Open</button></td>
+                  <td><button class="at-view" type="button" (click)="viewAppointment(appt)">Open</button></td>
                 </tr>
+              } @empty {
+                <tr><td colspan="6" class="at-muted" style="padding:18px;text-align:center">No appointments scheduled for today.</td></tr>
               }
             </tbody>
           </table>
@@ -452,10 +461,24 @@
             <div class="cap">
               <div class="cap__top">
                 <span class="cap__name">{{ p.name }}</span>
-                <span class="cap__pct cap__pct--{{ p.tone }}">{{ p.pct }}%</span>
+                <span class="cap__pct cap__pct--{{ p.tone }}">{{ p.n }}/{{ p.cap }}</span>
               </div>
               <div class="cap__bar"><div class="cap__fill cap__fill--{{ p.tone }}" [style.width.%]="p.pct"></div></div>
             </div>
+          }
+        </div>
+      </div>
+
+      <div class="ipanel">
+        <div class="ipanel__hd"><h3>Schedule Activity</h3><span class="ipanel__tag">Audit</span></div>
+        <div class="mini">
+          @for (ev of scheduleActivity(); track ev.id) {
+            <div class="mini__row">
+              <span class="mini__dot mini__dot--{{ ev.action === 'moved' ? 'warning' : ev.action === 'status-changed' ? 'ok' : 'critical' }}"></span>
+              <span><strong>{{ ev.appointmentId }}</strong> {{ ev.action }}{{ ev.detail ? ' ' + ev.detail : '' }}</span>
+            </div>
+          } @empty {
+            <div class="mini__row"><span class="mini__dot mini__dot--ok"></span><span>No schedule changes yet today</span></div>
           }
         </div>
       </div>
@@ -858,3 +881,10 @@
   }
 
 </section>
+
+<!-- ── Premium appointment edit modal (same shell as Scheduling) ── -->
+<app-new-appointment-modal
+  [open]="!!apptToEdit()"
+  [appointmentToEdit]="apptToEdit()"
+  (closed)="closeApptEdit()"
+/>

@@ -1,8 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { EncounterOrderType, EncounterRecord, EncounterStageId, FlowStation, PatientClinicalRecord, PatientFlowRecord, ScheduleBlock, StageStatus, SurfaceTone } from '../../core/models/enterprise.models';
+import { AppointmentRecord, EncounterOrderType, EncounterRecord, EncounterStageId, FlowStation, PatientClinicalRecord, PatientFlowRecord, StageStatus, SurfaceTone } from '../../core/models/enterprise.models';
 import { ActionService } from '../../core/services/action.service';
+import { NewAppointmentModalComponent } from '../../shared/ui/new-appointment-modal.component';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { EncounterService } from '../../core/services/encounter.service';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
@@ -24,10 +25,15 @@ interface ClinicalAlert {
   count?: number;
 }
 
-interface AppointmentRow extends ScheduleBlock {
+interface AppointmentRow {
+  id: string;
+  time: string;
+  patient: string;
+  visitType: string;
   provider: string;
-  specialty: string;
-  clinicId: string;
+  status: string;
+  tone: SurfaceTone;
+  priority: string;
 }
 
 interface SurgeryStage {
@@ -41,7 +47,7 @@ interface SurgeryStage {
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [],
+  imports: [NewAppointmentModalComponent],
   templateUrl: './dashboard-page.component.html',
   styleUrl:    './dashboard-page.component.scss',
 })
@@ -86,9 +92,26 @@ export class DashboardPageComponent {
 
   // ── KPI metrics ─────────────────────────────────────────────────────────
 
-  protected readonly todayApptCount = computed(() =>
-    this.store.scheduleLanes().reduce((s, lane) => s + lane.blocks.length, 0)
+  /** Today's persisted appointments — same collection the Scheduling board uses. */
+  private readonly todayIso = new Date().toISOString().slice(0, 10);
+  protected readonly todayAppts = computed(() =>
+    this.store.appointments()
+      .filter(a => a.date === this.todayIso)
+      .sort((x, y) => x.startTime.localeCompare(y.startTime))
   );
+
+  protected readonly todayApptCount = computed(() => this.todayAppts().length);
+
+  /** Status roll-up for the schedule panel (completed / pending / no-show / urgent). */
+  protected readonly apptStatusSummary = computed(() => {
+    const appts = this.todayAppts();
+    return {
+      completed: appts.filter(a => a.status === 'Completed').length,
+      pending: appts.filter(a => ['Scheduled', 'Confirmed', 'Checked-in', 'In progress'].includes(a.status)).length,
+      noShow: appts.filter(a => a.status === 'No-show' || a.status === 'Cancelled').length,
+      urgent: appts.filter(a => a.priority && a.priority !== 'Routine').length,
+    };
+  });
 
   protected readonly checkedInCount = computed(() =>
     this.store.patientFlow().filter(p => p.station !== 'checkout').length
@@ -256,17 +279,18 @@ export class DashboardPageComponent {
 
   // ── Today's appointments ────────────────────────────────────────────────
 
-  protected readonly todayAppointments = computed((): AppointmentRow[] => {
-    const rows: AppointmentRow[] = [];
-    for (const lane of this.store.scheduleLanes()) {
-      for (const block of lane.blocks) {
-        rows.push({ ...block, provider: lane.provider, specialty: lane.specialty, clinicId: lane.clinicId });
-      }
-    }
-    return rows
-      .sort((a, b) => a.time.localeCompare(b.time))
-      .slice(0, 12);
-  });
+  protected readonly todayAppointments = computed((): AppointmentRow[] =>
+    this.todayAppts().slice(0, 12).map(a => ({
+      id: a.id,
+      time: a.startTime,
+      patient: a.patient,
+      visitType: a.visitCategory ? `${a.appointmentType} · ${a.visitCategory}` : a.appointmentType,
+      provider: a.provider,
+      status: a.status,
+      tone: a.tone,
+      priority: a.priority,
+    }))
+  );
 
   // ── Surgery pipeline ────────────────────────────────────────────────────
 
@@ -337,7 +361,14 @@ export class DashboardPageComponent {
     }
   }
 
-  protected viewAppointment(): void { void this.router.navigate(['/scheduling']); }
+  /** Deep-link: open the same premium 6-tab edit modal Scheduling uses. */
+  protected readonly apptToEdit = signal<AppointmentRecord | null>(null);
+  protected viewAppointment(row: AppointmentRow): void {
+    const rec = this.store.appointments().find(a => a.id === row.id) ?? null;
+    if (rec) this.apptToEdit.set(rec);
+    else void this.router.navigate(['/scheduling']);
+  }
+  protected closeApptEdit(): void { this.apptToEdit.set(null); }
   protected viewPatient():     void { void this.router.navigate(['/patients']);   }
 
   // ── Alert groups (visible = not yet dismissed) ────────────────────────────
@@ -354,17 +385,29 @@ export class DashboardPageComponent {
     this.visibleAlerts().filter(a => a.severity === 'info')
   );
 
-  // ── Provider capacity ─────────────────────────────────────────────────────
-  protected readonly providerCapacity = computed(() =>
-    this.store.scheduleLanes().slice(0, 5).map(lane => {
-      const cap = 20;
-      const n   = lane.blocks.length;
-      const pct = Math.min(100, Math.round((n / cap) * 100));
-      return {
-        name: lane.provider, specialty: lane.specialty, n, cap, pct,
-        tone: pct >= 90 ? 'critical' as const : pct >= 75 ? 'warning' as const : 'ok' as const,
-      };
-    })
+  // ── Provider capacity — persisted appointments grouped by provider ────────
+  protected readonly providerCapacity = computed(() => {
+    const appts = this.todayAppts();
+    return this.store.providersList()
+      .filter(p => p.active && p.role !== 'Technician')
+      .slice(0, 5)
+      .map(p => {
+        const cap = Number(p.slotMinutes) ? Math.floor(540 / Number(p.slotMinutes)) : 12;
+        const n   = appts.filter(a => a.provider === p.displayName).length;
+        const pct = Math.min(100, Math.round((n / cap) * 100));
+        return {
+          name: p.displayName, specialty: p.specialty || '', n, cap, pct,
+          tone: pct >= 90 ? 'critical' as const : pct >= 75 ? 'warning' as const : 'ok' as const,
+        };
+      });
+  });
+
+  /** Recent appointment moves / status changes — same audit feed Scheduling writes. */
+  protected readonly scheduleActivity = computed(() =>
+    Object.values(this.store.appointmentAudit())
+      .flat()
+      .sort((a, b) => (b.iso || '').localeCompare(a.iso || ''))
+      .slice(0, 5)
   );
 
   // ── Revenue snapshot ──────────────────────────────────────────────────────
