@@ -16,6 +16,7 @@ import { COMPLIANCE_EVENTS } from '../data/compliance.data';
 import { ANALYTICS_POINTS, PROVIDER_PRODUCTIVITY, ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
 import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLOW, SURGICAL_READINESS } from '../data/clinic-today.data';
+import { firebaseAuthReady } from '../config/firebase.config';
 import { FirestoreService } from './firestore.service';
 import {
   ActivityEvent,
@@ -770,6 +771,9 @@ export class EnterpriseStoreService {
    */
   async initFirestore(): Promise<void> {
     try {
+      // Security rules require an authenticated session — wait for the
+      // anonymous Firebase Auth sign-in before the first read/write.
+      await firebaseAuthReady;
       await this.seedAllCollections();
       await this.loadAllCollections();
       this.attachRealtimeListeners();

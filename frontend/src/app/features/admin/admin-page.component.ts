@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { GLAccountRecord, RoleMatrixItem } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
@@ -9,7 +10,7 @@ import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
 @Component({
   selector: 'app-admin-page',
-  imports: [FormsModule, AppModalComponent, GLAccountModalComponent, StatusChipComponent],
+  imports: [FormsModule, RouterLink, AppModalComponent, GLAccountModalComponent, StatusChipComponent],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })

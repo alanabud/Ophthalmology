@@ -118,6 +118,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'admin/pilot-readiness',
+        loadComponent: () =>
+          import('./features/admin/pilot-readiness-page.component').then(
+            (module) => module.PilotReadinessPageComponent
+          )
+      },
+      {
         path: 'admin',
         loadComponent: () =>
           import('./features/admin/admin-page.component').then((module) => module.AdminPageComponent)

@@ -1,30 +1,64 @@
 rules_version = '2';
 
-// ── Ophthalmology Platform — Firestore Security Rules ─────────────────────────
+// ── Ophthalmology Platform — Firestore Security Rules (Sprint 13) ────────────
 //
-// CURRENT MODE: Open access for sandbox / demo environment.
+// CURRENT MODE: Authenticated access, default-deny, append-only audit trails.
 //
-// TODO before production:
-//   1. Replace the wildcard rule with per-collection rules scoped to
-//      request.auth.uid and the user's org/clinic IDs (stored in custom claims).
-//   2. Validate data shape with `request.resource.data` field checks.
-//   3. Restrict write access to service accounts for seed operations.
+//   • Every request must carry a Firebase Auth session (the app signs in
+//     anonymously at startup; unauthenticated REST/SDK access is denied).
+//   • Only the explicit application collections below are accessible —
+//     unknown collections are denied by the absence of any matching rule.
+//   • Audit collections (activityFeed, appointmentAudit, documentAudit,
+//     clinicalAudit) are APPEND-ONLY: create + read allowed, update/delete
+//     always denied — audit history cannot be tampered with from a client.
+//   • Writes carrying a clinicId must use a known clinic, preventing
+//     fabricated cross-tenant records.
 //
-// Example production rule structure (DO NOT enable yet):
-//
-//   match /patients/{id} {
-//     allow read, write: if request.auth != null
-//       && request.auth.token.orgId == resource.data.orgId;
-//   }
+// KNOWN LIMIT (requires a backend before a real-PHI pilot):
+//   Per-USER clinic isolation needs Firebase custom claims minted by a
+//   trusted server (e.g. request.auth.token.clinicId == resource.data.clinicId).
+//   Anonymous sessions cannot carry per-user claims, so all authenticated
+//   sandbox users currently share read access. Tracked on /admin/pilot-readiness.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // Allow all reads and writes for the demo / sandbox environment.
-      // Lock this down before going to production with real patient data.
-      allow read, write: if true;
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Writes that carry a clinicId must reference a real clinic.
+    function validClinic() {
+      return !('clinicId' in request.resource.data)
+        || request.resource.data.clinicId in
+           ['winter-park', 'clermont', 'lake-nona', 'tampa-asc', 'network'];
+    }
+
+    // Application data collections (read/write for authenticated sessions).
+    function isAppCollection(name) {
+      return name in [
+        'patients', 'patientFlow', 'clinicalRecords', 'encounters', 'flowMoves',
+        'appointments', 'waitlist', 'providers', 'locations',
+        'claims', 'claimWork', 'insurancePayers', 'guarantors', 'glAccounts',
+        'referrals', 'documents',
+        'imagingStudies', 'imagingWork', 'surgeryCases', 'surgicalReadiness',
+        'injectionSafety', 'opticalOrders', 'inventory',
+        'canonicalIdentityMappings', 'identityMatchDecisions'
+      ];
+    }
+
+    // Append-only audit trails — history can never be edited or deleted.
+    function isAuditCollection(name) {
+      return name in ['activityFeed', 'appointmentAudit', 'documentAudit', 'clinicalAudit'];
+    }
+
+    match /{collection}/{docId} {
+      allow read:   if isSignedIn() && (isAppCollection(collection) || isAuditCollection(collection));
+      allow create: if isSignedIn() && (isAppCollection(collection) || isAuditCollection(collection)) && validClinic();
+      allow update: if isSignedIn() && isAppCollection(collection) && validClinic();
+      allow delete: if isSignedIn() && isAppCollection(collection);
     }
   }
 }

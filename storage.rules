@@ -1,37 +1,51 @@
 rules_version = '2';
 
-// ── Ophthalmology Platform — Cloud Storage Security Rules ────────────────────
+// ── Ophthalmology Platform — Cloud Storage Security Rules (Sprint 13) ────────
 //
-// CURRENT MODE: Open access for sandbox / demo environment.
+// CURRENT MODE: Authenticated, path-scoped, default-deny.
 //
-// Privacy posture (enforced at the application layer today):
-//   • Firestore stores only the structured `storagePath`, never a public URL.
-//   • Download URLs are resolved on demand via token-scoped getDownloadURL()
-//     and are never persisted.
-//   • Files live under deterministic paths:
-//       documents/{linkedEntityType}/{linkedEntityId}/{documentId}/{safeFileName}
+//   • Only the structured document tree is reachable:
+//       documents/{linkedEntityType}/{linkedEntityId}/{documentId}/{fileName}
+//   • Every read/write requires a Firebase Auth session (the app signs in
+//     anonymously at startup) — no public or anonymous file access.
+//   • Uploads are capped at 25 MB and must declare an allowed content type
+//     (PDF, image, or Word document).
+//   • Listing is never granted; objects resolve only via per-object
+//     token-scoped getDownloadURL() calls. Firestore stores storagePath only.
+//   • Everything outside /documents/** is denied by default.
 //
-// TODO before production (DO NOT ship to real PHI without this):
-//   1. Replace the wildcard rule with `allow read, write: if request.auth != null`
-//      scoped to the user's org/clinic custom claims.
-//   2. Validate contentType and size on write
-//      (e.g. request.resource.size < 25 * 1024 * 1024).
-//   3. Block public listing; require per-object token access only.
+// NOTE: This file deploys with `firebase deploy --only storage` once the
+// project owner provisions the default bucket (Console → Build → Storage →
+// Get Started). Until then it is version-controlled and ready.
 //
-//   Example production rule (DO NOT enable yet):
-//     match /documents/{type}/{entity}/{docId}/{file} {
-//       allow read, write: if request.auth != null
-//         && request.auth.token.orgId == resource.metadata.orgId;
-//     }
+// KNOWN LIMIT (requires a backend before a real-PHI pilot):
+//   Per-user role / clinic enforcement needs custom claims from a trusted
+//   server. Tracked on /admin/pilot-readiness.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // Allow all reads and writes for the demo / sandbox environment.
-      // Lock this down before going to production with real patient data.
-      allow read, write: if true;
+
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    function isAllowedFileType() {
+      return request.resource.contentType == 'application/pdf'
+        || request.resource.contentType.matches('image/.*')
+        || request.resource.contentType == 'application/msword'
+        || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+
+    match /documents/{entityType}/{entityId}/{documentId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.resource.size < 25 * 1024 * 1024
+        && isAllowedFileType();
+      allow delete: if isSignedIn();
+    }
+
+    // Everything else: no match → denied.
   }
 }

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -17,3 +17,15 @@ export const firebaseApp = initializeApp(firebaseConfig);
 export const firebaseAuth = getAuth(firebaseApp);
 export const firebaseDb   = getFirestore(firebaseApp);
 export const firebaseStorage = getStorage(firebaseApp);
+
+/**
+ * Security rules require an authenticated session (Sprint 13). The sandbox
+ * workspace signs in anonymously so every Firestore/Storage request carries
+ * a real Firebase Auth token. Await this before the first read/write.
+ */
+export const firebaseAuthReady: Promise<boolean> = signInAnonymously(firebaseAuth)
+  .then(() => true)
+  .catch((e: { message?: string }) => {
+    console.warn('[Auth] anonymous sign-in failed — Firestore access will be denied by rules', e?.message ?? e);
+    return false;
+  });
