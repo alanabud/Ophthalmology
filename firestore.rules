@@ -1,24 +1,24 @@
 rules_version = '2';
 
-// ── Ophthalmology Platform — Firestore Security Rules (Sprint 13) ────────────
+// ── Ophthalmology Platform — Firestore Security Rules (Sprint 15) ────────────
 //
-// CURRENT MODE: Authenticated access, default-deny, append-only audit trails.
+// CURRENT MODE: Authenticated default-deny + custom-claim clinic isolation
+//               + append-only audit trails.
 //
-//   • Every request must carry a Firebase Auth session (the app signs in
-//     anonymously at startup; unauthenticated REST/SDK access is denied).
-//   • Only the explicit application collections below are accessible —
-//     unknown collections are denied by the absence of any matching rule.
+//   • Every request must carry a Firebase Auth session.
+//   • CLINIC CLAIMS (Sprint 15): staff accounts carry custom claims
+//     { clinicId, role } minted exclusively by the trusted owner-credentialed
+//     tool in backend/claims-admin.js. Clients can never set or alter claims.
+//     A claims-bearing session can only read/write records belonging to its
+//     own clinic — even a tampered request body with another clinicId is
+//     denied. A 'network' claim grants cross-clinic access (executive scope).
+//   • SANDBOX SESSIONS: anonymous sign-ins carry no clinic claim and retain
+//     network-wide demo access. Documented; the sandbox holds no real PHI.
 //   • Audit collections (activityFeed, appointmentAudit, documentAudit,
-//     clinicalAudit) are APPEND-ONLY: create + read allowed, update/delete
-//     always denied — audit history cannot be tampered with from a client.
-//   • Writes carrying a clinicId must use a known clinic, preventing
-//     fabricated cross-tenant records.
-//
-// KNOWN LIMIT (requires a backend before a real-PHI pilot):
-//   Per-USER clinic isolation needs Firebase custom claims minted by a
-//   trusted server (e.g. request.auth.token.clinicId == resource.data.clinicId).
-//   Anonymous sessions cannot carry per-user claims, so all authenticated
-//   sandbox users currently share read access. Tracked on /admin/pilot-readiness.
+//     clinicalAudit) are APPEND-ONLY: update/delete always denied.
+//   • staffDirectory is read-only for clients — written only by the trusted
+//     admin tool (owner OAuth bypasses client rules by design).
+//   • Unknown collections: no matching rule → denied.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,23 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    /** Clinic claim on the session token, or null for sandbox/anonymous. */
+    function claimClinic() {
+      return ('clinicId' in request.auth.token) ? request.auth.token.clinicId : null;
+    }
+
+    /** May this session touch a record with the given data?
+        NOTE: deliberately uses the canonical `data.clinicId == claim` form and
+        no membership (`in`) test — query analysis cannot prove membership
+        tests, which silently ALLOWED unfiltered cross-clinic list queries for
+        claim sessions (caught by test-rules-clinic-claims.js). Claim sessions
+        therefore cannot read records lacking a clinicId — conservative deny. */
+    function clinicAllowed(data) {
+      return claimClinic() == null                 // sandbox (no claim, demo data)
+        || claimClinic() == 'network'              // executive scope
+        || data.clinicId == claimClinic();         // record belongs to the claimed clinic
+    }
+
     // Writes that carry a clinicId must reference a real clinic.
     function validClinic() {
       return !('clinicId' in request.resource.data)
@@ -36,7 +53,7 @@ service cloud.firestore {
            ['winter-park', 'clermont', 'lake-nona', 'tampa-asc', 'network'];
     }
 
-    // Application data collections (read/write for authenticated sessions).
+    // Application data collections.
     function isAppCollection(name) {
       return name in [
         'patients', 'patientFlow', 'clinicalRecords', 'encounters', 'flowMoves',
@@ -54,11 +71,22 @@ service cloud.firestore {
       return name in ['activityFeed', 'appointmentAudit', 'documentAudit', 'clinicalAudit'];
     }
 
+    // Staff clinic-claims registry (display mirror; claims are authoritative).
+    match /staffDirectory/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false; // trusted admin tool only
+    }
+
     match /{collection}/{docId} {
-      allow read:   if isSignedIn() && (isAppCollection(collection) || isAuditCollection(collection));
-      allow create: if isSignedIn() && (isAppCollection(collection) || isAuditCollection(collection)) && validClinic();
-      allow update: if isSignedIn() && isAppCollection(collection) && validClinic();
-      allow delete: if isSignedIn() && isAppCollection(collection);
+      allow read: if isSignedIn()
+        && (isAuditCollection(collection)
+            || (isAppCollection(collection) && clinicAllowed(resource.data)));
+      allow create: if isSignedIn() && validClinic()
+        && (isAuditCollection(collection)
+            || (isAppCollection(collection) && clinicAllowed(request.resource.data)));
+      allow update: if isSignedIn() && isAppCollection(collection) && validClinic()
+        && clinicAllowed(resource.data) && clinicAllowed(request.resource.data);
+      allow delete: if isSignedIn() && isAppCollection(collection) && clinicAllowed(resource.data);
     }
   }
 }

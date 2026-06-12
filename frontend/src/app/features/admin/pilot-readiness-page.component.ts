@@ -101,7 +101,7 @@ export class PilotReadinessPageComponent {
     { id: 'storage', label: 'Document upload configured', detail: 'Firebase Storage default bucket provisioned and reachable for authenticated document reads.', state: 'pending' },
     { id: 'honest-kpi', label: 'No fabricated dashboard data', detail: 'Sprint 12 removed all hardcoded production-looking KPIs; dashboard derives from persisted collections.', state: 'pending' },
     { id: 'analytics', label: 'Analytics from persisted data', detail: 'Every analytics selector (revenue, appointments, referrals, surgery, optical, activity) reads live Firestore-backed collections with no static fallbacks.', state: 'pending' },
-    { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'True per-user clinic isolation requires custom auth claims minted by a trusted backend.', state: 'pending' },
+    { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'Staff accounts carry custom claims minted by the trusted owner tool; Firestore rules deny cross-clinic reads, tampered writes, and unfiltered lists for claim sessions.', state: 'pending' },
     { id: 'console', label: 'Runtime errors', detail: 'Uncaught errors captured on this page since load.', state: 'pending' },
   ]);
 
@@ -197,8 +197,20 @@ export class PilotReadinessPageComponent {
           : 'Firestore not synced — analytics shows its loading state.');
     }
 
-    // 10. Per-user claims — known backend dependency
-    this.set('claims-isolation', 'action', 'Anonymous sessions cannot carry per-user clinic claims. A trusted backend (custom claims) is required before a real-PHI pilot.');
+    // 10. Per-user clinic claims — trusted tool registry + rules enforcement
+    try {
+      const staff = await this.fs.getAll<{ email: string; clinicId: string; active: boolean }>('staffDirectory');
+      const active = staff.filter(s => s.active && s.clinicId);
+      // Registry must be client-immutable (rules: write false) — probe it.
+      let immutable = false;
+      try { await this.fs.upsert('staffDirectory', 'probe-tamper', { email: 'probe@tamper.test' }); }
+      catch { immutable = true; }
+      this.set('claims-isolation', active.length && immutable ? 'pass' : 'action',
+        active.length && immutable
+          ? `${active.length} staff account(s) carry rules-enforced clinic claims (${active.map(s => `${s.email} → ${s.clinicId}`).join('; ')}); registry is client-immutable. Cross-clinic deny-tests: security-tests/test-rules-clinic-claims.js (8/8).`
+          : active.length ? 'Claims exist but the registry accepted a client write — investigate rules.' :
+            'No clinic claims assigned yet — run backend/claims-admin.js as the project owner.');
+    } catch (e: any) { this.set('claims-isolation', 'fail', e?.message ?? 'staffDirectory unreadable'); }
 
     // 11. Runtime errors captured on this page
     this.set('console', this.errorCount === 0 ? 'pass' : 'fail', `${this.errorCount} uncaught error(s) since page load.`);

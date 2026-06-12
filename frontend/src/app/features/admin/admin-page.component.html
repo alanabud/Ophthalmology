@@ -56,6 +56,36 @@
     </article>
   </section>
 
+  <!-- ── Clinic access claims (Sprint 15) ────────────────── -->
+  <div class="gl-card">
+    <div class="gl-card__hd">
+      <div>
+        <h2>Clinic Access Claims</h2>
+        <p>User → clinic mapping enforced by Firestore rules via Firebase custom claims. Claims are minted only by the trusted owner tool (<code>backend/claims-admin.js</code>) — never from the browser.</p>
+      </div>
+    </div>
+    <table class="gl-table">
+      <thead><tr><th>Staff account</th><th>Clinic</th><th>Role</th><th>Status</th><th>Updated</th></tr></thead>
+      <tbody>
+        @if (staffClaims(); as rows) {
+          @for (s of rows; track s.email) {
+            <tr>
+              <td><strong>{{ s.email }}</strong></td>
+              <td class="gl-mono">{{ s.clinicId || '—' }}</td>
+              <td>{{ s.role || '—' }}</td>
+              <td>@if (s.active) { <span class="gl-std">Active</span> } @else { <span class="gl-sys">Revoked</span> }</td>
+              <td>{{ (s.updatedAt || '').slice(0, 10) || '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" style="opacity:.6;padding:14px">No clinic claims assigned yet. Run <code>node backend/claims-admin.js create &lt;email&gt; &lt;password&gt; &lt;clinic&gt; &lt;role&gt;</code> as the project owner.</td></tr>
+          }
+        } @else {
+          <tr><td colspan="5" style="opacity:.6;padding:14px">Loading claims registry…</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
   <!-- ── GL Accounts (chart of accounts) ─────────────────── -->
   <div class="gl-card">
     <div class="gl-card__hd">

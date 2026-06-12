@@ -4,6 +4,16 @@ import { RouterLink } from '@angular/router';
 
 import { GLAccountRecord, RoleMatrixItem } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
+import { FirestoreService } from '../../core/services/firestore.service';
+
+/** Read-only mirror of clinic claims minted by backend/claims-admin.js. */
+interface StaffClaimEntry {
+  email: string;
+  clinicId: string;
+  role: string;
+  active: boolean;
+  updatedAt?: string;
+}
 import { AppModalComponent } from '../../shared/ui/app-modal.component';
 import { GLAccountModalComponent } from '../../shared/ui/gl-account-modal.component';
 import { StatusChipComponent } from '../../shared/ui/status-chip.component';
@@ -16,8 +26,17 @@ import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 })
 export class AdminPageComponent {
   protected readonly store = inject(EnterpriseStoreService);
+  private readonly fs = inject(FirestoreService);
   protected readonly roleMatrix = this.store.roleMatrix;
   protected readonly clinics = this.store.clinicComparison;
+
+  // ── Clinic access claims (Sprint 15) — read-only registry mirror ────────────
+  protected readonly staffClaims = signal<StaffClaimEntry[] | null>(null);
+  constructor() {
+    void this.fs.getAll<StaffClaimEntry>('staffDirectory')
+      .then((rows) => this.staffClaims.set(rows.sort((a, b) => a.email.localeCompare(b.email))))
+      .catch(() => this.staffClaims.set([]));
+  }
 
   // ── GL Accounts maintenance (Sprint 9C) ─────────────────────────────────────
   protected readonly glAccounts = this.store.glAccounts;
