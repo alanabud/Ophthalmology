@@ -100,6 +100,7 @@ export class PilotReadinessPageComponent {
     { id: 'unknown-coll', label: 'Unknown collections denied', detail: 'Collections outside the application schema are unreachable even when authenticated.', state: 'pending' },
     { id: 'storage', label: 'Document upload configured', detail: 'Firebase Storage default bucket provisioned and reachable for authenticated document reads.', state: 'pending' },
     { id: 'honest-kpi', label: 'No fabricated dashboard data', detail: 'Sprint 12 removed all hardcoded production-looking KPIs; dashboard derives from persisted collections.', state: 'pending' },
+    { id: 'analytics', label: 'Analytics from persisted data', detail: 'Every analytics selector (revenue, appointments, referrals, surgery, optical, activity) reads live Firestore-backed collections with no static fallbacks.', state: 'pending' },
     { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'True per-user clinic isolation requires custom auth claims minted by a trusted backend.', state: 'pending' },
     { id: 'console', label: 'Runtime errors', detail: 'Uncaught errors captured on this page since load.', state: 'pending' },
   ]);
@@ -176,6 +177,25 @@ export class PilotReadinessPageComponent {
 
     // 9. Honest dashboard (verified in Sprint 12; code-level guarantee)
     this.set('honest-kpi', 'pass', 'All dashboard KPIs derive from persisted collections (Sprint 12 sweep — no $-literals or placeholder counts in dashboard code).');
+
+    // 9b. Analytics selectors backed by loaded collections
+    {
+      const counts = {
+        claims: this.store.analyticsRevenue().total,
+        appointments: this.store.analyticsAppointments().total,
+        referrals: this.store.analyticsReferrals().total,
+        surgery: this.store.analyticsSurgery().total,
+        optical: this.store.analyticsOptical().total,
+        activity: this.store.analyticsActivity().total,
+      };
+      const loaded = Object.entries(counts).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`);
+      const empty = Object.entries(counts).filter(([, n]) => n === 0).map(([k]) => k);
+      const ready = this.store.firestoreReady();
+      this.set('analytics', ready && empty.length === 0 ? 'pass' : ready ? 'action' : 'fail',
+        ready
+          ? (empty.length ? `Loaded: ${loaded.join(', ')}. Empty (honest empty state shown): ${empty.join(', ')}.` : `All sources populated — ${loaded.join(', ')}.`)
+          : 'Firestore not synced — analytics shows its loading state.');
+    }
 
     // 10. Per-user claims — known backend dependency
     this.set('claims-isolation', 'action', 'Anonymous sessions cannot carry per-user clinic claims. A trusted backend (custom claims) is required before a real-PHI pilot.');

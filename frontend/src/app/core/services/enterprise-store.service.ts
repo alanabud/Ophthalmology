@@ -13,7 +13,7 @@ import { WAITLIST } from '../data/scheduling.data';
 import { SURGERY_CASES } from '../data/surgery.data';
 import { CLAIMS } from '../data/billing.data';
 import { COMPLIANCE_EVENTS } from '../data/compliance.data';
-import { ANALYTICS_POINTS, PROVIDER_PRODUCTIVITY, ROLE_MATRIX } from '../data/analytics.data';
+import { ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
 import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLOW, SURGICAL_READINESS } from '../data/clinic-today.data';
 import { firebaseAuthReady } from '../config/firebase.config';
@@ -98,7 +98,6 @@ export class EnterpriseStoreService {
   readonly notifications = signal(ALERTS);
   readonly quickActions = signal(QUICK_ACTIONS);
   readonly patientBriefings = signal(PATIENT_BRIEFINGS);
-  readonly analyticsPoints = signal(ANALYTICS_POINTS);
   readonly roleMatrix = signal<RoleMatrixItem[]>([...ROLE_MATRIX]);
   readonly activeClinicId = signal('network');
   readonly activeProviderId = signal('all');
@@ -415,7 +414,8 @@ export class EnterpriseStoreService {
   readonly integrations = computed(() => INTEGRATIONS);
 
   // ── Analytics ──────────────────────────────────────────────────────────────
-  readonly providerProductivity = computed(() => PROVIDER_PRODUCTIVITY.filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
+  // Static ANALYTICS_POINTS / PROVIDER_PRODUCTIVITY retired in Sprint 14 —
+  // analytics derives entirely from the persisted selectors further below.
   readonly clinicComparison = computed(() => this.clinics().filter((clinic) => clinic.id !== 'network'));
 
   // ── Context setters ────────────────────────────────────────────────────────
@@ -756,6 +756,108 @@ export class EnterpriseStoreService {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // ── Analytics selectors (Sprint 14) ───────────────────────────────────────
+  // Every metric derives from persisted, clinic-scoped collections. No static
+  // trends, placeholder percentages, or synthetic values.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  readonly analyticsRevenue = computed(() => {
+    const cl = this.claims();
+    const amt = (s?: string) => Number((s || '').replace(/[^0-9.]/g, '')) || 0;
+    const byStatus = new Map<string, { count: number; value: number }>();
+    for (const c of cl) {
+      const b = byStatus.get(c.status) ?? { count: 0, value: 0 };
+      b.count++; b.value += amt(c.amount);
+      byStatus.set(c.status, b);
+    }
+    const byPayer = new Map<string, { count: number; value: number }>();
+    for (const c of cl) {
+      const b = byPayer.get(c.payer) ?? { count: 0, value: 0 };
+      b.count++; b.value += amt(c.amount);
+      byPayer.set(c.payer, b);
+    }
+    const paid = cl.filter((c) => c.status === 'Paid');
+    const denied = cl.filter((c) => c.status === 'Denied' || c.status === 'Rejected');
+    return {
+      total: cl.length,
+      totalBilled: cl.reduce((s, c) => s + amt(c.amount), 0),
+      collected: paid.reduce((s, c) => s + (amt(c.paidAmount) || amt(c.amount)), 0),
+      deniedValue: denied.reduce((s, c) => s + amt(c.amount), 0),
+      byStatus: [...byStatus.entries()].map(([label, v]) => ({ label, ...v })).sort((a, b) => b.value - a.value),
+      byPayer: [...byPayer.entries()].map(([label, v]) => ({ label, ...v })).sort((a, b) => b.value - a.value).slice(0, 6),
+    };
+  });
+
+  readonly analyticsAppointments = computed(() => {
+    const ap = this.appointments();
+    const tally = (key: (a: AppointmentRecord) => string) => {
+      const m = new Map<string, number>();
+      for (const a of ap) { const k = key(a) || '—'; m.set(k, (m.get(k) ?? 0) + 1); }
+      return [...m.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    };
+    return { total: ap.length, byStatus: tally((a) => a.status), byProvider: tally((a) => a.provider), byType: tally((a) => a.appointmentType) };
+  });
+
+  readonly analyticsReferrals = computed(() => {
+    const refs = this.referralsList();
+    const tally = (key: (r: ReferralRecord) => string) => {
+      const m = new Map<string, number>();
+      for (const r of refs) { const k = key(r) || '—'; m.set(k, (m.get(k) ?? 0) + 1); }
+      return [...m.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    };
+    return { total: refs.length, byStatus: tally((r) => r.status || '—'), bySource: tally((r) => r.referralSource || 'Self / unknown').slice(0, 6) };
+  });
+
+  readonly analyticsSurgery = computed(() => {
+    const cases = this.surgeryCases();
+    return {
+      total: cases.length,
+      ready: cases.filter((c) => c.tone === 'success').length,
+      scheduled: cases.filter((c) => c.tone === 'info').length,
+      pending: cases.filter((c) => c.tone === 'warning').length,
+      onHold: cases.filter((c) => c.tone === 'critical').length,
+    };
+  });
+
+  readonly analyticsOptical = computed(() => {
+    const orders = this.opticalOrders();
+    const amt = (s?: string) => Number((s || '').replace(/[^0-9.]/g, '')) || 0;
+    const m = new Map<string, number>();
+    for (const o of orders) m.set(o.status, (m.get(o.status) ?? 0) + 1);
+    return {
+      total: orders.length,
+      byStatus: [...m.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count),
+      deposits: orders.reduce((s, o) => s + amt(o.depositPaid), 0),
+      balanceDue: orders.reduce((s, o) => s + amt(o.balanceDue), 0),
+    };
+  });
+
+  /** Activity events by module — append-only feeds, network-wide (events carry no clinicId). */
+  readonly analyticsActivity = computed(() => {
+    const counts = new Map<string, number>();
+    let total = 0;
+    const add = (module: string, n: number) => { counts.set(module, (counts.get(module) ?? 0) + n); total += n; };
+    add('scheduling', Object.values(this.appointmentAudit()).reduce((s, l) => s + l.length, 0));
+    add('documents', Object.values(this.documentAudit()).reduce((s, l) => s + l.length, 0));
+    for (const ev of this.activityFeed()) add(ev.module, 1);
+    return { total, byModule: [...counts.entries()].map(([label, count]) => ({ label, count })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count) };
+  });
+
+  /** Top-line tiles — every value traces to a persisted collection. */
+  readonly analyticsSummary = computed(() => {
+    const fmt = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
+    const rev = this.analyticsRevenue();
+    return [
+      { label: 'Appointments', value: String(this.analyticsAppointments().total), detail: 'persisted appointment records' },
+      { label: 'Claims billed', value: fmt(rev.totalBilled), detail: `${rev.total} claims · ${fmt(rev.collected)} collected` },
+      { label: 'Referrals', value: String(this.analyticsReferrals().total), detail: 'referral records on file' },
+      { label: 'Surgery cases', value: String(this.analyticsSurgery().total), detail: `${this.analyticsSurgery().ready} ready` },
+      { label: 'Optical orders', value: String(this.analyticsOptical().total), detail: fmt(this.analyticsOptical().balanceDue) + ' balance due' },
+      { label: 'Audit events', value: String(this.analyticsActivity().total), detail: 'append-only activity trail' },
+    ];
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
   // ── Firestore sync ────────────────────────────────────────────────────────
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -883,8 +985,8 @@ export class EnterpriseStoreService {
       this.fs.getAll<InsuranceRecord>('insurancePayers'),
       this.fs.getAll<GuarantorRecord>('guarantors'),
     ]);
-    if (insurance.length) this.insuranceBase.set(insurance);
-    if (guarantors.length) this.guarantorBase.set(guarantors);
+    if (insurance.length) this.insuranceBase.set(this.mergeWithSeeds('insurancePayers', insurance, this.insuranceBase()));
+    if (guarantors.length) this.guarantorBase.set(this.mergeWithSeeds('guarantors', guarantors, this.guarantorBase()));
 
     const [appointments, providers, locations] = await Promise.all([
       this.fs.getAll<AppointmentRecord>('appointments'),
@@ -907,9 +1009,9 @@ export class EnterpriseStoreService {
       this.fs.getAll<ActivityEvent>('activityFeed'),
     ]);
     if (activity.length) this.activityBase.set(activity);
-    if (referrals.length) this.referralBase.set(referrals);
-    if (glAccounts.length) this.glAccountBase.set(glAccounts);
-    if (documents.length) this.documentBase.set(documents);
+    if (referrals.length) this.referralBase.set(this.mergeWithSeeds('referrals', referrals, this.referralBase()));
+    if (glAccounts.length) this.glAccountBase.set(this.mergeWithSeeds('glAccounts', glAccounts, this.glAccountBase()));
+    if (documents.length) this.documentBase.set(this.mergeWithSeeds('documents', documents, this.documentBase()));
     if (docAudit.length) {
       const grouped: Record<string, DocumentAudit[]> = {};
       for (const a of docAudit) (grouped[a.documentId] ??= []).push(a);

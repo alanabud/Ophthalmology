@@ -1,38 +1,42 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 
-import { ClinicContext, ProviderProductivity } from '../../core/models/enterprise.models';
 import { EnterpriseStoreService } from '../../core/services/enterprise-store.service';
-import { AppModalComponent } from '../../shared/ui/app-modal.component';
-import { StatusChipComponent } from '../../shared/ui/status-chip.component';
 
+/**
+ * Analytics (Sprint 14) — every metric derives from persisted, clinic-scoped
+ * collections via centralized store selectors. Three honest states per panel:
+ * loading, real data, or an explicit empty state. No fabricated KPIs.
+ */
 @Component({
   selector: 'app-analytics-page',
-  imports: [AppModalComponent, StatusChipComponent],
+  imports: [],
   templateUrl: './analytics-page.component.html',
   styleUrl: './analytics-page.component.scss'
 })
 export class AnalyticsPageComponent {
   protected readonly store = inject(EnterpriseStoreService);
-  protected readonly analyticsPoints = this.store.analyticsPoints;
-  protected readonly clinicComparison = this.store.clinicComparison;
-  protected readonly providerProductivity = this.store.providerProductivity;
 
-  // Modal state
-  protected readonly selectedClinic = signal<ClinicContext | null>(null);
-  protected readonly selectedProvider = signal<ProviderProductivity | null>(null);
-  protected readonly clinicViewOpen = signal(false);
-  protected readonly providerViewOpen = signal(false);
+  protected readonly loading = computed(() => !this.store.firestoreReady() && !this.store.firestoreError());
+  protected readonly protectedData = this.store.firestoreError;
 
-  protected viewClinic(clinic: ClinicContext): void {
-    this.selectedClinic.set(clinic);
-    this.clinicViewOpen.set(true);
-  }
+  protected readonly summary = this.store.analyticsSummary;
+  protected readonly revenue = this.store.analyticsRevenue;
+  protected readonly appts = this.store.analyticsAppointments;
+  protected readonly referrals = this.store.analyticsReferrals;
+  protected readonly surgery = this.store.analyticsSurgery;
+  protected readonly optical = this.store.analyticsOptical;
+  protected readonly activity = this.store.analyticsActivity;
 
-  protected viewProvider(provider: ProviderProductivity): void {
-    this.selectedProvider.set(provider);
-    this.providerViewOpen.set(true);
-  }
+  /** Data-quality truth markers for pilot evaluators. */
+  protected readonly dataQuality = computed(() => [
+    { label: 'Claims loaded', count: this.revenue().total },
+    { label: 'Appointments loaded', count: this.appts().total },
+    { label: 'Referrals loaded', count: this.referrals().total },
+    { label: 'Surgery records loaded', count: this.surgery().total },
+    { label: 'Optical records loaded', count: this.optical().total },
+    { label: 'Activity events loaded', count: this.activity().total },
+  ]);
 
-  protected closeClinicView(): void { this.clinicViewOpen.set(false); this.selectedClinic.set(null); }
-  protected closeProviderView(): void { this.providerViewOpen.set(false); this.selectedProvider.set(null); }
+  protected fmt(n: number): string { return '$' + Math.round(n).toLocaleString('en-US'); }
+  protected pct(part: number, whole: number): number { return whole ? Math.round((part / whole) * 100) : 0; }
 }

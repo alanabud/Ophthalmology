@@ -1,1 +1,27 @@
 :host { display: block; }
+
+/* ── Sprint 14 — honest analytics ─────────────────────────────────── */
+.an-banner { padding: 14px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #46555E;
+  background: #fff; border: 1px solid rgba(22,36,43,0.08);
+  &--locked { color: #B45309; background: #FFFBEB; border-color: rgba(217,119,6,0.25); } }
+.an-total { font-size: 12px; font-weight: 800; color: #0F766E; background: rgba(15,118,110,0.08); border-radius: 8px; padding: 4px 10px; white-space: nowrap; }
+.an-trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+@media (max-width: 1100px) { .an-trio { grid-template-columns: 1fr; } }
+.an-bars { display: flex; flex-direction: column; gap: 9px; padding: 4px 0; }
+.an-bar { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 10px;
+  &__label { font-size: 12px; font-weight: 700; color: #46555E; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    &--cap { text-transform: capitalize; } }
+  &__track { height: 8px; border-radius: 6px; background: rgba(22,36,43,0.06); overflow: hidden; }
+  &__fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #2E8B57, #4CAF82); min-width: 2px;
+    &--teal { background: linear-gradient(90deg, #0F766E, #0D9488); }
+    &--slate { background: linear-gradient(90deg, #46555E, #6B7A83); } }
+  &__val { font-size: 11.5px; font-weight: 800; color: #16242B; white-space: nowrap; } }
+.an-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; }
+.an-chip { font-size: 11px; font-weight: 700; color: #46555E; background: rgba(22,36,43,0.06); border-radius: 7px; padding: 3px 9px; }
+.an-list { list-style: none; margin: 6px 0 0; padding: 0;
+  li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed rgba(22,36,43,0.08); font-size: 12.5px;
+    &:last-child { border-bottom: 0; }
+    span { color: #6B7A83; } strong { color: #16242B; text-align: right; } } }
+.an-zero { color: #B45309 !important; }
+.an-note { font-size: 11.5px; color: #97A4AB; margin: 10px 0 0; }
+.an-empty { font-size: 12.5px; color: #6B7A83; padding: 18px 4px; text-align: center; border: 1px dashed rgba(22,36,43,0.14); border-radius: 10px; margin-top: 8px; }

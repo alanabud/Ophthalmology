@@ -1,113 +1,143 @@
-<section class="workspace-page">
+<section class="workspace-page an-page">
   <header class="page-header">
     <div>
-      <p class="page-kicker">Executive analytics</p>
-      <h1>Clinic comparison, provider productivity, reimbursement signals, and narrative performance insight.</h1>
-      <p class="page-subtitle">Built for regional executives who need enterprise density without a generic BI dashboard feel.</p>
+      <p class="page-kicker">Operational analytics</p>
+      <h1>Every number below derives from persisted, clinic-scoped records.</h1>
+      <p class="page-subtitle">Claims, appointments, referrals, surgery, optical, and append-only audit events — no synthetic trends or placeholder KPIs. Switch clinics to re-scope every panel.</p>
     </div>
   </header>
 
-  <section class="info-grid">
-    @for (point of analyticsPoints(); track point.label) {
-      <article class="info-tile">
-        <strong>{{ point.value }}</strong>
-        <p>{{ point.label }}</p>
-        <span class="utility-note">{{ point.delta }} • {{ point.detail }}</span>
-      </article>
-    }
-  </section>
+  @if (protectedData()) {
+    <div class="an-banner an-banner--locked">🔒 Analytics data is protected — Firestore denied access for this session ({{ protectedData() }}). Metrics will appear once an authorized session is established.</div>
+  } @else if (loading()) {
+    <div class="an-banner">Loading persisted collections…</div>
+  } @else {
 
-  <section class="dual-grid">
-    <article class="panel">
-      <div class="panel__header">
-        <div><p class="panel__eyebrow">Clinic comparison</p><h2>Operational benchmark table</h2></div>
-      </div>
-      <table class="dense-table">
-        <thead><tr><th>Clinic</th><th>Readiness</th><th>Wait</th><th>Utilization</th><th>Revenue</th><th class="th-actions"></th></tr></thead>
-        <tbody>
-          @for (clinic of clinicComparison(); track clinic.id) {
-            <tr>
-              <td>{{ clinic.name }}</td>
-              <td>{{ clinic.readiness }}</td>
-              <td>{{ clinic.waitMinutes }} min</td>
-              <td>{{ clinic.utilization }}%</td>
-              <td>{{ clinic.revenueDelta }}</td>
-              <td class="td-actions">
-                <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewClinic(clinic)">View</button>
-                  <button class="row-action-btn" type="button" (click)="viewClinic(clinic)">Details</button>
-                  <button class="row-action-more" type="button" title="More actions">···</button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </article>
-
-    <article class="panel">
-      <div class="panel__header">
-        <div><p class="panel__eyebrow">Provider productivity</p><h2>Clinical and financial yield</h2></div>
-      </div>
-      <table class="dense-table">
-        <thead><tr><th>Provider</th><th>Focus</th><th>Encounters</th><th>Utilization</th><th>Collections</th><th class="th-actions"></th></tr></thead>
-        <tbody>
-          @for (provider of providerProductivity(); track provider.provider) {
-            <tr>
-              <td>{{ provider.provider }}</td>
-              <td>{{ provider.focus }}</td>
-              <td>{{ provider.encounters }}</td>
-              <td>{{ provider.utilization }}</td>
-              <td>{{ provider.collections }}</td>
-              <td class="td-actions">
-                <div class="row-actions">
-                  <button class="row-action-btn row-action-btn--primary" type="button" (click)="viewProvider(provider)">View</button>
-                  <button class="row-action-btn" type="button" (click)="viewProvider(provider)">Details</button>
-                  <button class="row-action-more" type="button" title="More actions">···</button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </article>
-  </section>
-</section>
-
-<!-- Clinic detail modal -->
-<app-modal [open]="clinicViewOpen()" [title]="selectedClinic()?.name ?? 'Clinic details'" (closed)="closeClinicView()">
-  @if (selectedClinic()) {
-    <div class="rec-kv-list">
-      <div class="rec-kv-row"><span>Clinic</span><strong>{{ selectedClinic()!.name }}</strong></div>
-      <div class="rec-kv-row"><span>Region</span><strong>{{ selectedClinic()!.region }}</strong></div>
-      <div class="rec-kv-row"><span>Readiness</span><strong>{{ selectedClinic()!.readiness }}</strong></div>
-      <div class="rec-kv-row"><span>Avg wait</span><strong>{{ selectedClinic()!.waitMinutes }} min</strong></div>
-      <div class="rec-kv-row"><span>Utilization</span><strong>{{ selectedClinic()!.utilization }}%</strong></div>
-      <div class="rec-kv-row"><span>Revenue delta</span><strong>{{ selectedClinic()!.revenueDelta }}</strong></div>
-      <div class="rec-kv-row"><span>Open issues</span><strong>{{ selectedClinic()!.openIssues }}</strong></div>
-      @if (selectedClinic()!.pressureSource) {
-        <div class="rec-kv-row"><span>Pressure source</span><strong>{{ selectedClinic()!.pressureSource }}</strong></div>
+    <!-- ── Summary tiles ─────────────────────────────────── -->
+    <section class="info-grid">
+      @for (tile of summary(); track tile.label) {
+        <article class="info-tile">
+          <strong>{{ tile.value }}</strong>
+          <p>{{ tile.label }}</p>
+          <span class="utility-note">{{ tile.detail }}</span>
+        </article>
       }
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn rec-btn--primary" type="button" (click)="closeClinicView()">Close</button>
-    </div>
-  }
-</app-modal>
+    </section>
 
-<!-- Provider detail modal -->
-<app-modal [open]="providerViewOpen()" [title]="selectedProvider()?.provider ?? 'Provider details'" (closed)="closeProviderView()">
-  @if (selectedProvider()) {
-    <div class="rec-kv-list">
-      <div class="rec-kv-row"><span>Provider</span><strong>{{ selectedProvider()!.provider }}</strong></div>
-      <div class="rec-kv-row"><span>Focus</span><strong>{{ selectedProvider()!.focus }}</strong></div>
-      <div class="rec-kv-row"><span>Encounters</span><strong>{{ selectedProvider()!.encounters }}</strong></div>
-      <div class="rec-kv-row"><span>Utilization</span><strong>{{ selectedProvider()!.utilization }}</strong></div>
-      <div class="rec-kv-row"><span>Documentation lag</span><strong>{{ selectedProvider()!.documentationLag }}</strong></div>
-      <div class="rec-kv-row"><span>Collections</span><strong>{{ selectedProvider()!.collections }}</strong></div>
-    </div>
-    <div class="rec-form-actions">
-      <button class="rec-btn rec-btn--primary" type="button" (click)="closeProviderView()">Close</button>
-    </div>
+    <!-- ── Revenue + Appointments ────────────────────────── -->
+    <section class="dual-grid">
+      <article class="panel">
+        <div class="panel__header">
+          <div><p class="panel__eyebrow">Revenue</p><h2>Claims by status — real amounts</h2></div>
+          <span class="an-total">{{ fmt(revenue().totalBilled) }} billed</span>
+        </div>
+        @if (revenue().byStatus.length) {
+          <div class="an-bars">
+            @for (row of revenue().byStatus; track row.label) {
+              <div class="an-bar">
+                <span class="an-bar__label">{{ row.label }}</span>
+                <div class="an-bar__track"><div class="an-bar__fill" [style.width.%]="pct(row.value, revenue().totalBilled)"></div></div>
+                <span class="an-bar__val">{{ fmt(row.value) }} · {{ row.count }}</span>
+              </div>
+            }
+          </div>
+          <p class="an-note">Collected {{ fmt(revenue().collected) }} · denied exposure {{ fmt(revenue().deniedValue) }}</p>
+        } @else { <p class="an-empty">No claims yet — revenue analytics will populate as claims are created.</p> }
+      </article>
+
+      <article class="panel">
+        <div class="panel__header">
+          <div><p class="panel__eyebrow">Scheduling</p><h2>Appointments by provider &amp; status</h2></div>
+          <span class="an-total">{{ appts().total }} records</span>
+        </div>
+        @if (appts().total) {
+          <div class="an-bars">
+            @for (row of appts().byProvider; track row.label) {
+              <div class="an-bar">
+                <span class="an-bar__label">{{ row.label }}</span>
+                <div class="an-bar__track"><div class="an-bar__fill an-bar__fill--teal" [style.width.%]="pct(row.count, appts().total)"></div></div>
+                <span class="an-bar__val">{{ row.count }}</span>
+              </div>
+            }
+          </div>
+          <div class="an-chips">
+            @for (s of appts().byStatus; track s.label) { <span class="an-chip">{{ s.label }} · {{ s.count }}</span> }
+          </div>
+        } @else { <p class="an-empty">No appointments yet — book one on the Scheduling board.</p> }
+      </article>
+    </section>
+
+    <!-- ── Referrals + Surgery + Optical ─────────────────── -->
+    <section class="an-trio">
+      <article class="panel">
+        <div class="panel__header"><div><p class="panel__eyebrow">Referrals</p><h2>By status &amp; source</h2></div><span class="an-total">{{ referrals().total }}</span></div>
+        @if (referrals().total) {
+          <div class="an-chips">
+            @for (s of referrals().byStatus; track s.label) { <span class="an-chip">{{ s.label }} · {{ s.count }}</span> }
+          </div>
+          <ul class="an-list">
+            @for (s of referrals().bySource; track s.label) { <li><span>{{ s.label }}</span><strong>{{ s.count }}</strong></li> }
+          </ul>
+        } @else { <p class="an-empty">No referrals yet.</p> }
+      </article>
+
+      <article class="panel">
+        <div class="panel__header"><div><p class="panel__eyebrow">Surgery</p><h2>Case pipeline</h2></div><span class="an-total">{{ surgery().total }}</span></div>
+        @if (surgery().total) {
+          <ul class="an-list">
+            <li><span>Surgery ready</span><strong>{{ surgery().ready }}</strong></li>
+            <li><span>Scheduled</span><strong>{{ surgery().scheduled }}</strong></li>
+            <li><span>Pending clearance</span><strong>{{ surgery().pending }}</strong></li>
+            <li><span>On hold</span><strong>{{ surgery().onHold }}</strong></li>
+          </ul>
+        } @else { <p class="an-empty">No surgery cases yet.</p> }
+      </article>
+
+      <article class="panel">
+        <div class="panel__header"><div><p class="panel__eyebrow">Optical</p><h2>Orders &amp; balances</h2></div><span class="an-total">{{ optical().total }}</span></div>
+        @if (optical().total) {
+          <div class="an-chips">
+            @for (s of optical().byStatus; track s.label) { <span class="an-chip">{{ s.label }} · {{ s.count }}</span> }
+          </div>
+          <ul class="an-list">
+            <li><span>Deposits collected</span><strong>{{ fmt(optical().deposits) }}</strong></li>
+            <li><span>Balance due</span><strong>{{ fmt(optical().balanceDue) }}</strong></li>
+          </ul>
+        } @else { <p class="an-empty">No optical orders yet.</p> }
+      </article>
+    </section>
+
+    <!-- ── Activity + Data quality ───────────────────────── -->
+    <section class="dual-grid">
+      <article class="panel">
+        <div class="panel__header"><div><p class="panel__eyebrow">Audit trail</p><h2>Activity events by module</h2></div><span class="an-total">{{ activity().total }} events</span></div>
+        @if (activity().total) {
+          <div class="an-bars">
+            @for (row of activity().byModule; track row.label) {
+              <div class="an-bar">
+                <span class="an-bar__label an-bar__label--cap">{{ row.label }}</span>
+                <div class="an-bar__track"><div class="an-bar__fill an-bar__fill--slate" [style.width.%]="pct(row.count, activity().total)"></div></div>
+                <span class="an-bar__val">{{ row.count }}</span>
+              </div>
+            }
+          </div>
+          <p class="an-note">Append-only feeds — events cannot be edited or deleted by client sessions (enforced by Firestore rules). Activity is recorded network-wide.</p>
+        } @else { <p class="an-empty">No activity events recorded yet.</p> }
+      </article>
+
+      <article class="panel">
+        <div class="panel__header"><div><p class="panel__eyebrow">Data quality</p><h2>Truth markers</h2></div></div>
+        <ul class="an-list">
+          @for (q of dataQuality(); track q.label) {
+            <li>
+              <span>{{ q.label }}</span>
+              <strong [class.an-zero]="!q.count">{{ q.count || 'none yet' }}</strong>
+            </li>
+          }
+          <li><span>Static fallback values in analytics</span><strong>0 — all metrics derive from Firestore</strong></li>
+        </ul>
+      </article>
+    </section>
+
   }
-</app-modal>
+</section>
