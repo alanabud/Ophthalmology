@@ -641,9 +641,9 @@ export class EnterpriseStoreService {
 
   // ── Documents (Sprint 9D) — metadata in Firestore, file in Storage ──────────
   private readonly documentBase = signal<DocumentRecord[]>([
-    { id: 'DOC-100010', clinicId: 'winter-park', title: 'Glaucoma referral letter', category: 'Referral', status: 'Active', linkedEntityType: 'referral', linkedEntityId: 'REF-100455', patientId: 'WP-100234', fileName: 'referral-letter.pdf', fileType: 'application/pdf', fileSize: 184320, storagePath: 'documents/referral/REF-100455/DOC-100010/referral-letter.pdf', uploadStatus: 'uploaded', uploadedBy: 'Front desk', uploadedAt: '2026-05-02', updatedAt: '2026-05-02', privacyLevel: 'Restricted', description: 'PCP referral for elevated IOP' },
-    { id: 'DOC-100011', clinicId: 'winter-park', title: 'Signed surgical consent', category: 'Consent', status: 'Active', linkedEntityType: 'patient', linkedEntityId: 'WP-882301', patientId: 'WP-882301', fileName: 'consent-cataract.pdf', fileType: 'application/pdf', fileSize: 96000, storagePath: 'documents/patient/WP-882301/DOC-100011/consent-cataract.pdf', uploadStatus: 'uploaded', uploadedBy: 'Dr. Marcus Vale', uploadedAt: '2026-05-20', updatedAt: '2026-05-20', privacyLevel: 'Confidential', description: 'Phaco + IOL OD consent' },
-    { id: 'DOC-100012', clinicId: 'winter-park', title: 'Insurance card — front', category: 'Insurance', status: 'Active', linkedEntityType: 'patient', linkedEntityId: 'WP-100234', patientId: 'WP-100234', fileName: 'insurance-front.jpg', fileType: 'image/jpeg', fileSize: 240000, storagePath: 'documents/patient/WP-100234/DOC-100012/insurance-front.jpg', uploadStatus: 'uploaded', uploadedBy: 'Front desk', uploadedAt: '2026-04-18', updatedAt: '2026-04-18', privacyLevel: 'Restricted' },
+    { id: 'DOC-100010', clinicId: 'winter-park', title: 'Glaucoma referral letter', category: 'Referral', status: 'Active', linkedEntityType: 'referral', linkedEntityId: 'REF-100455', patientId: 'WP-100234', fileName: 'referral-letter.pdf', fileType: 'application/pdf', fileSize: 184320, storagePath: 'documents/winter-park/referral/REF-100455/DOC-100010/referral-letter.pdf', uploadStatus: 'uploaded', uploadedBy: 'Front desk', uploadedAt: '2026-05-02', updatedAt: '2026-05-02', privacyLevel: 'Restricted', description: 'PCP referral for elevated IOP' },
+    { id: 'DOC-100011', clinicId: 'winter-park', title: 'Signed surgical consent', category: 'Consent', status: 'Active', linkedEntityType: 'patient', linkedEntityId: 'WP-882301', patientId: 'WP-882301', fileName: 'consent-cataract.pdf', fileType: 'application/pdf', fileSize: 96000, storagePath: 'documents/winter-park/patient/WP-882301/DOC-100011/consent-cataract.pdf', uploadStatus: 'uploaded', uploadedBy: 'Dr. Marcus Vale', uploadedAt: '2026-05-20', updatedAt: '2026-05-20', privacyLevel: 'Confidential', description: 'Phaco + IOL OD consent' },
+    { id: 'DOC-100012', clinicId: 'winter-park', title: 'Insurance card — front', category: 'Insurance', status: 'Active', linkedEntityType: 'patient', linkedEntityId: 'WP-100234', patientId: 'WP-100234', fileName: 'insurance-front.jpg', fileType: 'image/jpeg', fileSize: 240000, storagePath: 'documents/winter-park/patient/WP-100234/DOC-100012/insurance-front.jpg', uploadStatus: 'uploaded', uploadedBy: 'Front desk', uploadedAt: '2026-04-18', updatedAt: '2026-04-18', privacyLevel: 'Restricted' },
   ]);
   readonly documents = computed(() => this.documentBase().filter((r) => clinicMatches(r.clinicId, this.activeClinicId())));
   private readonly documentAuditBase = signal<Record<string, DocumentAudit[]>>({});
@@ -660,7 +660,9 @@ export class EnterpriseStoreService {
   /** Create a document: upload the file to a structured path, then persist metadata + audit. */
   async createDocument(meta: Omit<DocumentRecord, 'storagePath' | 'fileName' | 'fileType' | 'fileSize' | 'uploadStatus' | 'uploadedAt' | 'updatedAt'>, file: File): Promise<DocumentRecord> {
     const safe = this.safeFileName(file.name);
-    const storagePath = `documents/${meta.linkedEntityType}/${meta.linkedEntityId || 'general'}/${meta.id}/${safe}`;
+    // Clinic-scoped path (Sprint 16): the clinicId segment is what Storage
+    // rules check against the session's custom claim — never client metadata.
+    const storagePath = `documents/${meta.clinicId}/${meta.linkedEntityType}/${meta.linkedEntityId || 'general'}/${meta.id}/${safe}`;
     let uploadStatus: DocumentRecord['uploadStatus'] = 'uploaded';
     try { await this.fs.uploadFile(storagePath, file); }
     catch (e: any) { uploadStatus = 'failed'; console.warn('[Store] file upload failed', e?.message ?? e); }
@@ -680,7 +682,7 @@ export class EnterpriseStoreService {
     let next = { ...rec, updatedAt: new Date().toISOString().slice(0, 10) };
     if (newFile) {
       const safe = this.safeFileName(newFile.name);
-      const storagePath = `documents/${rec.linkedEntityType}/${rec.linkedEntityId || 'general'}/${rec.id}/${safe}`;
+      const storagePath = `documents/${rec.clinicId}/${rec.linkedEntityType}/${rec.linkedEntityId || 'general'}/${rec.id}/${safe}`;
       try { await this.fs.uploadFile(storagePath, newFile); next = { ...next, fileName: safe, fileType: newFile.type || next.fileType, fileSize: newFile.size, storagePath, uploadStatus: 'uploaded' }; }
       catch (e: any) { next = { ...next, uploadStatus: 'failed' }; console.warn('[Store] file replace failed', e?.message ?? e); }
     }

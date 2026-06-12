@@ -98,7 +98,7 @@ export class PilotReadinessPageComponent {
     { id: 'audit-update', label: 'Audit update blocked', detail: 'Editing an existing activityFeed event must be denied — audit history is append-only.', state: 'pending' },
     { id: 'audit-delete', label: 'Audit delete blocked', detail: 'Deleting an activityFeed event must be denied for all client sessions.', state: 'pending' },
     { id: 'unknown-coll', label: 'Unknown collections denied', detail: 'Collections outside the application schema are unreachable even when authenticated.', state: 'pending' },
-    { id: 'storage', label: 'Document upload configured', detail: 'Firebase Storage default bucket provisioned and reachable for authenticated document reads.', state: 'pending' },
+    { id: 'storage', label: 'Document upload configured', detail: 'Firebase Storage default bucket provisioned and reachable. Claims-aware, clinic-scoped storage rules are written and tested; they deploy the moment the bucket exists.', state: 'pending' },
     { id: 'honest-kpi', label: 'No fabricated dashboard data', detail: 'Sprint 12 removed all hardcoded production-looking KPIs; dashboard derives from persisted collections.', state: 'pending' },
     { id: 'analytics', label: 'Analytics from persisted data', detail: 'Every analytics selector (revenue, appointments, referrals, surgery, optical, activity) reads live Firestore-backed collections with no static fallbacks.', state: 'pending' },
     { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'Staff accounts carry custom claims minted by the trusted owner tool; Firestore rules deny cross-clinic reads, tampered writes, and unfiltered lists for claim sessions.', state: 'pending' },
@@ -172,7 +172,7 @@ export class PilotReadinessPageComponent {
       await Promise.race([this.fs.getFileUrl(doc.storagePath), timeout]);
       this.set('storage', 'pass', 'Authenticated download URL resolved for a stored document.');
     } catch {
-      this.set('storage', 'action', 'Default bucket not provisioned. Owner action: Firebase Console → Build → Storage → Get Started, then `firebase deploy --only storage`.');
+      this.set('storage', 'action', 'Bucket not provisioned — requires the Blaze plan (project billing is currently disabled; free tier still applies after upgrade). Owner: Console → upgrade to Blaze → Build → Storage → Get Started → `firebase deploy --only storage` → run security-tests/test-rules-storage-documents.js.');
     }
 
     // 9. Honest dashboard (verified in Sprint 12; code-level guarantee)

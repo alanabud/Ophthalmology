@@ -1,26 +1,30 @@
 rules_version = '2';
 
-// ── Ophthalmology Platform — Cloud Storage Security Rules (Sprint 13) ────────
+// ── Ophthalmology Platform — Cloud Storage Security Rules (Sprint 16) ────────
 //
-// CURRENT MODE: Authenticated, path-scoped, default-deny.
+// CURRENT MODE: Authenticated, claim-isolated, path-scoped, default-deny.
 //
-//   • Only the structured document tree is reachable:
-//       documents/{linkedEntityType}/{linkedEntityId}/{documentId}/{fileName}
-//   • Every read/write requires a Firebase Auth session (the app signs in
-//     anonymously at startup) — no public or anonymous file access.
-//   • Uploads are capped at 25 MB and must declare an allowed content type
-//     (PDF, image, or Word document).
-//   • Listing is never granted; objects resolve only via per-object
-//     token-scoped getDownloadURL() calls. Firestore stores storagePath only.
+//   • Only the structured, CLINIC-SCOPED document tree is reachable:
+//       documents/{clinicId}/{linkedEntityType}/{linkedEntityId}/{documentId}/{fileName}
+//   • The clinic check uses the {clinicId} segment of the OBJECT PATH against
+//     the session's custom claim — never file metadata or client-submitted
+//     fields, so a tampered request body cannot cross clinics.
+//   • Staff sessions (claims minted by backend/claims-admin.js) can only
+//     touch files under their own clinic; a 'network' claim grants
+//     cross-clinic executive access.
+//   • Claimless anonymous sandbox sessions retain demo access (documented;
+//     the sandbox holds no real PHI).
+//   • Uploads: max 25 MB, PDF / image / Word content types only.
+//   • No public or unauthenticated access; no listing; objects resolve only
+//     via per-object token-scoped getDownloadURL().
 //   • Everything outside /documents/** is denied by default.
 //
-// NOTE: This file deploys with `firebase deploy --only storage` once the
-// project owner provisions the default bucket (Console → Build → Storage →
-// Get Started). Until then it is version-controlled and ready.
-//
-// KNOWN LIMIT (requires a backend before a real-PHI pilot):
-//   Per-user role / clinic enforcement needs custom claims from a trusted
-//   server. Tracked on /admin/pilot-readiness.
+// DEPLOY GATE (owner): the default bucket requires the Blaze plan
+// (billingEnabled is currently false). Owner steps:
+//   1. Firebase Console → upgrade to Blaze (free tier still applies)
+//   2. Build → Storage → Get Started
+//   3. firebase deploy --only storage --project ophthalmology-abd50
+//   4. node security-tests/test-rules-storage-documents.js  (must pass)
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,6 +35,18 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    /** Clinic claim on the session token, or null for sandbox/anonymous. */
+    function claimClinic() {
+      return ('clinicId' in request.auth.token) ? request.auth.token.clinicId : null;
+    }
+
+    /** Path-derived clinic isolation — the claim must match the path segment. */
+    function clinicAllowed(pathClinic) {
+      return claimClinic() == null            // sandbox (no claim, demo data)
+        || claimClinic() == 'network'         // executive scope
+        || claimClinic() == pathClinic;       // file belongs to the claimed clinic
+    }
+
     function isAllowedFileType() {
       return request.resource.contentType == 'application/pdf'
         || request.resource.contentType.matches('image/.*')
@@ -38,12 +54,12 @@ service firebase.storage {
         || request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
 
-    match /documents/{entityType}/{entityId}/{documentId}/{fileName} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn()
+    match /documents/{clinicId}/{entityType}/{entityId}/{documentId}/{fileName} {
+      allow read: if isSignedIn() && clinicAllowed(clinicId);
+      allow write: if isSignedIn() && clinicAllowed(clinicId)
         && request.resource.size < 25 * 1024 * 1024
         && isAllowedFileType();
-      allow delete: if isSignedIn();
+      allow delete: if isSignedIn() && clinicAllowed(clinicId);
     }
 
     // Everything else: no match → denied.
