@@ -900,6 +900,32 @@ export interface DocumentAudit {
   detail?: string;
 }
 
+/** Notification (Sprint 19) — real, clinic-scoped, actionable, auditable. */
+export interface NotificationRecord {
+  id: string;
+  clinicId: string;
+  /** 'all' | 'role:admin' | 'role:billing' | 'role:provider' | a specific uid. */
+  recipientUserId: string;
+  recipientRole?: 'admin' | 'billing' | 'provider' | 'optical' | 'scheduling' | 'surgery';
+  type:
+    | 'clinical_alert' | 'billing_alert' | 'schedule_delay' | 'imaging_result'
+    | 'claim_issue' | 'surgery_update' | 'compliance' | 'system';
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  message: string;
+  entityType?: 'patient' | 'appointment' | 'claim' | 'imagingOrder' | 'surgeryCase' | 'document' | 'complianceItem';
+  entityId?: string;
+  actionLabel?: string;
+  actionRoute?: string;
+  status: 'unread' | 'read' | 'archived';
+  createdAt: string;
+  readAt?: string;
+  archivedAt?: string;
+  createdBy?: string;
+  sourceCollection?: string;
+  sourceId?: string;
+}
+
 /** Cross-module activity event (Sprint 12 — command-center activity rail). */
 export interface ActivityEvent {
   id?: string;

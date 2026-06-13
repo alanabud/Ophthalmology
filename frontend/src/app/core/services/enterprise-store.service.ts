@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 
 import { TokenPairResponse } from '../models/auth.models';
 import { ACTION_QUEUE, AI_BRIEF_ACTIONS, AI_BRIEF_SIGNALS, AI_INSIGHTS, COMMAND_SIGNALS, DAILY_BRIEFINGS, EXECUTIVE_METRICS, LIVE_BOARDS, OPERATIONS_MATRIX } from '../data/command-center.data';
-import { CLINICS, PROVIDERS, SYSTEM_INDICATORS, ALERTS, QUICK_ACTIONS } from '../data/context.data';
+import { CLINICS, PROVIDERS, SYSTEM_INDICATORS, QUICK_ACTIONS } from '../data/context.data';
 import { ENCOUNTERS } from '../data/encounters.data';
 import { IMAGING_STUDIES } from '../data/imaging.data';
 import { INTEGRATIONS } from '../data/integrations.data';
@@ -37,6 +37,7 @@ import {
   IdentityMatchDecision,
   InsuranceRecord,
   LocationRecord,
+  NotificationRecord,
   ProviderRecord,
   FlowMove,
   FlowStation,
@@ -95,7 +96,8 @@ export class EnterpriseStoreService {
   readonly clinics = signal(CLINICS);
   readonly providers = signal(PROVIDERS);
   readonly systemIndicators = signal(SYSTEM_INDICATORS);
-  readonly notifications = signal(ALERTS);
+  // Static ALERTS retired in Sprint 19 — notifications are a real Firestore
+  // collection (see the Notifications section below).
   readonly quickActions = signal(QUICK_ACTIONS);
   readonly patientBriefings = signal(PATIENT_BRIEFINGS);
   readonly roleMatrix = signal<RoleMatrixItem[]>([...ROLE_MATRIX]);
@@ -520,6 +522,69 @@ export class EnterpriseStoreService {
     void this.fs.upsert('activityFeed', entry.id!, this.sanitize(entry)).catch((e) => console.warn('[Store] activity persist failed', e?.message ?? e));
   }
 
+  // ── Notifications (Sprint 19) — real, clinic-scoped, actionable ──────────────
+  /** The sandbox session acts as an administrator (sees all roles in-clinic). */
+  readonly viewerRole = signal<NotificationRecord['recipientRole']>('admin');
+  private readonly notificationsBase = signal<NotificationRecord[]>([
+    { id: 'NTF-100001', clinicId: 'winter-park', recipientUserId: 'role:provider', recipientRole: 'provider', type: 'clinical_alert', severity: 'critical', title: 'Prior authorization expired', message: 'Prior authorization expired for Katherine Wu — patient is blocked pending reauthorization.', entityType: 'patient', entityId: 'WP-100234', actionLabel: 'Open patient', actionRoute: '/patients', status: 'unread', createdAt: this.minutesAgoIso(8), sourceCollection: 'claims', sourceId: '88397-F' },
+    { id: 'NTF-100002', clinicId: 'winter-park', recipientUserId: 'role:billing', recipientRole: 'billing', type: 'claim_issue', severity: 'warning', title: 'Claim requires reauthorization', message: 'Claim 88397-F requires reauthorization before resubmission.', entityType: 'claim', entityId: '88397-F', actionLabel: 'Open billing', actionRoute: '/billing', status: 'unread', createdAt: this.minutesAgoIso(22), sourceCollection: 'claims', sourceId: '88397-F' },
+    { id: 'NTF-100003', clinicId: 'winter-park', recipientUserId: 'all', type: 'schedule_delay', severity: 'info', title: 'Clinic running behind', message: 'Dr. Alina Cho clinic is running 10 minutes behind schedule.', entityType: 'appointment', actionLabel: "Open today's clinic", actionRoute: '/today', status: 'unread', createdAt: this.minutesAgoIso(35) },
+    { id: 'NTF-100004', clinicId: 'clermont', recipientUserId: 'role:provider', recipientRole: 'provider', type: 'imaging_result', severity: 'warning', title: 'Visual field result ready', message: 'Visual field result is ready for review for Dana Morales.', entityType: 'imagingOrder', entityId: 'CL-202188', actionLabel: 'Open imaging', actionRoute: '/imaging', status: 'unread', createdAt: this.minutesAgoIso(54) },
+    { id: 'NTF-100005', clinicId: 'winter-park', recipientUserId: 'role:provider', recipientRole: 'provider', type: 'compliance', severity: 'critical', title: 'Unsigned encounter note', message: 'Unsigned encounter note pending provider attestation for Walter Briggs.', entityType: 'complianceItem', entityId: 'WP-882301', actionLabel: 'Open compliance', actionRoute: '/compliance', status: 'unread', createdAt: this.minutesAgoIso(70) },
+    { id: 'NTF-100006', clinicId: 'clermont', recipientUserId: 'all', type: 'surgery_update', severity: 'info', title: 'Surgery case cleared', message: 'Cataract case for Dana Morales has cleared pre-op and is ready to schedule.', entityType: 'surgeryCase', actionLabel: 'Open surgery', actionRoute: '/surgery', status: 'read', createdAt: this.minutesAgoIso(180), readAt: this.minutesAgoIso(120) },
+  ]);
+
+  /** Notifications visible to the current viewer: clinic-scoped + recipient-targeted, not archived. */
+  readonly notificationFeed = computed(() => {
+    const role = this.viewerRole();
+    return this.notificationsBase()
+      .filter((n) => n.status !== 'archived')
+      .filter((n) => clinicMatches(n.clinicId, this.activeClinicId()))
+      .filter((n) => this.notificationVisibleTo(n, role))
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  });
+  readonly unreadNotifications = computed(() => this.notificationFeed().filter((n) => n.status === 'unread'));
+  readonly unreadNotificationCount = computed(() => this.unreadNotifications().length);
+  readonly criticalUnreadCount = computed(() => this.unreadNotifications().filter((n) => n.severity === 'critical').length);
+
+  /** Admin sees all roles in-clinic; other roles see 'all' + their own role + direct messages. */
+  private notificationVisibleTo(n: NotificationRecord, role: NotificationRecord['recipientRole']): boolean {
+    if (role === 'admin') return true;
+    if (n.recipientUserId === 'all') return true;
+    if (n.recipientRole && n.recipientRole === role) return true;
+    return n.recipientUserId === `role:${role}`;
+  }
+
+  markNotificationRead(id: string): void {
+    let next: NotificationRecord | null = null;
+    this.notificationsBase.update((l) => l.map((n) => (n.id === id && n.status === 'unread') ? (next = { ...n, status: 'read', readAt: this.nowIso() }) : n));
+    if (next) void this.fs.upsert('notifications', id, this.sanitize(next)).catch((e) => console.warn('[Store] notification persist failed', e?.message ?? e));
+  }
+  markAllNotificationsRead(): void {
+    const now = this.nowIso();
+    const touched: NotificationRecord[] = [];
+    this.notificationsBase.update((l) => l.map((n) => {
+      if (this.notificationVisibleTo(n, this.viewerRole()) && clinicMatches(n.clinicId, this.activeClinicId()) && n.status === 'unread') {
+        const u = { ...n, status: 'read' as const, readAt: now }; touched.push(u); return u;
+      }
+      return n;
+    }));
+    for (const n of touched) void this.fs.upsert('notifications', n.id, this.sanitize(n)).catch(() => {});
+  }
+  archiveNotification(id: string): void {
+    let next: NotificationRecord | null = null;
+    this.notificationsBase.update((l) => l.map((n) => n.id === id ? (next = { ...n, status: 'archived', archivedAt: this.nowIso() }) : n));
+    if (next) void this.fs.upsert('notifications', id, this.sanitize(next)).catch((e) => console.warn('[Store] notification persist failed', e?.message ?? e));
+  }
+  /** Raise a new notification (used by source events; persisted + clinic-scoped). */
+  createNotification(rec: Omit<NotificationRecord, 'id' | 'status' | 'createdAt'> & Partial<Pick<NotificationRecord, 'id' | 'status' | 'createdAt'>>): NotificationRecord {
+    const full: NotificationRecord = { id: rec.id ?? `NTF-${String(Date.now()).slice(-8)}`, status: rec.status ?? 'unread', createdAt: rec.createdAt ?? this.nowIso(), ...rec } as NotificationRecord;
+    this.notificationsBase.update((l) => [full, ...l]);
+    void this.fs.upsert('notifications', full.id, this.sanitize(full)).catch((e) => console.warn('[Store] notification persist failed', e?.message ?? e));
+    return full;
+  }
+  private minutesAgoIso(min: number): string { return new Date(Date.now() - min * 60000).toISOString(); }
+
   private logApptAudit(appointmentId: string, action: AppointmentAudit['action'], by?: string, detail?: string): void {
     const entry: AppointmentAudit = { id: `${appointmentId}-${Date.now()}`, appointmentId, action, at: this.nowStamp(), iso: this.nowIso(), by, detail };
     this.appointmentAuditBase.update((m) => ({ ...m, [appointmentId]: [...(m[appointmentId] ?? []), entry] }));
@@ -901,6 +966,7 @@ export class EnterpriseStoreService {
       this.fs.seedIfEmpty('patientFlow',       [...PATIENT_FLOW],      p  => p.id),
       this.fs.seedIfEmpty('surgicalReadiness', [...SURGICAL_READINESS],sr => sr.id),
       this.fs.seedIfEmpty('injectionSafety',   [...INJECTION_SAFETY],  inj => inj.id),
+      this.fs.seedIfEmpty('notifications',     this.notificationsBase().map(n => this.sanitize(n)), n => n.id),
     ]);
   }
 
@@ -1011,6 +1077,9 @@ export class EnterpriseStoreService {
       this.fs.getAll<ActivityEvent>('activityFeed'),
     ]);
     if (activity.length) this.activityBase.set(activity);
+
+    const notifications = await this.fs.getAll<NotificationRecord>('notifications');
+    if (notifications.length) this.notificationsBase.set(this.mergeWithSeeds('notifications', notifications, this.notificationsBase()));
     if (referrals.length) this.referralBase.set(this.mergeWithSeeds('referrals', referrals, this.referralBase()));
     if (glAccounts.length) this.glAccountBase.set(this.mergeWithSeeds('glAccounts', glAccounts, this.glAccountBase()));
     if (documents.length) this.documentBase.set(this.mergeWithSeeds('documents', documents, this.documentBase()));

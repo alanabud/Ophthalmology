@@ -77,6 +77,30 @@ service cloud.firestore {
       allow write: if false; // trusted admin tool only
     }
 
+    // Notifications (Sprint 19): clinic-scoped read; clients may only flip
+    // status/readAt/archivedAt — every other field is immutable. No client
+    // delete (archive instead). Cross-clinic access denied via clinicAllowed().
+    match /notifications/{notificationId} {
+      function immutableFieldsUnchanged() {
+        return request.resource.data.clinicId == resource.data.clinicId
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.severity == resource.data.severity
+          && request.resource.data.title == resource.data.title
+          && request.resource.data.message == resource.data.message
+          && request.resource.data.recipientUserId == resource.data.recipientUserId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (!('sourceCollection' in resource.data) || request.resource.data.sourceCollection == resource.data.sourceCollection)
+          && (!('sourceId' in resource.data) || request.resource.data.sourceId == resource.data.sourceId);
+      }
+      allow read:   if isSignedIn() && clinicAllowed(resource.data);
+      allow create: if isSignedIn() && validClinic() && clinicAllowed(request.resource.data);
+      allow update: if isSignedIn()
+        && clinicAllowed(resource.data) && clinicAllowed(request.resource.data)
+        && request.resource.data.status in ['unread', 'read', 'archived']
+        && immutableFieldsUnchanged();
+      allow delete: if false; // archive, never client-delete
+    }
+
     match /{collection}/{docId} {
       allow read: if isSignedIn()
         && (isAuditCollection(collection)

@@ -134,15 +134,60 @@
             Quick create
           </button>
 
-          <!-- Alerts -->
-          <button class="tb-btn tb-btn--alerts" type="button"
-            [class.tb-btn--alerts-active]="openAlertCount() > 0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            {{ openAlertCount() }}
-          </button>
+          <!-- Notifications -->
+          <div class="tb-notif">
+            <button class="tb-btn tb-btn--alerts" type="button"
+              [class.tb-btn--alerts-active]="unreadCount() > 0"
+              (click)="toggleNotifications()" aria-label="Notifications">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              @if (unreadCount() > 0) { <span class="tb-notif__badge">{{ notifBadge() }}</span> }
+            </button>
+
+            @if (notifOpen()) {
+              <div class="tb-notif__scrim" (click)="closeNotifications()"></div>
+              <div class="tb-notif__panel" role="dialog" aria-label="Notifications">
+                <header class="tb-notif__head">
+                  <strong>Notifications</strong>
+                  <button class="tb-notif__markall" type="button" [disabled]="unreadCount() === 0" (click)="markAllNotifRead()">Mark all read</button>
+                </header>
+                <div class="tb-notif__filters">
+                  <button type="button" [class.on]="notifFilter() === 'all'" (click)="setNotifFilter('all')">All</button>
+                  <button type="button" [class.on]="notifFilter() === 'unread'" (click)="setNotifFilter('unread')">Unread ({{ unreadCount() }})</button>
+                  <button type="button" [class.on]="notifFilter() === 'critical'" (click)="setNotifFilter('critical')">Critical</button>
+                </div>
+                <div class="tb-notif__list">
+                  @for (n of visibleNotifications(); track n.id) {
+                    <div class="tb-notif__item tb-notif__item--{{ n.severity }}" [class.tb-notif__item--unread]="n.status === 'unread'" (click)="openNotification(n)">
+                      <span class="tb-notif__dot tb-notif__dot--{{ n.severity }}"></span>
+                      <div class="tb-notif__body">
+                        <div class="tb-notif__row">
+                          <strong>{{ n.title }}</strong>
+                          <span class="tb-notif__time">{{ timeAgo(n.createdAt) }}</span>
+                        </div>
+                        <p>{{ n.message }}</p>
+                        <div class="tb-notif__actions">
+                          @if (n.actionLabel) { <span class="tb-notif__action">{{ n.actionLabel }} →</span> }
+                          @if (n.status === 'unread') { <button type="button" (click)="markNotifRead(n.id, $event)">Mark read</button> }
+                          <button type="button" (click)="archiveNotif(n.id, $event)">Archive</button>
+                        </div>
+                      </div>
+                    </div>
+                  } @empty {
+                    <div class="tb-notif__empty">
+                      <span>✓</span>
+                      <p>{{ notifFilter() === 'all' ? "You're all caught up — no notifications." : 'Nothing in this filter.' }}</p>
+                    </div>
+                  }
+                </div>
+                <footer class="tb-notif__foot">
+                  <button type="button" (click)="openNotificationCenter()">Open notification center →</button>
+                </footer>
+              </div>
+            }
+          </div>
 
           <!-- User -->
           <div class="tb-user">

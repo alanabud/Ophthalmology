@@ -131,10 +131,6 @@ export class DashboardPageComponent {
     this.store.surgeryCases().length
   );
 
-  protected readonly clinicalAlertCount = computed(() =>
-    this.store.notifications().reduce((s, n) => s + n.count, 0)
-  );
-
   protected readonly opticalPendingCount = computed(() =>
     this.store.opticalOrders().filter(o =>
       o.status !== 'Ready' && o.status !== 'Dispensed' && o.status !== 'Cancelled'
@@ -644,7 +640,7 @@ export class DashboardPageComponent {
 
   protected runRecommended(): void {
     switch (this.nextRecommended().action) {
-      case 'review-critical': void this.router.navigate(['/encounters']); break;
+      case 'review-critical': void this.router.navigate(['/admin/notifications'], { queryParams: { filter: 'critical' } }); break;
       case 'collect-payment': void this.router.navigate(['/billing']);    break;
       case 'view-flow':       this.setBoardFilter('delayed');             break;
     }

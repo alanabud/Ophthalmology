@@ -125,6 +125,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'admin/notifications',
+        loadComponent: () =>
+          import('./features/admin/notifications-center-page.component').then(
+            (module) => module.NotificationsCenterPageComponent
+          )
+      },
+      {
         path: 'admin',
         loadComponent: () =>
           import('./features/admin/admin-page.component').then((module) => module.AdminPageComponent)

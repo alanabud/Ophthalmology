@@ -62,7 +62,6 @@ export class AppShellComponent {
   protected readonly providerOptions = this.store.providerOptions;
   protected readonly currentClinic = this.store.currentClinic;
   protected readonly currentProvider = this.store.currentProvider;
-  protected readonly notifications = this.store.notifications;
   protected readonly dailyBriefing = this.store.dailyBriefing;
   protected readonly aiBriefSignals = this.store.aiBriefSignals;
   protected readonly aiBriefActions = this.store.aiBriefActions;
@@ -73,9 +72,47 @@ export class AppShellComponent {
   protected readonly isSandboxSession = this.authState.isSandboxSession;
   protected readonly displayName = this.authState.displayName;
   protected readonly userEmail = this.authState.userEmail;
-  protected readonly openAlertCount = computed(() =>
-    this.notifications().reduce((count, alert) => count + alert.count, 0)
-  );
+  // ── Notifications (Sprint 19) — real, Firestore-backed, clinic-scoped ────────
+  protected readonly notificationFeed = this.store.notificationFeed;
+  protected readonly unreadCount = this.store.unreadNotificationCount;
+  protected readonly notifBadge = computed(() => {
+    const n = this.unreadCount();
+    return n > 99 ? '99+' : String(n);
+  });
+  protected readonly notifOpen = signal(false);
+  protected readonly notifFilter = signal<'all' | 'unread' | 'critical'>('all');
+  protected readonly visibleNotifications = computed(() => {
+    const f = this.notifFilter();
+    const list = this.notificationFeed();
+    if (f === 'unread') return list.filter(n => n.status === 'unread');
+    if (f === 'critical') return list.filter(n => n.severity === 'critical');
+    return list;
+  });
+
+  protected toggleNotifications(): void { this.notifOpen.update(v => !v); }
+  protected closeNotifications(): void { this.notifOpen.set(false); }
+  protected setNotifFilter(f: 'all' | 'unread' | 'critical'): void { this.notifFilter.set(f); }
+  protected markNotifRead(id: string, ev?: Event): void { ev?.stopPropagation(); this.store.markNotificationRead(id); }
+  protected markAllNotifRead(): void { this.store.markAllNotificationsRead(); }
+  protected archiveNotif(id: string, ev?: Event): void { ev?.stopPropagation(); this.store.archiveNotification(id); }
+  protected openNotification(n: { id: string; actionRoute?: string }): void {
+    this.store.markNotificationRead(n.id);
+    this.notifOpen.set(false);
+    if (n.actionRoute) void this.router.navigateByUrl(n.actionRoute);
+  }
+  protected openNotificationCenter(filter?: string): void {
+    this.notifOpen.set(false);
+    void this.router.navigate(['/admin/notifications'], filter ? { queryParams: { filter } } : {});
+  }
+  protected timeAgo(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
   protected readonly clinicSelectOptions = computed<EnterpriseSelectOption[]>(() =>
     this.clinicOptions().map((clinic) => ({
       value: clinic.id,
