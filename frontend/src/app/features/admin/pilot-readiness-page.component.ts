@@ -263,7 +263,7 @@ export class PilotReadinessPageComponent {
       await Promise.race([this.fs.getFileUrl(doc.storagePath), timeout]);
       this.set('storage', 'pass', 'Authenticated download URL resolved for a stored document.');
     } catch {
-      this.set('storage', 'action', 'Bucket not provisioned — requires the Blaze plan (project billing is currently disabled; free tier still applies after upgrade). Owner: Console → upgrade to Blaze → Build → Storage → Get Started → `firebase deploy --only storage` → run security-tests/test-rules-storage-documents.js.');
+      this.set('storage', 'action', 'Bucket not provisioned — requires the Blaze plan (project billing is currently disabled; free tier still applies after upgrade). Owner: Console → upgrade to Blaze → Build → Storage → Get Started, then run `node backend/finalize-storage.js` (deploys rules, runs the 10/10 deny suite, flips this gate). See docs/STORAGE_GO_LIVE.md.');
     }
 
     // 9. Honest dashboard (verified in Sprint 12; code-level guarantee)
