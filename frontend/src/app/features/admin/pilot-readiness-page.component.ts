@@ -175,7 +175,7 @@ export class PilotReadinessPageComponent {
     { id: 'storage', label: 'Document upload configured', detail: 'Firebase Storage default bucket provisioned and reachable. Claims-aware, clinic-scoped storage rules are written and tested; they deploy the moment the bucket exists.', state: 'pending' },
     { id: 'honest-kpi', label: 'No fabricated dashboard data', detail: 'Sprint 12 removed all hardcoded production-looking KPIs; dashboard derives from persisted collections.', state: 'pending' },
     { id: 'analytics', label: 'Analytics from persisted data', detail: 'Every analytics selector (revenue, appointments, referrals, surgery, optical, activity) reads live Firestore-backed collections with no static fallbacks.', state: 'pending' },
-    { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'Staff accounts carry custom claims minted by the trusted owner tool; Firestore rules deny cross-clinic reads, tampered writes, and unfiltered lists for claim sessions.', state: 'pending' },
+    { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'Staff accounts carry custom claims minted by the trusted owner tool; rules deny cross-clinic reads/writes/unfiltered-lists. The app data layer issues clinic-filtered reads so claim sessions load live, scoped data (verified live: a winter-park staff login loads only winter-park records).', state: 'pending' },
     { id: 'console', label: 'Runtime errors', detail: 'Uncaught errors captured on this page since load.', state: 'pending' },
   ]);
 

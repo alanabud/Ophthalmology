@@ -20,6 +20,7 @@ import {
   onSnapshot,
   query,
   setDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 
@@ -78,9 +79,20 @@ export class FirestoreService {
 
   // ── Reads ──────────────────────────────────────────────────────────────────
 
-  /** Fetch every document in a collection as typed objects. */
-  async getAll<T>(collectionName: string): Promise<T[]> {
-    const snapshot = await getDocs(collection(this.db, collectionName));
+  /**
+   * Fetch documents in a collection as typed objects.
+   *
+   * Pass `clinicId` to issue a clinic-filtered query. This is REQUIRED for
+   * claim-scoped staff sessions: the Firestore rules deny unfiltered list
+   * queries for clinic-claim sessions (they would leak other clinics), so an
+   * unfiltered `getAll` returns permission-denied. A `where('clinicId','==',…)`
+   * query is provable and allowed. Sandbox/anonymous and 'network' sessions
+   * read unfiltered.
+   */
+  async getAll<T>(collectionName: string, clinicId?: string): Promise<T[]> {
+    const colRef = collection(this.db, collectionName);
+    const q = clinicId ? query(colRef, where('clinicId', '==', clinicId)) : colRef;
+    const snapshot = await getDocs(q);
     return snapshot.docs.map(d => d.data() as T);
   }
 

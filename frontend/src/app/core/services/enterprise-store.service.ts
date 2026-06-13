@@ -16,7 +16,7 @@ import { COMPLIANCE_EVENTS } from '../data/compliance.data';
 import { ROLE_MATRIX } from '../data/analytics.data';
 import { NAVIGATION_SECTIONS } from '../data/navigation.data';
 import { AI_DAILY_BRIEFING, COCKPIT_IMAGING_QUEUE, INJECTION_SAFETY, PATIENT_FLOW, SURGICAL_READINESS } from '../data/clinic-today.data';
-import { firebaseAuthReady } from '../config/firebase.config';
+import { firebaseAuth, firebaseAuthReady } from '../config/firebase.config';
 import { FirestoreService } from './firestore.service';
 import {
   ActivityEvent,
@@ -938,16 +938,51 @@ export class EnterpriseStoreService {
    *  3. Attach a real-time listener to `patientFlow` and `patients` so that
    *     changes made in one browser tab (or by another user) propagate live.
    */
+  /** The session's clinic claim, or null for sandbox/anonymous and 'network'. */
+  private sessionClinic: string | null = null;
+
+  private async resolveSessionClinic(): Promise<void> {
+    try {
+      const user = firebaseAuth.currentUser;
+      if (!user) { this.sessionClinic = null; return; }
+      const token = await user.getIdTokenResult();
+      const c = token.claims['clinicId'];
+      this.sessionClinic = (typeof c === 'string' && c && c !== 'network') ? c : null;
+      if (this.sessionClinic) this.activeClinicId.set(this.sessionClinic);
+    } catch { this.sessionClinic = null; }
+  }
+
+  /**
+   * Resilient collection read. Clinic-scoped collections are filtered by the
+   * session's clinic claim (required — the rules deny unfiltered list reads for
+   * claim sessions). A per-collection failure is logged and yields [] rather
+   * than aborting the whole sync, so one denied collection never blanks the app.
+   */
+  private async safeLoad<T>(collection: string, clinicScoped: boolean): Promise<T[]> {
+    try {
+      return await this.fs.getAll<T>(collection, clinicScoped ? (this.sessionClinic ?? undefined) : undefined);
+    } catch (e: any) {
+      console.warn(`[Store] load "${collection}" skipped:`, e?.message ?? e);
+      return [];
+    }
+  }
+
   async initFirestore(): Promise<void> {
     try {
       // Security rules require an authenticated session — wait for the
       // anonymous Firebase Auth sign-in before the first read/write.
       await firebaseAuthReady;
-      await this.seedAllCollections();
+      await this.resolveSessionClinic();
+      // Seeding is a sandbox/owner concern; claim sessions never seed (their
+      // unfiltered probe reads would be denied) and read existing data only.
+      if (!this.sessionClinic) await this.seedAllCollections();
       await this.loadAllCollections();
-      this.attachRealtimeListeners();
+      // Realtime listeners use unfiltered collection snapshots (allowed for
+      // sandbox/network); claim sessions skip them — their scoped data is
+      // already loaded and an unfiltered listener would be denied.
+      if (!this.sessionClinic) this.attachRealtimeListeners();
       this.firestoreReady.set(true);
-      console.info('[Store] Firestore sync complete ✓');
+      console.info(`[Store] Firestore sync complete ✓${this.sessionClinic ? ` (clinic-scoped: ${this.sessionClinic})` : ''}`);
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       this.firestoreError.set(msg);
@@ -976,15 +1011,15 @@ export class EnterpriseStoreService {
       surgeryCases, opticalOrders,
       patientFlow, surgicalReadiness, injectionSafety,
     ] = await Promise.all([
-      this.fs.getAll<PatientRecord>('patients'),
-      this.fs.getAll<ClaimRecord>('claims'),
-      this.fs.getAll<InventoryRecord>('inventory'),
-      this.fs.getAll<ImagingStudy>('imagingStudies'),
-      this.fs.getAll<SurgeryCase>('surgeryCases'),
-      this.fs.getAll<OpticalOrder>('opticalOrders'),
-      this.fs.getAll<PatientFlowRecord>('patientFlow'),
-      this.fs.getAll<SurgicalReadinessCase>('surgicalReadiness'),
-      this.fs.getAll<InjectionSafetyRecord>('injectionSafety'),
+      this.safeLoad<PatientRecord>('patients', true),
+      this.safeLoad<ClaimRecord>('claims', true),
+      this.safeLoad<InventoryRecord>('inventory', true),
+      this.safeLoad<ImagingStudy>('imagingStudies', true),
+      this.safeLoad<SurgeryCase>('surgeryCases', true),
+      this.safeLoad<OpticalOrder>('opticalOrders', true),
+      this.safeLoad<PatientFlowRecord>('patientFlow', true),
+      this.safeLoad<SurgicalReadinessCase>('surgicalReadiness', true),
+      this.safeLoad<InjectionSafetyRecord>('injectionSafety', true),
     ]);
 
     if (patients.length)         this.patientsBase.set(patients);
@@ -998,7 +1033,7 @@ export class EnterpriseStoreService {
     if (injectionSafety.length)   this.injectionSafety.set(injectionSafety);
 
     // Rebuild the movement audit trail, grouped by patient.
-    const moves = await this.fs.getAll<FlowMove>('flowMoves');
+    const moves = await this.safeLoad<FlowMove>('flowMoves', false);
     if (moves.length) {
       const grouped: Record<string, FlowMove[]> = {};
       for (const m of moves) {
@@ -1010,8 +1045,8 @@ export class EnterpriseStoreService {
 
     // Imaging & claim work state (module drilldowns).
     const [imagingWork, claimWork] = await Promise.all([
-      this.fs.getAll<WorkItemState>('imagingWork'),
-      this.fs.getAll<WorkItemState>('claimWork'),
+      this.safeLoad<WorkItemState>('imagingWork', false),
+      this.safeLoad<WorkItemState>('claimWork', false),
     ]);
     if (imagingWork.length) {
       this.imagingWorkBase.set(Object.fromEntries(imagingWork.map((w) => [w.id, w])));
@@ -1022,8 +1057,8 @@ export class EnterpriseStoreService {
 
     // EMR clinical records + clinical audit.
     const [clinical, clinicalAudit] = await Promise.all([
-      this.fs.getAll<PatientClinicalRecord>('clinicalRecords'),
-      this.fs.getAll<ClinicalAuditEntry>('clinicalAudit'),
+      this.safeLoad<PatientClinicalRecord>('clinicalRecords', true),
+      this.safeLoad<ClinicalAuditEntry>('clinicalAudit', false),
     ]);
     if (clinical.length) {
       this.clinicalBase.set(Object.fromEntries(clinical.map((c) => [c.patientId, c])));
@@ -1035,31 +1070,31 @@ export class EnterpriseStoreService {
     }
 
     // Encounter workflow records.
-    const encounters = await this.fs.getAll<EncounterRecord>('encounters');
+    const encounters = await this.safeLoad<EncounterRecord>('encounters', true);
     if (encounters.length) {
       this.encounterBase.set(Object.fromEntries(encounters.map((e) => [e.patientId, e])));
     }
 
     // Identity governance: confirmed links + match decisions.
     const [mappings, decisions] = await Promise.all([
-      this.fs.getAll<CanonicalIdentityMapping>('canonicalIdentityMappings'),
-      this.fs.getAll<IdentityMatchDecision>('identityMatchDecisions'),
+      this.safeLoad<CanonicalIdentityMapping>('canonicalIdentityMappings', false),
+      this.safeLoad<IdentityMatchDecision>('identityMatchDecisions', false),
     ]);
     if (mappings.length) this.identityMappingsBase.set(mappings);
     if (decisions.length) this.identityDecisionsBase.set(decisions);
 
     // Insurance payers + guarantors (Sprint 9A).
     const [insurance, guarantors] = await Promise.all([
-      this.fs.getAll<InsuranceRecord>('insurancePayers'),
-      this.fs.getAll<GuarantorRecord>('guarantors'),
+      this.safeLoad<InsuranceRecord>('insurancePayers', true),
+      this.safeLoad<GuarantorRecord>('guarantors', true),
     ]);
     if (insurance.length) this.insuranceBase.set(this.mergeWithSeeds('insurancePayers', insurance, this.insuranceBase()));
     if (guarantors.length) this.guarantorBase.set(this.mergeWithSeeds('guarantors', guarantors, this.guarantorBase()));
 
     const [appointments, providers, locations] = await Promise.all([
-      this.fs.getAll<AppointmentRecord>('appointments'),
-      this.fs.getAll<ProviderRecord>('providers'),
-      this.fs.getAll<LocationRecord>('locations'),
+      this.safeLoad<AppointmentRecord>('appointments', true),
+      this.safeLoad<ProviderRecord>('providers', true),
+      this.safeLoad<LocationRecord>('locations', true),
     ]);
     // Merge with inline seeds by id: Firestore is the source of truth for any
     // record it has; seed records missing from Firestore are backfilled once so
@@ -1069,16 +1104,16 @@ export class EnterpriseStoreService {
     if (locations.length) this.locationBase.set(this.mergeWithSeeds('locations', locations, this.locationBase()));
 
     const [referrals, glAccounts, documents, docAudit, apptAudit, activity] = await Promise.all([
-      this.fs.getAll<ReferralRecord>('referrals'),
-      this.fs.getAll<GLAccountRecord>('glAccounts'),
-      this.fs.getAll<DocumentRecord>('documents'),
-      this.fs.getAll<DocumentAudit>('documentAudit'),
-      this.fs.getAll<AppointmentAudit>('appointmentAudit'),
-      this.fs.getAll<ActivityEvent>('activityFeed'),
+      this.safeLoad<ReferralRecord>('referrals', true),
+      this.safeLoad<GLAccountRecord>('glAccounts', true),
+      this.safeLoad<DocumentRecord>('documents', true),
+      this.safeLoad<DocumentAudit>('documentAudit', false),
+      this.safeLoad<AppointmentAudit>('appointmentAudit', false),
+      this.safeLoad<ActivityEvent>('activityFeed', false),
     ]);
     if (activity.length) this.activityBase.set(activity);
 
-    const notifications = await this.fs.getAll<NotificationRecord>('notifications');
+    const notifications = await this.safeLoad<NotificationRecord>('notifications', true);
     if (notifications.length) this.notificationsBase.set(this.mergeWithSeeds('notifications', notifications, this.notificationsBase()));
     if (referrals.length) this.referralBase.set(this.mergeWithSeeds('referrals', referrals, this.referralBase()));
     if (glAccounts.length) this.glAccountBase.set(this.mergeWithSeeds('glAccounts', glAccounts, this.glAccountBase()));
@@ -1095,8 +1130,13 @@ export class EnterpriseStoreService {
     }
   }
 
-  /** Firestore records win by id; seeds not yet in Firestore are kept and backfilled. */
+  /**
+   * Firestore records win by id; seeds not yet in Firestore are kept and
+   * backfilled. Claim sessions skip backfill entirely — they read only their
+   * own clinic's persisted data and must never re-introduce cross-clinic seeds.
+   */
   private mergeWithSeeds<T extends { id: string }>(collection: string, fromFs: T[], seeds: T[]): T[] {
+    if (this.sessionClinic) return fromFs;
     const missing = seeds.filter((s) => !fromFs.some((f) => f.id === s.id));
     for (const m of missing) {
       void this.fs.upsert(collection, m.id, this.sanitize(m)).catch(() => {});

@@ -77,17 +77,9 @@
             </svg>
             {{ isSubmitting() ? 'Signing in…' : 'Continue with Google' }}
           </button>
-
-          <button class="sso-btn sso-btn--microsoft" type="button"
-            (click)="signInWithMicrosoft()" [disabled]="isSubmitting()">
-            <svg class="sso-btn__icon" viewBox="0 0 21 21" fill="none">
-              <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
-              <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
-              <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
-              <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
-            </svg>
-            {{ isSubmitting() ? 'Signing in…' : 'Continue with Microsoft' }}
-          </button>
+          <!-- Microsoft SSO removed (Sprint 19 audit): the provider is not
+               configured in Firebase Auth, so the button could only error.
+               Re-add once microsoft.com is enabled in the Auth console. -->
         </div>
 
         <div class="auth-divider"><span>or sign in with email</span></div>
