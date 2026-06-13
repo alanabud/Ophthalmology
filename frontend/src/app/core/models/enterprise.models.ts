@@ -903,7 +903,7 @@ export interface DocumentAudit {
 /** Cross-module activity event (Sprint 12 — command-center activity rail). */
 export interface ActivityEvent {
   id?: string;
-  module: 'scheduling' | 'documents' | 'referrals' | 'billing' | 'surgery' | 'optical';
+  module: 'scheduling' | 'documents' | 'referrals' | 'billing' | 'surgery' | 'optical' | 'system';
   refId: string;
   action: string;
   at: string;

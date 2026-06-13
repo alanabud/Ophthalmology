@@ -49,8 +49,62 @@ const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databas
 
       <footer class="pr-foot">
         <p>{{ summary() }}</p>
-        <p class="pr-foot__hint">Deny-tests also run from CI-ready scripts in <code>security-tests/</code> (clinic isolation · audit immutability · storage documents).</p>
+        <p class="pr-foot__hint">Deny-tests also run from CI-ready scripts in <code>security-tests/</code> (clinic isolation · clinic claims · audit immutability · storage documents).</p>
       </footer>
+
+      <!-- ── Pilot Operations (Sprint 17) ──────────────────── -->
+      <section class="pr-ops">
+        <div class="pr-ops__head">
+          <p class="pr-eyebrow">Pilot Operations</p>
+          <h2 class="pr-ops__title">First-clinic launch runbook</h2>
+          <p class="pr-sub">Operational steps for go-live. Full guides: <code>docs/PILOT_ONBOARDING.md</code> and <code>docs/BACKUP_RUNBOOK.md</code>. All data tooling is owner-credentialed and runs from <code>backend/</code>.</p>
+        </div>
+
+        <div class="pr-ops__grid">
+          <article class="pr-ops__card">
+            <h3>Onboarding</h3>
+            <ol class="pr-ops__list">
+              <li>Owner setup &amp; rules deployed</li>
+              <li>Verify pilot clinic id (<code>validClinic</code>)</li>
+              <li>Assign staff claims — <code>claims-admin.js</code></li>
+              <li>Validate roles — clinic-claims suite (8/8)</li>
+              <li>First patient → appointment → claim</li>
+              <li>First document (after Storage gate)</li>
+            </ol>
+          </article>
+          <article class="pr-ops__card">
+            <h3>Backup &amp; export</h3>
+            <pre class="pr-ops__cmd">node backend/export-data.js
+node backend/export-data.js --clinic clermont
+node backend/export-data.js --list</pre>
+            <p class="pr-ops__hint">Owner-only, read-only. Output → <code>backups/</code> (gitignored). Restore notes in the backup runbook.</p>
+          </article>
+          <article class="pr-ops__card">
+            <h3>Seed/demo reset</h3>
+            <pre class="pr-ops__cmd">node backend/reset-pilot-data.js
+node backend/reset-pilot-data.js --confirm</pre>
+            <p class="pr-ops__hint">Dry-run by default. Allowlist-only (test artifacts); never matches real Date-id pilot records; rules &amp; claims untouched; logs a <code>system</code> reset event.</p>
+          </article>
+        </div>
+
+        <div class="pr-ops__golive">
+          <div class="pr-ops__golive-head">
+            <h3>First-clinic go-live validation</h3>
+            <span class="pr-ops__count">{{ goLiveDone() }} / {{ goLive().length }} confirmed</span>
+          </div>
+          <ul class="pr-checklist">
+            @for (item of goLive(); track item.id) {
+              <li class="pr-checkitem" [class.pr-checkitem--on]="item.done" (click)="toggleGoLive(item.id)">
+                <span class="pr-checkbox">{{ item.done ? '✓' : '' }}</span>
+                <div>
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ item.detail }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
     </section>
   `,
   styles: [`
@@ -81,7 +135,27 @@ const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databas
     .pr-card__note { font-size: 12px; color: #46555E; margin: 8px 0 0; padding: 8px 10px; background: #F8FAFB; border-radius: 8px; }
     .pr-foot { font-size: 13px; color: #46555E; }
     .pr-foot__hint { font-size: 12px; color: #97A4AB; }
-    code { background: rgba(22,36,43,0.06); border-radius: 4px; padding: 1px 5px; }
+    code { background: rgba(22,36,43,0.06); border-radius: 4px; padding: 1px 5px; font-size: 11.5px; }
+    .pr-ops { margin-top: 10px; padding-top: 18px; border-top: 1px solid rgba(22,36,43,0.10); display: flex; flex-direction: column; gap: 16px; }
+    .pr-ops__title { font-size: 18px; font-weight: 800; color: #16242B; margin: 2px 0 4px; }
+    .pr-ops__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .pr-ops__card { background: #fff; border: 1px solid rgba(22,36,43,0.08); border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(22,36,43,0.05); }
+    .pr-ops__card h3 { font-size: 13px; font-weight: 800; color: #0F766E; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .pr-ops__list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #46555E; }
+    .pr-ops__cmd { margin: 0 0 8px; padding: 10px 12px; background: #0F1B22; color: #C7F0E8; border-radius: 9px; font-size: 11px; line-height: 1.7; overflow-x: auto; white-space: pre; }
+    .pr-ops__hint { font-size: 11.5px; color: #6B7A83; margin: 0; }
+    .pr-ops__golive { background: #fff; border: 1px solid rgba(22,36,43,0.08); border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 4px rgba(22,36,43,0.05); }
+    .pr-ops__golive-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .pr-ops__golive-head h3 { font-size: 14px; font-weight: 800; color: #16242B; margin: 0; }
+    .pr-ops__count { font-size: 12px; font-weight: 800; color: #0F766E; background: rgba(15,118,110,0.08); border-radius: 8px; padding: 4px 10px; }
+    .pr-checklist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; }
+    .pr-checkitem { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid rgba(22,36,43,0.10); border-radius: 10px; cursor: pointer; transition: background .12s, border-color .12s; }
+    .pr-checkitem:hover { background: #F8FAFB; }
+    .pr-checkitem--on { background: rgba(46,139,87,0.06); border-color: rgba(46,139,87,0.35); }
+    .pr-checkitem strong { display: block; font-size: 12.5px; color: #16242B; }
+    .pr-checkitem span { font-size: 11.5px; color: #6B7A83; }
+    .pr-checkbox { flex: none; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid rgba(22,36,43,0.25); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; margin-top: 1px; }
+    .pr-checkitem--on .pr-checkbox { background: #2E8B57; border-color: #2E8B57; }
   `],
 })
 export class PilotReadinessPageComponent {
@@ -104,6 +178,23 @@ export class PilotReadinessPageComponent {
     { id: 'claims-isolation', label: 'Per-user clinic claims', detail: 'Staff accounts carry custom claims minted by the trusted owner tool; Firestore rules deny cross-clinic reads, tampered writes, and unfiltered lists for claim sessions.', state: 'pending' },
     { id: 'console', label: 'Runtime errors', detail: 'Uncaught errors captured on this page since load.', state: 'pending' },
   ]);
+
+  // ── First-clinic go-live checklist (Sprint 17) ──────────────────────────────
+  protected readonly goLive = signal<{ id: string; label: string; detail: string; done: boolean }[]>([
+    { id: 'login', label: 'Login', detail: 'Staff account signs in at the hosted URL.', done: false },
+    { id: 'claims', label: 'Claims identity', detail: 'Session carries the correct clinic claim (Admin → Clinic Access Claims).', done: false },
+    { id: 'isolation', label: 'Cross-clinic denial', detail: 'Clinic-claims deny suite passes 8/8; other clinics are invisible.', done: false },
+    { id: 'dashboard', label: 'Dashboard honesty', detail: 'Command Center KPIs match persisted records; no filler numbers.', done: false },
+    { id: 'scheduling', label: 'Scheduling', detail: 'Create + drag an appointment; persists across reload.', done: false },
+    { id: 'billing', label: 'Billing', detail: 'Create a claim; revenue analytics reflect it.', done: false },
+    { id: 'documents', label: 'Documents', detail: 'Upload + download a document (after Storage is provisioned).', done: false },
+    { id: 'analytics', label: 'Analytics', detail: 'Every panel scopes to the active clinic; empty states are honest.', done: false },
+    { id: 'console', label: 'Zero console errors', detail: 'Browser console clean through the full flow.', done: false },
+  ]);
+  protected readonly goLiveDone = () => this.goLive().filter(i => i.done).length;
+  protected toggleGoLive(id: string): void {
+    this.goLive.update(list => list.map(i => i.id === id ? { ...i, done: !i.done } : i));
+  }
 
   private errorCount = 0;
   constructor() {

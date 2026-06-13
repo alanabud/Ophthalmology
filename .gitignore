@@ -33,3 +33,6 @@ Thumbs.db
 .claude/
 .claire/
 .firebase/
+
+# Sprint 17 — local data exports (never commit pilot/PHI data)
+backups/
